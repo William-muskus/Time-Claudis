@@ -74,12 +74,23 @@ def hex_to_linear_rgba(h, alpha=1.0):
     return (srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), alpha)
 
 
-def reset_scene():
-    """Empty the file. Called before every asset so exports cannot contaminate."""
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-
-
 _material_cache = {}
+
+
+def reset_scene():
+    """
+    Empty the file. Called before every asset so exports cannot contaminate.
+
+    The material cache MUST be cleared here. Blender invalidates every existing
+    StructRNA when the file is reset, and a cached material from the previous
+    asset is then a dangling pointer that throws "StructRNA of type Material
+    has been removed" on any access — including on the `.name` lookup that was
+    supposed to be the liveness check. There is no way to test such a reference
+    safely, so the only correct move is to drop them all at the point the reset
+    happens.
+    """
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    _material_cache.clear()
 
 
 def material(name, hex_color, roughness=0.86, metallic=0.0, emission=0.0, alpha=1.0):
@@ -91,8 +102,15 @@ def material(name, hex_color, roughness=0.86, metallic=0.0, emission=0.0, alpha=
     into split vertex normals at export time or the look is lost on load.
     """
     key = (name, hex_color, roughness, metallic, emission, alpha)
-    if key in _material_cache and _material_cache[key].name in bpy.data.materials:
-        return _material_cache[key]
+    cached = _material_cache.get(key)
+    if cached is not None:
+        try:
+            if cached.name in bpy.data.materials:
+                return cached
+        except ReferenceError:
+            # Stale across a scene reset. reset_scene() clears the cache, so
+            # this is belt and braces for a caller that resets by other means.
+            _material_cache.pop(key, None)
 
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True

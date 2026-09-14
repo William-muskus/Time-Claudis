@@ -29,6 +29,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
 
   const anchors = [];
   root.add(buildBuildingRows(rail, rng, anchors));
+  root.add(buildEndCaps(rail, rng, anchors));
 
   const lm = buildLandmarks(rail);
   root.add(lm.group);
@@ -164,6 +165,90 @@ function buildBuildingRows(rail, rng, anchors) {
       }
 
       d += w + rng.range(0.2, 1.1);
+    }
+  }
+  return group;
+}
+
+/**
+ * Close the street off at both ends.
+ *
+ * The building rows run from 4 m to length-6 m along the rail, which leaves
+ * both ends of the level open onto bare terrain. Standing at Place des
+ * Abbesses and looking south — which is exactly where the player ends up — you
+ * saw the distant rooftop sea and nothing else, because the city simply
+ * stopped. Montmartre does not stop; it carries on in every direction, and a
+ * square is a square precisely because it is enclosed.
+ *
+ * So both ends get a wall of buildings placed by EXTRAPOLATING the rail's
+ * tangent past its endpoints. Extrapolation rather than rail.positionAt()
+ * matters: positionAt clamps, so every sample beyond the end returns the same
+ * point and the whole cap would collapse into one stack of coincident boxes.
+ */
+function buildEndCaps(rail, rng, anchors) {
+  const group = new THREE.Group();
+  group.name = 'endcaps';
+
+  const caps = [
+    { at: 0, dir: -1, name: 'north' },              // behind the metro
+    { at: rail.length, dir: +1, name: 'south' },    // beyond Abbesses
+  ];
+
+  for (const cap of caps) {
+    const origin = rail.positionAt(cap.at);
+    const tan = rail.tangentAt(cap.at).clone().multiplyScalar(cap.dir);
+    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+    const halfW = rail.widthAt(cap.at) * 0.5;
+
+    // A short continuation of the street wall, so the road reads as going
+    // somewhere rather than ending.
+    for (const side of [-1, 1]) {
+      let along = 3;
+      for (let i = 0; i < 5; i++) {
+        const w = rng.range(7, 12);
+        const depth = rng.range(9, 14);
+        const { group: b, anchors: ba } = buildBuilding({
+          width: w, depth, floors: rng.int(4, 6),
+          style: rng.pick(['plaster', 'ochre', 'grey', 'stone']),
+          shopfront: rng.chance(0.45), rng,
+        });
+        b.position.copy(origin)
+          .addScaledVector(tan, along + w / 2)
+          .addScaledVector(right, side * (halfW + 2.4 + depth / 2));
+        b.position.y = origin.y;
+        const facing = b.position.clone().addScaledVector(right, -side * depth);
+        b.lookAt(facing.x, b.position.y, facing.z);
+        group.add(b);
+
+        b.updateMatrixWorld(true);
+        for (const a of ba) {
+          anchors.push({
+            ...a,
+            worldPos: b.localToWorld(a.localPos.clone()),
+            railDistance: cap.at,
+            side,
+            facing: right.clone().multiplyScalar(-side),
+          });
+        }
+        along += w + rng.range(0.2, 1.0);
+      }
+    }
+
+    // And a terrace straight across the far end, which is what actually turns
+    // an open road into an enclosed square.
+    const acrossAt = origin.clone().addScaledVector(tan, 46);
+    for (let i = -2; i <= 2; i++) {
+      const w = rng.range(9, 13);
+      const { group: b } = buildBuilding({
+        width: w, depth: rng.range(10, 15), floors: rng.int(4, 6),
+        style: rng.pick(['plaster', 'grey', 'ochre']),
+        shopfront: rng.chance(0.35), rng,
+      });
+      b.position.copy(acrossAt).addScaledVector(right, i * (w + 1.5));
+      b.position.y = origin.y;
+      const facing = b.position.clone().addScaledVector(tan, -10);
+      b.lookAt(facing.x, b.position.y, facing.z);
+      group.add(b);
     }
   }
   return group;

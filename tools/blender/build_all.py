@@ -22,10 +22,12 @@ os.chdir(ROOT)
 def main():
     import landmarks
     import characters
+    import weapons
 
     registry = {}
     registry.update(landmarks.ASSETS)
     registry.update(characters.ASSETS)
+    registry.update(weapons.ASSETS)
 
     only = sys.argv[1:] or None
     total_bytes = 0

@@ -6,6 +6,10 @@
     "morris_column",
     "moulin_galette",
     "street_lamp",
-    "wallace_fountain"
+    "wallace_fountain",
+    "weapon_grenade",
+    "weapon_handgun",
+    "weapon_machine_gun",
+    "weapon_shotgun"
   ]
 }

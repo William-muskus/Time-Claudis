@@ -118,11 +118,34 @@ export class Renderer {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.46, 0.7, 0.95);
     this.composer.addPass(this.bloom);
 
+    /**
+     * The viewmodel pass.
+     *
+     * Inserted after the world and BEFORE bloom, with the world's colour kept
+     * and its depth discarded. That ordering is deliberate on both counts:
+     * clearing depth is what stops the gun intersecting Montmartre's narrow
+     * walls, and sitting ahead of bloom is what lets the muzzle flash bloom,
+     * which is most of what makes a shot feel like it went off.
+     */
+    this.viewmodelPass = null;
+
     this.grade = new ShaderPass(GRADE_SHADER);
     this.composer.addPass(this.grade);
 
     this.fxaa = new ShaderPass(FXAAShader);
     this.composer.addPass(this.fxaa);
+  }
+
+  /** Insert a viewmodel scene between the world render and the bloom. */
+  attachViewModel(viewModel) {
+    this.viewModel = viewModel;
+    const pass = new RenderPass(viewModel.scene, viewModel.camera);
+    pass.clear = false;        // keep the world we just drew
+    pass.clearDepth = true;    // but let the gun sit in front of all of it
+    this.viewmodelPass = pass;
+    // Index 1 == immediately after the world RenderPass, before bloom.
+    this.composer.insertPass(pass, 1);
+    viewModel.resize(this.camera.aspect);
   }
 
   /** Hit flash, low-health pulse and area-clear wash all drive the grade pass. */
@@ -144,6 +167,7 @@ export class Renderer {
     this.camera.updateProjectionMatrix();
     this.bloom.resolution.set(rw, rh);
     this.fxaa.material.uniforms.resolution.value.set(1 / (rw * dpr), 1 / (rh * dpr));
+    this.viewModel?.resize(w / h);
   }
 
   /**

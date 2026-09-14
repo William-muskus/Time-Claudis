@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Renderer } from './render/renderer.js';
+import { ViewModel } from './render/viewmodel.js';
 import { Rail } from './core/spline.js';
 import { railPoints, WAYPOINTS, LANDMARKS, geoToLocal } from './data/route.js';
 import { buildWorld } from './world/index.js';
@@ -52,6 +53,13 @@ const game = new Game({
   seed: SEED,
 });
 
+// The first-person weapon. Loaded before the game is playable so a pickup
+// never stalls the frame at the moment it is being awarded.
+const viewModel = new ViewModel('assets/models/');
+renderer.attachViewModel(viewModel);
+viewModel.load().then(() => { window.__viewModelReady = true; });
+bus.on('shot.fired', ({ weapon }) => viewModel.fire(weapon));
+
 const hud = new Hud(document.getElementById('hud-root'), bus);
 const announcer = new Announcer(bus);
 const recognizer = new GestureRecognizer();
@@ -78,21 +86,39 @@ let useWebcam = false;
  * camera anywhere on the rail and aim it at any surveyed landmark.
  */
 window.__tour = {
-  /** Park the camera at a named waypoint. */
+  /** Park the camera at a named waypoint, optionally backed off along the rail. */
   at(waypointId, opts = {}) {
     const d = rail.distanceToWaypoint(waypointId);
-    railCamera.snapTo(d, { lateral: opts.lateral ?? 0, facingOffset: opts.facingOffset ?? 0 });
+    const at = Math.max(0, Math.min(rail.length, d - (opts.back ?? 0)));
+    railCamera.snapTo(at, { lateral: opts.lateral ?? 0, facingOffset: opts.facingOffset ?? 0 });
     railCamera.update(1 / 60, 1);
-    return d;
+    return at;
   },
   /** Aim at a landmark or waypoint by id, overriding the rail's look-ahead. */
-  look(id) {
+  look(id, height = 1.4) {
     const all = [...WAYPOINTS, ...LANDMARKS];
     const t = all.find((w) => w.id === id);
     if (!t) throw new Error(`no such place: ${id}`);
     const p = geoToLocal(t.lat, t.lon, t.elev);
-    renderer.camera.lookAt(p.x, p.y + 1.4, p.z);
+    renderer.camera.lookAt(p.x, p.y + height, p.z);
     return p;
+  },
+  /** Force a weapon into the player's hands, for reviewing the viewmodel. */
+  weapon(key) {
+    game.weapons.grant(key, game.nowMs);
+    viewModel.setWeapon(key);
+    viewModel.update(1 / 60, game.snapshot(), recognizer.last.aim, false);
+  },
+  /** Trigger a muzzle flash and recoil without running the trigger logic. */
+  fire() {
+    viewModel.fire(game.weapons.current);
+    viewModel.update(1 / 200, game.snapshot(), recognizer.last.aim, false);
+  },
+  /** Put the gun up, as if the player had raised their hand to reload. */
+  gunUp() {
+    game.cover.forceCover();
+    const snap = { ...game.snapshot(), coverState: 'COVERED', exposure: 0 };
+    for (let i = 0; i < 40; i++) viewModel.update(1 / 60, snap, recognizer.last.aim, false);
   },
   /** Free look, in degrees. */
   aim(yawDeg, pitchDeg = 0) {
@@ -204,6 +230,7 @@ function frame(now) {
 
   // --- 8. render -----------------------------------------------------------
   const snap = game.snapshot();
+  viewModel.update(dt, snap, intent.aim, railCamera.isTravelling);
   renderer.setDamageVignette(
     snap.gameOver ? 0.85 : (snap.lives === 1 ? 0.26 : 0) + (snap.iframe ? 0.4 : 0));
   renderer.render(elapsed);

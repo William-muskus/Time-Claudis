@@ -41,7 +41,10 @@ const SHOTS = [
     why: 'The turn south into rue Girardon. Gradient must be visible.' },
   { name: '04_brouillards',      at: 'brouillards',     yaw: 195,
     why: 'Allee des Brouillards. Green shade on one side, sun on the other.' },
-  { name: '05_dalida_bust',      at: 'place_dalida', lateral: -4, look: 'place_dalida',
+  // Backed off and raised: parked ON the bust's own waypoint we were four
+  // metres from it and it filled the frame as an unreadable dark block.
+  { name: '05_dalida_bust',      at: 'place_dalida', back: 13, lateral: -2.5,
+    look: 'place_dalida', lookHeight: 2.4,
     why: 'THE landmark. Polished chest, swept hair, facing east.' },
   { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
     why: 'The sightline down rue de l Abreuvoir. Most photographed view here.' },
@@ -53,10 +56,26 @@ const SHOTS = [
     why: 'Place Emile-Goudeau. Wallace fountain, plane trees, Bateau-Lavoir.' },
   { name: '10_ravignan_drop',    at: 'ravignan_stairs', yaw: 165,
     why: 'The descent. Sightline opens over the rooftops of the 9th.' },
-  { name: '11_abbesses',         at: 'place_abbesses',  yaw: 180,
+  // Backed off and turned around: yaw 180 at the final waypoint pointed
+  // straight off the end of the level, at bare terrain.
+  { name: '11_abbesses',         at: 'place_abbesses', back: 18, yaw: 172,
     why: 'The finish. Guimard edicule in green iron and amber glass.' },
-  { name: '12_sacre_coeur',      at: 'moulin_galette',  look: 'sacre_coeur',
+  { name: '12_sacre_coeur',      at: 'moulin_galette',  look: 'sacre_coeur', lookHeight: 30,
     why: 'The basilica on the skyline. A silhouette, nothing more.' },
+
+  // --- the first-person weapon, in each of its states --------------------
+  { name: '13_weapon_ready',     at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN',
+    why: 'Handgun at rest. Lower right, angled in, not covering the middle third.' },
+  { name: '14_weapon_firing',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', fire: true,
+    why: 'Muzzle flash and recoil kick. The flash must bloom.' },
+  { name: '15_weapon_shotgun',   at: 'place_dalida', back: 6, yaw: 195, weapon: 'SHOTGUN', fire: true,
+    why: 'Different silhouette, bigger kick, fatter flash.' },
+  { name: '16_weapon_mg',        at: 'emile_goudeau', back: 5, yaw: 175, weapon: 'MACHINE_GUN',
+    why: 'Long magazine below the receiver is the recognition cue.' },
+  { name: '17_weapon_grenade',   at: 'emile_goudeau', back: 5, yaw: 175, weapon: 'GRENADE', fire: true,
+    why: 'The drum. Rare, and the answer to the boss.' },
+  { name: '18_gun_up_reload',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', gunUp: true,
+    why: 'Hand raised to reload. The on-screen gun must mirror the gesture: barrel vertical.' },
 ];
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -102,8 +121,15 @@ for (const shot of SHOTS) {
   const ok = await page.evaluate((s) => {
     try {
       window.__tour.freeze(true);
-      window.__tour.at(s.at, { lateral: s.lateral ?? 0 });
-      if (s.look) window.__tour.look(s.look);
+      window.__tour.at(s.at, { lateral: s.lateral ?? 0, back: s.back ?? 0 });
+
+      // Force a weapon and a pose so each state can be reviewed deliberately
+      // rather than waiting for the attract pilot to happen into it.
+      if (s.weapon) window.__tour.weapon(s.weapon);
+      if (s.gunUp) window.__tour.gunUp();
+      if (s.fire) window.__tour.fire();
+
+      if (s.look) window.__tour.look(s.look, s.lookHeight);
       else window.__tour.aim(s.yaw ?? 180, s.pitch ?? 0);
       return true;
     } catch (e) { return String(e.message); }
