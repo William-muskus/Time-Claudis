@@ -35,9 +35,11 @@ const c = (hex) => new THREE.Color(hex);
 
 export const PALETTE = {
   // --- sky and atmosphere -------------------------------------------------
-  skyZenith:    c('#2E5A8C'),   // deep cerulean overhead
+  skyZenith:    c('#4277B0'),   // cerulean overhead. Lifted from #2E5A8C: that
+                                //  was a dusk blue and it dragged the whole sky,
+                                //  and the hemisphere fill that samples it, toward night.
   skyHorizon:   c('#F2B86B'),   // molten gold at the rooftops
-  skyGround:    c('#8A6A52'),   // warm bounce from below
+  skyGround:    c('#A57F5E'),   // warm bounce off the cobbles
   sunColor:     c('#FFD9A0'),
   sunDiscColor: c('#FFF0CC'),
   fogColor:     c('#E0A868'),   // haze takes the horizon gold up the street

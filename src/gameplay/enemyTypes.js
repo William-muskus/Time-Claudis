@@ -91,7 +91,65 @@ export const ENEMY_TYPES = {
     charges: true,
     preferredAnchors: ['alley', 'door', 'metro'],
   },
+
+  /**
+   * THE STAGE BOSS. Area A5, on the Ravignan steps.
+   *
+   * A Time Crisis stage does not end on a wave, it ends on a person with a
+   * name and a health bar. Everything here is sized against the handgun,
+   * because the boss must be beatable with the weapon that is never taken
+   * away: 12 HP is 12 trigger pulls, which at the handgun's 6-round magazine
+   * is exactly two full magazines plus the two reloads between them. That is
+   * the fight — three trips out of cover, minimum, and the boss's telegraph
+   * is tuned so each trip buys you about one magazine.
+   */
+  BOSS: {
+    name: 'LE CORBEAU',
+    color: PALETTE.enemyHeavy,
+    hp: 12,
+    telegraphMs: 1400,
+    score: 12000,
+    gates: true,                 // the stage cannot end around him
+    exposureMs: Infinity,        // he never ducks back; he is the area
+    doubleTapChance: 1,
+    speed: 0.9,
+    scale: 1.42,
+    boss: true,
+    preferredAnchors: ['door', 'alley', 'metro'],
+  },
 };
+
+/**
+ * Boss phases, ordered from full health downward.
+ *
+ * The shape of a boss fight is escalation the player can SEE coming, so each
+ * phase shortens the telegraph and widens the burst by the same rough factor.
+ * `heavyEvery` counts ordinary volleys between heavy attacks: by phase three
+ * every other attack is the unduckable-unless-you-duck sweep, which is what
+ * turns the last third of the fight into pure cover rhythm.
+ */
+export const BOSS_PHASES = [
+  { from: 1.00, telegraphMs: 1400, burst: 1, heavyEvery: 3 },
+  { from: 0.66, telegraphMs: 1100, burst: 2, heavyEvery: 3 },
+  { from: 0.33, telegraphMs: 850,  burst: 3, heavyEvery: 2 },
+];
+
+/**
+ * The heavy attack: a wide sweep that cannot be dodged by aiming, only by
+ * hiding. It gets a telegraph longer than anything else in the game precisely
+ * because the correct answer is the slowest one the player has — a 200 ms
+ * hide from a standing start, plus human reaction time, plus the bullet's
+ * flight. 1600 ms leaves room for all three and still feels urgent.
+ */
+export const BOSS_HEAVY_TELEGRAPH_MS = 1600;
+/** Rounds in the sweep. Enough that standing still is never survivable. */
+export const BOSS_HEAVY_ROUNDS = 5;
+/**
+ * The beat between phases. He covers, you cannot hurt him, and the player gets
+ * a breath to reload. Short — long enough to read as an event, too short to be
+ * a wait.
+ */
+export const BOSS_PHASE_GUARD_MS = 900;
 
 /** Telegraph stage boundaries as fractions of telegraphMs. Spec §3. */
 export const TELEGRAPH_SPLIT = { windup: 0.55, flash: 0.30, commit: 0.15 };
@@ -101,3 +159,22 @@ export const ENEMY_BULLET_SPEED = 34;
 
 /** At most this many enemies may be in the commit stage at once. Spec §3. */
 export const MAX_CONCURRENT_COMMIT = 2;
+
+/**
+ * How long an enemy reacts to a hit before anything else happens to it.
+ * Spec §7: an enemy that vanishes on hit feels like a target, not a person.
+ * The same number serves both cases — a killing blow staggers for 120 ms
+ * before the fall begins, and a non-lethal hit (the HEAVY, the BOSS) staggers
+ * for 120 ms with its telegraph SUSPENDED, which is what makes shooting an
+ * armoured enemy feel like suppression rather than like chipping a wall.
+ */
+export const STAGGER_MS = 120;
+
+/**
+ * Weapon-carrier tell. A carrier is marked in a colour that belongs to no
+ * enemy class (spec §3: colour is information), and pulses smoothly rather
+ * than in the telegraph's hard beats, so the two reads can never be confused:
+ * a blink means "I am about to shoot you", a throb means "I am worth killing".
+ */
+export const CARRIER_MARK_COLOR = PALETTE.hudBlue;
+export const CARRIER_PULSE_HZ = 1.1;

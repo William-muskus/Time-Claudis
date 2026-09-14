@@ -110,8 +110,11 @@ function buildStreetLamp() {
   g.add(neck);
 
   const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.25, 0.5, 6),
+    // It is late afternoon, not night. The lanterns are unlit glass catching
+    // the low sun, so this is a faint sheen and not a light source. At 0.25 it
+    // bloomed into a white blob that owned the frame.
     flat(PALETTE.guimardAmber, {
-      roughness: 0.2, emissive: PALETTE.guimardAmber, emissiveIntensity: 0.25,
+      roughness: 0.2, emissive: PALETTE.guimardAmber, emissiveIntensity: 0.06,
     }));
   lantern.position.set(0, 4.12, 0.84);
   lantern.castShadow = true;

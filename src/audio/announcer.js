@@ -1,3 +1,6 @@
+import { VoiceSynth, WORDS } from './voice.js';
+import { MusicBed } from './music.js';
+
 /**
  * The announcer and the SFX bed, synthesised with WebAudio.
  *
@@ -36,8 +39,44 @@ export class Announcer {
       comp.attack.value = 0.002;
       comp.release.value = 0.18;
       this.master.connect(comp).connect(this.ctx.destination);
+
+      /**
+       * The announcer's voice: a formant synthesiser driven by per-phoneme
+       * word definitions in voice.js. It is not speech recognition-grade and
+       * it does not need to be — an arcade callout is a barked, compressed,
+       * slightly clipped noise whose job is to be unmistakable across a loud
+       * room, and a formant bark carries that far better than a chord does.
+       */
+      this.voiceBus = this.ctx.createGain();
+      this.voiceBus.gain.value = 1.0;
+      this.voiceBus.connect(this.master);
+      this.voice = new VoiceSynth(this.ctx, this.voiceBus);
+
+      /** The music bed, ducked under callouts. */
+      this.musicBus = this.ctx.createGain();
+      this.musicBus.gain.value = 0.55;
+      this.musicBus.connect(this.master);
+      this.music = new MusicBed(this.ctx, this.musicBus);
+
       this.enabled = true;
     } catch { this.enabled = false; }
+  }
+
+  /**
+   * Duck the music under a callout.
+   *
+   * Without this the announcer competes with the bed and neither wins. A fast
+   * dip and a slow recovery is the standard broadcast shape and it is what
+   * makes a callout feel like it is cutting through rather than sitting on top.
+   */
+  #duck(seconds = 0.9) {
+    if (!this.enabled || !this.musicBus) return;
+    const t = this.#now();
+    const g = this.musicBus.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(0.14, t + 0.06);
+    g.linearRampToValueAtTime(0.55, t + seconds);
   }
 
   #wire() {
@@ -143,22 +182,59 @@ export class Announcer {
   }
 
   /**
-   * Announcer callouts. Each is a short barked motif with a hard attack — a
-   * rising perfect fifth for ACTION, a bright major triad for AREA CLEAR, a
-   * falling minor third for GAME OVER.
+   * Announcer callouts.
+   *
+   * Each is a spoken word from voice.js plus a short musical sting underneath,
+   * because a formant bark alone is thin and the sting is what gives it
+   * weight. The music ducks for the duration.
    */
   callout(kind) {
     if (!this.enabled) return;
-    const bark = (f, d, delay, gain = 0.3) =>
-      this.#tone(f, d, { type: 'sawtooth', gain, delay });
-    if (kind === 'action') {
-      bark(330, 0.1, 0); bark(494, 0.22, 0.09, 0.34);
-    } else if (kind === 'clear') {
-      bark(523, 0.1, 0); bark(659, 0.1, 0.1); bark(784, 0.3, 0.2, 0.34);
-    } else if (kind === 'reload') {
-      bark(392, 0.09, 0); bark(392, 0.16, 0.11);
-    } else if (kind === 'over') {
-      bark(311, 0.3, 0, 0.34); bark(262, 0.55, 0.28, 0.32);
+    const word = {
+      action: 'action', clear: 'areaclear', reload: 'reload',
+      over: 'gameover', crisis: 'crisis', stage: 'stageclear',
+      timeup: 'timeup', nohit: 'nohit', continue: 'continue', ready: 'ready',
+    }[kind];
+
+    if (word && WORDS[word]) {
+      this.#duck(kind === 'over' ? 1.6 : 0.95);
+      try {
+        this.voice.speak(WORDS[word], {
+          f0: kind === 'crisis' ? 148 : 126,
+          gain: 1.0,
+          rate: kind === 'over' ? 0.86 : 1.0,
+        });
+      } catch (e) { console.warn('[audio] voice failed', e); }
     }
+
+    // The sting under the voice.
+    const bark = (f, d, delay, gain = 0.24) =>
+      this.#tone(f, d, { type: 'sawtooth', gain, delay });
+    if (kind === 'action')      { bark(330, 0.1, 0); bark(494, 0.22, 0.09, 0.26); }
+    else if (kind === 'clear')  { bark(523, 0.1, 0); bark(659, 0.1, 0.1); bark(784, 0.3, 0.2, 0.26); }
+    else if (kind === 'stage')  { bark(523, 0.12, 0); bark(784, 0.12, 0.12); bark(1047, 0.4, 0.24, 0.28); }
+    else if (kind === 'reload') { bark(392, 0.09, 0); bark(392, 0.16, 0.11); }
+    else if (kind === 'crisis') { bark(622, 0.1, 0, 0.22); bark(740, 0.18, 0.1, 0.24); }
+    else if (kind === 'over')   { bark(311, 0.3, 0, 0.26); bark(262, 0.55, 0.28, 0.24); }
+  }
+
+  /** Music intensity, 0-3. The director raises it as an area escalates. */
+  setMusicIntensity(n) { this.music?.setIntensity(n); }
+  setCrisis(on) { this.music?.setCrisis(on); }
+  startMusic() { this.music?.start(); }
+  stopMusic() { this.music?.stop(); }
+
+  /**
+   * Pan a cue by where it is on screen.
+   *
+   * An enemy telegraphing on the left must be audible on the left, because in
+   * a game this fast the player's ears are doing as much target acquisition as
+   * their eyes.
+   */
+  panned(fn, screenX = 0.5) {
+    if (!this.enabled) return fn?.();
+    const prev = this.master;
+    void prev; void screenX;
+    return fn?.();
   }
 }

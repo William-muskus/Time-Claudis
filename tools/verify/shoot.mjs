@@ -33,7 +33,12 @@ const arg = (name, def) => {
 
 const OUT = resolve(arg('out', join(ROOT, 'artifacts/shots')));
 const SEED = arg('seed', '41234');
-const PORT = Number(arg('port', '5199'));
+/**
+ * Port 0 lets the OS assign a free one. A fixed port strands the harness
+ * whenever a previous run's server is still holding it, which happens often
+ * because a SwiftShader render can outlive the shell that started it.
+ */
+const PORT = Number(arg('port', '0'));
 /** Simulated seconds at which to capture. Chosen to land on real beats. */
 const SHOT_TIMES = (arg('shots', '0.4,2.5,6,11,17,24,33,44,58,72,88,104'))
   .split(',').map(Number);
@@ -63,6 +68,7 @@ function serve(dir, port) {
 }
 
 const server = await serve(DIST, PORT);
+const boundPort = server.address().port;
 await mkdir(OUT, { recursive: true });
 
 /**
@@ -97,7 +103,7 @@ page.on('pageerror', (e) => errors.push(`PAGEERROR: ${e.message}`));
 
 // Fixed timestep: each rAF advances exactly 1/60 s of simulated time no matter
 // how long the software renderer actually took.
-const url = `http://localhost:${PORT}/?demo=1&seed=${SEED}&fixed=${1 / 60}`;
+const url = `http://localhost:${boundPort}/?demo=1&seed=${SEED}&fixed=${1 / 60}`;
 console.log(`[verify] ${url}`);
 await page.goto(url, { waitUntil: 'load', timeout: 60000 });
 

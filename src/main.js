@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Renderer } from './render/renderer.js';
 import { Rail } from './core/spline.js';
-import { railPoints } from './data/route.js';
+import { railPoints, WAYPOINTS, LANDMARKS, geoToLocal } from './data/route.js';
 import { buildWorld } from './world/index.js';
 import { RailCamera } from './rail/camera.js';
 import { Game } from './gameplay/game.js';
@@ -29,6 +29,10 @@ const FIXED_DT = params.has('fixed') ? Number(params.get('fixed')) || 1 / 60 : n
 
 const canvas = document.getElementById('gl');
 const renderer = new Renderer(canvas);
+// Attract mode is what the verification harness screenshots, and it runs on a
+// software rasteriser where every frame is over budget. Letting the scaler
+// react there would mean every screenshot was reviewed at the resolution floor.
+renderer.setAdaptiveEnabled(!DEMO);
 
 const rail = new Rail(railPoints());
 const { root: world, anchors, sky } = buildWorld(rail, SEED);
@@ -64,7 +68,44 @@ const titleCard = document.getElementById('title');
 let started = false;
 let useWebcam = false;
 
-// Screenshot/diagnostic surface for the verification harness.
+/**
+ * Diagnostic surface for the verification harness.
+ *
+ * The attract pilot points the camera wherever the fight is, which is right for
+ * reviewing GAMEPLAY but useless for reviewing a specific piece of the world —
+ * you cannot ask "does the Dalida bust look correct" if you only ever see it
+ * when an enemy happens to stand near it. So the harness can also park the
+ * camera anywhere on the rail and aim it at any surveyed landmark.
+ */
+window.__tour = {
+  /** Park the camera at a named waypoint. */
+  at(waypointId, opts = {}) {
+    const d = rail.distanceToWaypoint(waypointId);
+    railCamera.snapTo(d, { lateral: opts.lateral ?? 0, facingOffset: opts.facingOffset ?? 0 });
+    railCamera.update(1 / 60, 1);
+    return d;
+  },
+  /** Aim at a landmark or waypoint by id, overriding the rail's look-ahead. */
+  look(id) {
+    const all = [...WAYPOINTS, ...LANDMARKS];
+    const t = all.find((w) => w.id === id);
+    if (!t) throw new Error(`no such place: ${id}`);
+    const p = geoToLocal(t.lat, t.lon, t.elev);
+    renderer.camera.lookAt(p.x, p.y + 1.4, p.z);
+    return p;
+  },
+  /** Free look, in degrees. */
+  aim(yawDeg, pitchDeg = 0) {
+    const y = (yawDeg * Math.PI) / 180, pch = (pitchDeg * Math.PI) / 180;
+    const dir = new THREE.Vector3(Math.sin(y) * Math.cos(pch), Math.sin(pch), -Math.cos(y) * Math.cos(pch));
+    renderer.camera.lookAt(renderer.camera.position.clone().add(dir));
+  },
+  /** Stop the simulation so a parked camera is not immediately overridden. */
+  freeze(on = true) { window.__frozen = on; },
+  places: () => [...WAYPOINTS.map((w) => w.id), ...LANDMARKS.map((l) => l.id)],
+};
+window.__frozen = false;
+
 window.__game = game;
 window.__rail = rail;
 window.__renderer = renderer;
@@ -104,6 +145,27 @@ if (DEMO) start({ webcam: false });
 let last = performance.now();
 let elapsed = 0;
 
+/** Latched so a callout fires once per area, not once per frame. */
+let crisisCalled = false;
+let lastAreaIndex = -1;
+
+function updateAudioState(snap) {
+  if (snap.areaIndex !== lastAreaIndex) {
+    lastAreaIndex = snap.areaIndex;
+    crisisCalled = false;
+    announcer.startMusic();
+    // Escalate the bed as the stage progresses, so area five feels different
+    // from area one without anyone writing five pieces of music.
+    announcer.setMusicIntensity(Math.min(3, snap.areaIndex));
+  }
+  const crisis = snap.directorState === 'FIGHTING' && snap.timeLeft <= 10;
+  announcer.setCrisis(crisis);
+  if (crisis && !crisisCalled) {
+    crisisCalled = true;
+    announcer.callout('crisis');
+  }
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
 
@@ -127,7 +189,9 @@ function frame(now) {
   const intent = recognizer.update(landmarks, dt);
 
   // --- 2..7. simulation ----------------------------------------------------
-  game.update(dt, intent);
+  // A frozen frame still renders and still updates the HUD, so a parked camera
+  // can be screenshotted without the rig snapping back to the rail next frame.
+  if (!window.__frozen) game.update(dt, intent);
 
   // --- 8. render -----------------------------------------------------------
   const snap = game.snapshot();
@@ -138,6 +202,12 @@ function frame(now) {
   // --- 9. hud --------------------------------------------------------------
   hud.update(snap, intent.aim, dt);
   if (elapsed > 14) hud.hideHints();
+
+  // --- audio state ---------------------------------------------------------
+  // The clock is a continuous value rather than an event, so the CRISIS
+  // callout and the music's urgency are driven from the snapshot here rather
+  // than from the bus. Spec: docs/GAMEPLAY.md §7.
+  updateAudioState(snap);
 
   window.__frames++;
 }

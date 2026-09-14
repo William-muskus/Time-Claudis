@@ -53,10 +53,23 @@ export function buildSky(radius = 800) {
           vec3 d = normalize(vDir);
           float h = d.y;
 
-          // Above the horizon: gold to cerulean, compressed low. The 0.38
-          // exponent is what keeps the warm band down at the rooftops instead
-          // of floating it halfway up the sky.
-          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 0.38));
+          // Above the horizon: gold into cerulean.
+          //
+          // The exponent must be GREATER than 1. This got written as 0.38
+          // first, which does the exact opposite of what was intended: for
+          // h < 1 a fractional power pulls the value UP, so the mix reached
+          // 53% dark blue only eleven degrees above the horizon and the gold
+          // band was gone before it cleared the rooflines. At 1.7 the same
+          // eleven degrees is 6%, so the warm band survives up past the
+          // roofs — which is what golden hour actually looks like and what
+          // the whole palette is built around.
+          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 1.7));
+
+          // A warm mid-band just above the roofline, where the sun's glow
+          // bleeds into the blue. Without it the gradient is a clean two-stop
+          // ramp and reads as a UI element rather than as air.
+          float band = exp(-pow((h - 0.06) / 0.11, 2.0));
+          sky = mix(sky, uHorizon * 1.12, band * 0.45);
 
           // Below: the warm haze of the city underneath the Butte.
           vec3 below = mix(uHorizon, uGround, pow(clamp(-h, 0.0, 1.0), 0.5));
