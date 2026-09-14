@@ -808,7 +808,17 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
     // and it is that VARIATION in weight and length that says "text" rather
     // than the marks themselves. They are also barely lighter than the render
     // behind them; a sun-bleached mur peint is almost gone.
-    const lineColor = ch(0.5) ? PALETTE.limestoneDeep : PALETTE.chimneyTerra;
+    // Fade by MIXING toward the panel colour, not by alpha.
+    //
+    // Transparency looks identical here and costs a great deal: the batcher
+    // cannot merge transparent materials, because they need per-object sort
+    // order, so seventy-five faded bars became seventy-five separate draw
+    // calls and doubled the scene's total. Nothing about a painted sign needs
+    // real transparency — it needs to be nearly the colour of the wall, which
+    // is a lerp.
+    const inkBase = ch(0.5) ? PALETTE.limestoneDeep : PALETTE.chimneyTerra;
+    const panelBase = ch(0.5) ? PALETTE.limestoneLit : PALETTE.plasterCream;
+    const lineColor = inkBase.clone().lerp(panelBase, 0.45);
     const rows = [
       { h: 0.34, w: 0.78 },   // the big word
       { h: 0.17, w: 0.56 },   // a second line
@@ -821,7 +831,7 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
       const lw = sw * row.w * rr(0.86, 1.0);
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(0.04, lh, lw),
-        flat(lineColor, { roughness: 0.98, transparent: true, opacity: 0.55 }));
+        flat(lineColor, { roughness: 0.98 }));
       bar.position.set(faceX - 0.06, cursor, midZ + rr(-sw * 0.04, sw * 0.04));
       group.add(bar);
       cursor -= lh * 1.8;

@@ -62,10 +62,13 @@ export function buildStreet(rail) {
   // The apron goes down FIRST so everything else sits on it.
   group.add(buildApron(frames));
   group.add(buildCarriageway(frames));
+  // Pavements first: they compute the stepped walking surface that the kerbs
+  // and the handrails both read back from.
   group.add(buildPavement(frames, +1));
   group.add(buildPavement(frames, -1));
   group.add(buildKerb(frames, +1));
   group.add(buildKerb(frames, -1));
+  group.add(buildSlopeHandrails(frames));
   group.add(buildStairFlights(rail));
 
   return group;
@@ -166,17 +169,53 @@ function buildCarriageway(frames) {
   return mesh;
 }
 
-/** Raised pavement on one side. side = +1 right, -1 left. */
+/**
+ * Raised pavement on one side. side = +1 right, -1 left.
+ *
+ * STEPPED, NOT RAMPED, and this is the single thing that makes the hill
+ * visible.
+ *
+ * Over half of this route exceeds an 8% grade and it touches 23% on the climb
+ * up Girardon — genuinely steep, and the three-act climb-crest-descend profile
+ * is supposed to be the level's spine. It was invisible in every screenshot,
+ * because a pavement that ramps smoothly alongside a road that ramps smoothly
+ * gives the eye nothing to measure the slope against: both surfaces recede
+ * together and the frame reads as flat ground seen in perspective.
+ *
+ * Paris solves this in the street itself. Above roughly 8% the pavement stops
+ * following the road and becomes a flight of long shallow steps — it holds
+ * level for several metres, drops a riser, holds level again. The consequence
+ * is that the KERB FACE breathes: tall immediately after a step, shrinking to
+ * nothing just before the next one. That rising and falling band of shadow
+ * running up the street is what tells you, instantly and without thinking
+ * about it, that you are looking at a hill.
+ *
+ * The stepping needs no gradient threshold. It snaps whenever the ramp has
+ * drifted more than three quarters of a riser from the current tread, so a
+ * gentle slope simply produces very long treads and a flat street produces
+ * none at all.
+ */
 function buildPavement(frames, side) {
   const pos = [], idx = [];
   const HEIGHT = 0.16;
+  const RISER = 0.15;
+
+  let stepY = frames[0].p.y + HEIGHT;
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
+    const target = f.p.y + HEIGHT;
+    let guard = 0;
+    while (target - stepY > RISER * 0.75 && guard++ < 40) stepY += RISER;
+    guard = 0;
+    while (stepY - target > RISER * 0.75 && guard++ < 40) stepY -= RISER;
+    // Record it so the kerb and the handrail agree with the pavement exactly.
+    f.walkY = f.walkY ?? {};
+    f.walkY[side] = stepY;
+
     const inner = f.halfWidth * side;
     const outer = (f.halfWidth + f.pavement) * side;
-    // inner top, outer top
-    pos.push(f.p.x + f.right.x * inner, f.p.y + HEIGHT, f.p.z + f.right.z * inner);
-    pos.push(f.p.x + f.right.x * outer, f.p.y + HEIGHT, f.p.z + f.right.z * outer);
+    pos.push(f.p.x + f.right.x * inner, stepY, f.p.z + f.right.z * inner);
+    pos.push(f.p.x + f.right.x * outer, stepY, f.p.z + f.right.z * outer);
   }
   for (let i = 0; i < frames.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
@@ -193,15 +232,22 @@ function buildPavement(frames, side) {
   return mesh;
 }
 
-/** The kerb face — a thin vertical strip catching the low sun. */
+/**
+ * The kerb face — a thin vertical strip catching the low sun.
+ *
+ * Its top follows the STEPPED pavement and its bottom follows the ramped road,
+ * so on a slope the face grows and shrinks between steps instead of holding a
+ * constant 16 cm. That varying band is the slope cue; see buildPavement.
+ */
 function buildKerb(frames, side) {
   const pos = [], idx = [];
-  const HEIGHT = 0.16;
+  const MIN = 0.1;
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
     const x = f.halfWidth * side;
+    const top = Math.max(f.p.y + MIN, f.walkY?.[side] ?? f.p.y + 0.16);
     pos.push(f.p.x + f.right.x * x, f.p.y, f.p.z + f.right.z * x);
-    pos.push(f.p.x + f.right.x * x, f.p.y + HEIGHT, f.p.z + f.right.z * x);
+    pos.push(f.p.x + f.right.x * x, top, f.p.z + f.right.z * x);
   }
   for (let i = 0; i < frames.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
@@ -299,4 +345,84 @@ function buildStairFlights(rail) {
     group.add(flight);
   }
   return group;
+}
+
+/**
+ * Iron handrails on the steepest pavements.
+ *
+ * Above roughly 14% Paris bolts a handrail along the kerb, and the Butte is
+ * covered in them. They do two jobs here. The obvious one is that they are
+ * true to the place. The useful one is that a handrail is a continuous line
+ * that follows the slope exactly while its posts stay vertical, so it states
+ * the gradient twice over — once with its own angle and once with the
+ * lengthening posts underneath it. On a 23% climb that is unmistakable even
+ * in a still frame.
+ */
+function buildSlopeHandrails(frames) {
+  const group = new THREE.Group();
+  group.name = 'handrails';
+  const iron = flat(PALETTE.ironwork, { roughness: 0.5, metalness: 0.35 });
+  const STEEP = 0.14;          // 14% grade
+  const HEIGHT = 0.95;
+  const POST_EVERY = 2.4;
+
+  for (const side of [-1, 1]) {
+    let run = null;
+    const flush = () => {
+      if (run && run.length >= 3) emitRun(group, run, side, iron, HEIGHT, POST_EVERY);
+      run = null;
+    };
+    for (let i = 1; i < frames.length; i++) {
+      const a = frames[i - 1], f = frames[i];
+      const horiz = Math.hypot(f.p.x - a.p.x, f.p.z - a.p.z);
+      const grade = horiz > 0.01 ? Math.abs(f.p.y - a.p.y) / horiz : 0;
+      if (grade >= STEEP) {
+        run ??= [];
+        run.push(f);
+      } else {
+        flush();
+      }
+    }
+    flush();
+  }
+  return group;
+}
+
+function emitRun(group, run, side, mat, height, postEvery) {
+  // The rail itself: one segment per pair of frames, following the walking
+  // surface rather than the road, so it sits at a constant height above the
+  // steps a pedestrian is actually on.
+  for (let i = 1; i < run.length; i++) {
+    const a = run[i - 1], b = run[i];
+    const ax = a.p.x + a.right.x * (a.halfWidth + a.pavement * 0.82) * side;
+    const az = a.p.z + a.right.z * (a.halfWidth + a.pavement * 0.82) * side;
+    const bx = b.p.x + b.right.x * (b.halfWidth + b.pavement * 0.82) * side;
+    const bz = b.p.z + b.right.z * (b.halfWidth + b.pavement * 0.82) * side;
+    const ay = (a.walkY?.[side] ?? a.p.y) + height;
+    const by = (b.walkY?.[side] ?? b.p.y) + height;
+
+    const len = Math.hypot(bx - ax, by - ay, bz - az);
+    if (len < 0.05) continue;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.055, len), mat);
+    seg.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2);
+    seg.lookAt(bx, by, bz);
+    seg.castShadow = true;
+    group.add(seg);
+  }
+
+  // Posts stay vertical while the rail above them climbs, which is the second
+  // half of the slope cue — they visibly lengthen down the hill.
+  let since = 999;
+  for (const f of run) {
+    since += 1.5;                       // frames are sampled every 1.5 m
+    if (since < postEvery) continue;
+    since = 0;
+    const x = f.p.x + f.right.x * (f.halfWidth + f.pavement * 0.82) * side;
+    const z = f.p.z + f.right.z * (f.halfWidth + f.pavement * 0.82) * side;
+    const base = f.walkY?.[side] ?? f.p.y;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, height, 0.05), mat);
+    post.position.set(x, base + height / 2, z);
+    post.castShadow = true;
+    group.add(post);
+  }
 }
