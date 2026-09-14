@@ -39,7 +39,7 @@ export class Renderer {
     // sky separated only by value. The whole point of the amber/violet split
     // is that HUE carries the shading information, because flat-shaded
     // low-poly geometry has no detail to carry it.
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.26;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -293,13 +293,18 @@ const GRADE_SHADER = {
       // which is exactly what the first screenshots showed. Lifting toward
       // violet rather than grey also reinforces the amber/violet split the
       // palette is built on.
-      const vec3 HAZE = vec3(0.052, 0.046, 0.078);
+      // Pulled back from (0.052, 0.046, 0.078). That much lift rescued the
+      // shadows and then kept going: combined with the violet shadow tint it
+      // washed the limestone mid-tones toward pink, and warm stone that reads
+      // pink is a different building material. Enough haze to keep black off
+      // the floor, not enough to tint what is already lit.
+      const vec3 HAZE = vec3(0.034, 0.029, 0.056);
       col = HAZE + col * (1.0 - HAZE);
 
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
 
       // Split tone: violet into the shadows, gold into the highlights.
-      vec3 shadowTint = vec3(0.94, 0.95, 1.18);   // hue shift, not a level drop
+      vec3 shadowTint = vec3(0.95, 0.96, 1.13);   // hue shift, not a level drop
       vec3 highTint   = vec3(1.07, 1.02, 0.90);
       col *= mix(shadowTint, highTint, smoothstep(0.12, 0.72, l));
 
