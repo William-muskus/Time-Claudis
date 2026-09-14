@@ -37,6 +37,7 @@ await page.goto(`http://localhost:${port}/?demo=1&fixed=${1 / 60}`, { waitUntil:
 await page.waitForFunction(() => window.__ready === true, { timeout: 120000 });
 await page.evaluate(async () => { for (let i = 0; i < 60; i++) await new Promise((r) => requestAnimationFrame(() => r())); });
 
+await page.evaluate(() => { window.__tour.weapon('HANDGUN'); });
 const info = await page.evaluate(() => {
   const THREE = window.__THREE;
   const vm = window.__vm;
@@ -75,6 +76,15 @@ const info = await page.evaluate(() => {
         onScreen: Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1 && ndc.z >= -1 && ndc.z <= 1,
         screenPct: [((ndc.x + 1) / 2 * 100).toFixed(1), ((1 - ndc.y) / 2 * 100).toFixed(1)],
       };
+    })(),
+    inGameAspect: vm?.camera?.aspect,
+    mainAspect: window.__renderer?.camera?.aspect,
+    rootScale: vm?.current?.scale?.toArray?.().map((n)=>+n.toFixed(3)),
+    sizePct: (() => {
+      const b = new THREE.Box3().setFromObject(vm.current);
+      const sz = b.getSize(new THREE.Vector3());
+      const halfH = 0.44 * Math.tan(27.5 * Math.PI / 180);
+      return { h: +(sz.y / (2 * halfH) * 100).toFixed(1), w: +(sz.x / (2 * halfH * vm.camera.aspect) * 100).toFixed(1) };
     })(),
     camNear: vm?.camera?.near,
     camFar: vm?.camera?.far,

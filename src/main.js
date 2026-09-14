@@ -228,8 +228,25 @@ window.__tour = {
     const dir = new THREE.Vector3(Math.sin(y) * Math.cos(pch), Math.sin(pch), -Math.cos(y) * Math.cos(pch));
     renderer.camera.lookAt(renderer.camera.position.clone().add(dir));
   },
-  /** Stop the simulation so a parked camera is not immediately overridden. */
-  freeze(on = true) { window.__frozen = on; },
+  /**
+   * Stop the simulation so a parked camera is not immediately overridden.
+   *
+   * Freezing also forces the player OUT of cover. The attract pilot ducks
+   * constantly, and a frozen game therefore sits in whatever state it happened
+   * to be in — usually COVERED, which correctly swings the weapon up into its
+   * reload pose. That is right behaviour and wrong for a tour frame: the gun
+   * ends up held vertically across the middle of the picture, where it reads
+   * as a large dark slab leaning through the scene rather than as a weapon.
+   * Every shot that does not explicitly ask for gun-up gets the ready pose.
+   */
+  freeze(on = true) {
+    window.__frozen = on;
+    if (!on) return;
+    game.cover.exposure = 1;
+    game.cover.state = 'EXPOSED';
+    const snap = { ...game.snapshot(), coverState: 'EXPOSED', exposure: 1 };
+    for (let i = 0; i < 40; i++) viewModel.update(1 / 60, snap, { x: 0.5, y: 0.5 }, false);
+  },
   /**
    * Clear transient HUD so a tour frame shows the world, not a banner.
    *
@@ -349,7 +366,9 @@ function frame(now) {
 
   // --- 8. render -----------------------------------------------------------
   const snap = game.snapshot();
-  viewModel.update(dt, snap, intent.aim, railCamera.isTravelling);
+  // While frozen the tour owns the weapon pose; letting the loop keep driving
+  // it from the pilot's stale intent would undo whatever the shot set up.
+  if (!window.__frozen) viewModel.update(dt, snap, intent.aim, railCamera.isTravelling);
   renderer.setDamageVignette(
     snap.gameOver ? 0.85 : (snap.lives === 1 ? 0.26 : 0) + (snap.iframe ? 0.4 : 0));
   renderer.render(elapsed);

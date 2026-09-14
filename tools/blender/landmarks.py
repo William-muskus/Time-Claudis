@@ -164,10 +164,41 @@ def street_lamp():
     parts = [
         cylinder("base", r1=0.26, r2=0.19, depth=0.50, verts=8, loc=(0, 0, 0.25), mat=iron),
         cylinder("column", r1=0.12, r2=0.075, depth=3.9, verts=8, loc=(0, 0, 2.40), mat=iron),
-        torus("neck", major=0.42, minor=0.055, mseg=10, minseg=6,
-              loc=(0, 0.42, 4.32), rot=(0, math.pi / 2, 0), mat=iron),
-        cylinder("lantern", r1=0.25, r2=0.17, depth=0.50, verts=6, loc=(0, 0.84, 4.12), mat=glass),
-        cylinder("lantern_cap", r1=0.28, r2=0.0, depth=0.22, verts=6, loc=(0, 0.84, 4.44), mat=iron),
+    ]
+
+    # The swan neck, built from short straight segments rather than a torus.
+    #
+    # lib.torus() wraps primitive_torus_add, which only makes a COMPLETE ring —
+    # there is no arc parameter — so the neck came out as a full 0.84 m hoop
+    # sitting on top of the column instead of a quarter-turn curve. In frame it
+    # read as a large dark slab leaning off the lamp at an angle, and it was
+    # the most conspicuously wrong object on the street.
+    #
+    # Segments are also the more honest choice for this art direction: a
+    # low-poly swan neck IS a few straight runs, and building it that way means
+    # the silhouette is chosen rather than inherited from a primitive.
+    NECK = [
+        (0.00, 4.18, 0.00, 0.0),
+        (0.00, 4.34, 0.14, 0.7),
+        (0.00, 4.40, 0.40, 1.25),
+        (0.00, 4.34, 0.66, 1.9),
+    ]
+    for i in range(len(NECK) - 1):
+        ax, ay, az, _ = NECK[i]
+        bx, by, bz, _ = NECK[i + 1]
+        mx, my, mz = (ax + bx) / 2, (ay + by) / 2, (az + bz) / 2
+        length = math.dist((ax, ay, az), (bx, by, bz))
+        # Blender is Z-up, so a segment lying in the Y/Z plane is pitched about X.
+        pitch = math.atan2(bz - az, by - ay)
+        parts.append(cylinder(f"neck_{i}", r1=0.055, depth=length, verts=6,
+                              loc=(mx, my, mz),
+                              rot=(math.pi / 2 - pitch, 0, 0), mat=iron))
+
+    parts += [
+        cylinder("lantern", r1=0.25, r2=0.17, depth=0.50, verts=6,
+                 loc=(0, 0.80, 4.12), mat=glass),
+        cylinder("lantern_cap", r1=0.28, r2=0.0, depth=0.22, verts=6,
+                 loc=(0, 0.80, 4.44), mat=iron),
     ]
     join(parts, "street_lamp")
     return export_glb("public/assets/models/street_lamp.glb", "street_lamp")

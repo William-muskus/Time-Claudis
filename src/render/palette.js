@@ -42,7 +42,12 @@ export const PALETTE = {
   skyGround:    c('#A57F5E'),   // warm bounce off the cobbles
   sunColor:     c('#FFD9A0'),
   sunDiscColor: c('#FFF0CC'),
-  fogColor:     c('#E0A868'),   // haze takes the horizon gold up the street
+  // Desaturated from #E0A868. Fog tints EVERYTHING beyond its near plane, so
+  // a strongly gold haze quietly repaints every distant facade the same colour
+  // and the frame collapses toward a single hue — the exact failure the
+  // amber/violet split exists to prevent. Warm, but much closer to neutral, so
+  // distance reads as distance rather than as more orange.
+  fogColor:     c('#C9A98C'),
 
   // --- stone --------------------------------------------------------------
   limestoneLit:    c('#EBC89B'),
