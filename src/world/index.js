@@ -5,6 +5,7 @@ import { buildLandmarks } from './landmarks.js';
 import { buildProps } from './props.js';
 import { buildCover } from './cover.js';
 import { EMPTY_REGISTRY } from './assets.js';
+import { LANDMARKS, geoToLocal } from '../data/route.js';
 import { makeRng } from '../core/rng.js';
 import { batchStatic } from './optimize.js';
 import { buildSky } from '../render/sky.js';
@@ -123,9 +124,19 @@ function landmarkFootprints(rail) {
     });
   };
 
+  const addLandmark = (landmarkId, radius) => {
+    const l = LANDMARKS.find((x) => x.id === landmarkId);
+    if (!l) return;
+    const p = geoToLocal(l.lat, l.lon, l.elev);
+    zones.push({ x: p.x, z: p.z, r: radius, id: landmarkId });
+  };
+
   add('lamarck_station', 16);     // the metro mouth and its twin staircases
   add('place_dalida', 15);        // the bust, and the square it needs
-  add('moulin_galette', 20, -14); // the mound is 9 m across on its own
+  // The Blute-fin's mound is nine metres across before the tower starts, and
+  // it now sits at its own coordinate rather than a rail offset, so the
+  // reservation is taken there.
+  addLandmark('moulin_blutefin', 20);
   add('maison_dalida', 12, -7);   // the wall and gate of 11 bis
   add('emile_goudeau', 17);       // the square, fountain and Bateau-Lavoir
   add('place_abbesses', 18);      // the edicule, carousel and Saint-Jean

@@ -57,9 +57,9 @@ const SHOTS = [
   // Both aimed AT the mill. The earlier yaws pointed across it into a distant
   // unlit terrace, so the shot that exists to show the crest of the level was
   // half a black wall and no windmill.
-  { name: '07_moulin',           at: 'moulin_galette', back: 22, look: 'moulin_radet', lookHeight: 8,
-    why: 'Approaching the crest. Both mills on the skyline.' },
-  { name: '07b_moulin_close',    at: 'moulin_galette', back: 6, lateral: 2, yaw: 285, pitch: 12,
+  { name: '07_moulin',           at: 'moulin_galette', back: 20, look: 'moulin_blutefin', lookHeight: 7,
+    why: 'Approaching the crest. The Blute-fin on its mound.' },
+  { name: '07b_moulin_close',    at: 'moulin_galette', back: 4, look: 'moulin_blutefin', lookHeight: 6,
     why: 'The Blute-fin itself: tower, cap, and the four sails on their hub.' },
   // Backed off down the lane: parked on the waypoint in a six-metre street we
   // were within touching distance of a wall and it filled the whole frame.

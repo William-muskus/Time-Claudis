@@ -30,7 +30,8 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
 
   group.add(placeAt('place_dalida', authored('dalida_bust', () => buildDalidaBust()), 0, 1.2));
   group.add(placeAt('lamarck_station', buildMetroEntrance(), 0, 0));
-  group.add(placeAt('moulin_galette', authored('moulin_galette', () => buildMoulin()), -14, 6.5));
+  // Placed at its own surveyed coordinate rather than offset from the rail.
+  group.add(atGeo('moulin_blutefin', authored('moulin_galette', () => buildMoulin())));
   group.add(placeAt('maison_dalida', buildDalidaHouseGate(), -7, 0));
   group.add(placeAt('emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 7, 0));
   group.add(placeAt('emile_goudeau', buildBateauLavoir(), -13, 0));
@@ -50,7 +51,7 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
   // positions, and the métro mouth is the single best "they came from
   // underground" beat on the route.
   anchors.push(
-    anchorAtWaypoint('moulin_galette', 'roof', new THREE.Vector3(-14, 7.5, 0)),
+    anchorAtLandmark('moulin_blutefin', 'roof', new THREE.Vector3(0, 7.5, 0)),
     anchorAtWaypoint('lamarck_station', 'metro', new THREE.Vector3(0, 0, 0)),
     anchorAtWaypoint('emile_goudeau', 'balcony', new THREE.Vector3(-13, 6.0, 0)),
     anchorAtWaypoint('place_abbesses', 'metro', new THREE.Vector3(0, 0, 0)),
@@ -76,6 +77,17 @@ function atGeo(landmarkId, obj) {
   const p = geoToLocal(l.lat, l.lon, l.elev);
   obj.position.set(p.x, p.y, p.z);
   return obj;
+}
+
+function anchorAtLandmark(landmarkId, type, offset) {
+  const l = LANDMARKS.find((x) => x.id === landmarkId);
+  const p = geoToLocal(l.lat, l.lon, l.elev);
+  return {
+    id: `lm_${landmarkId}_${type}`,
+    type,
+    worldPos: new THREE.Vector3(p.x + offset.x, p.y + offset.y, p.z + offset.z),
+    facing: new THREE.Vector3(0, 0, 1),
+  };
 }
 
 function anchorAtWaypoint(waypointId, type, offset) {

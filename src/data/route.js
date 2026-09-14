@@ -177,6 +177,11 @@ export const LANDMARKS = [
     note: 'Pink walls, green trim. Framed down rue de l\'Abreuvoir from Place Dalida.' },
   { id: 'sacre_coeur',   name: 'Basilique du Sacré-Cœur',   lat: 48.886700, lon: 2.343100, elev: 130.0,
     note: 'White travertine domes on the skyline east. Visible from the crest and the Ravignan stairs.' },
+  { id: 'moulin_blutefin', name: 'Moulin de la Galette (Blute-fin)', lat: 48.887255, lon: 2.337230, elev: 128.0,
+    note: 'The surviving mill on its mound, set back west of rue Girardon. ' +
+          'Given its own coordinate rather than a lateral offset from the rail: ' +
+          'a landmark that exists only as "fourteen metres left of waypoint 8" ' +
+          'cannot be aimed at, cross-referenced, or corrected against a map.' },
   { id: 'moulin_radet',  name: 'Moulin Radet',              lat: 48.887100, lon: 2.337700, elev: 128.0,
     note: 'The second mill, on the rue Lepic corner. People mistake it for the Galette.' },
   { id: 'st_jean',       name: 'Saint-Jean-de-Montmartre',  lat: 48.884250, lon: 2.338050, elev: 101.0,
