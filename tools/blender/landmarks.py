@@ -7,6 +7,7 @@ the specific silhouette of Aslan's bust of Dalida or the exact splay of a
 Guimard stem, and those silhouettes are the entire reason the level is set here.
 """
 
+import bpy
 import math
 import sys
 import os
@@ -29,8 +30,21 @@ def dalida_bust():
     would be wrong in a way anyone who has stood there would catch instantly.
     """
     reset_scene()
-    bronze = material("bronze", PALETTE["bronzeDalida"], roughness=0.42, metallic=0.65)
-    polish = material("bronze_polished", PALETTE["bronzePolish"], roughness=0.16, metallic=0.9)
+    # The bronze carries a little emission of its own.
+    #
+    # She stands against open sky at the top of a rise, so at golden hour the
+    # camera sees her almost entirely backlit and she was rendering as a dark
+    # lump on a post — the one landmark on the route that a resident actually
+    # checks, reduced to a silhouette. A small self-illumination is the
+    # stylised-film answer to a backlit hero: it keeps the form readable
+    # without pretending there is a light source that is not there.
+    bronze = material("bronze", PALETTE["bronzeDalida"],
+                      roughness=0.42, metallic=0.45, emission=0.16)
+    # The rubbed band is brighter still. Thirty years of tourists have polished
+    # the chest to bright gold while the rest went flat brown, and that
+    # two-tone is the detail people photograph.
+    polish = material("bronze_polished", PALETTE["bronzePolish"],
+                      roughness=0.14, metallic=0.55, emission=0.5)
     stone = material("plinth", PALETTE["limestoneMid"], roughness=0.92)
     stone_dark = material("plinth_base", PALETTE["limestoneDeep"], roughness=0.95)
 
@@ -54,7 +68,15 @@ def dalida_bust():
     hair.scale = (1.08, 1.10, 1.02)
     parts.append(hair)
 
-    join(parts, "dalida_bust")
+    bust = join(parts, "dalida_bust")
+    # Hero scale. The real bust is about 2.6 m to the crown of the head, which
+    # at a fourteen-metre engagement distance is barely thirty pixels tall — an
+    # honest dimension that makes the level's title landmark unreadable. Arcade
+    # games scale their hero objects and this one earns it; the plinth stays
+    # in proportion so it still reads as a bust on a plinth rather than a
+    # statue.
+    bust.scale = (1.38, 1.38, 1.38)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return export_glb("public/assets/models/dalida_bust.glb", "dalida_bust")
 
 

@@ -799,21 +799,33 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
     panel.position.set(faceX - 0.04, height * rr(0.5, 0.68), midZ);
     group.add(panel);
 
-    // Three bands of lettering, reduced to bars. At the distance this is ever
-    // seen, painted text IS bars — modelling glyphs would be invisible detail
-    // and would break the flat-shaded look.
-    const lineColor = ch(0.5) ? PALETTE.ironwork : PALETTE.chimneyTerra;
-    const lines = 3;
-    for (let i = 0; i < lines; i++) {
-      const lh = sh / (lines * 2.1);
-      const lw = sw * rr(0.42, 0.86);
+    // Lettering, reduced to bars of varying length and weight.
+    //
+    // Three evenly-spaced bars of similar length do not read as a faded
+    // advertisement — they read as three stripes, which is what the first
+    // version produced and it looked like a rendering error. Real ghost signs
+    // have a big word, a smaller line under it, and a scatter of tiny text,
+    // and it is that VARIATION in weight and length that says "text" rather
+    // than the marks themselves. They are also barely lighter than the render
+    // behind them; a sun-bleached mur peint is almost gone.
+    const lineColor = ch(0.5) ? PALETTE.limestoneDeep : PALETTE.chimneyTerra;
+    const rows = [
+      { h: 0.34, w: 0.78 },   // the big word
+      { h: 0.17, w: 0.56 },   // a second line
+      { h: 0.10, w: 0.84 },   // small print
+      { h: 0.10, w: 0.34 },
+    ];
+    let cursor = panel.position.y + sh * 0.34;
+    for (const row of rows) {
+      const lh = sh * row.h * 0.5;
+      const lw = sw * row.w * rr(0.86, 1.0);
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(0.04, lh, lw),
-        flat(lineColor, { roughness: 0.98 }));
-      bar.position.set(faceX - 0.08,
-        panel.position.y + sh / 2 - (i + 0.9) * (sh / (lines + 0.6)),
-        midZ + rr(-sw * 0.06, sw * 0.06));
+        flat(lineColor, { roughness: 0.98, transparent: true, opacity: 0.55 }));
+      bar.position.set(faceX - 0.06, cursor, midZ + rr(-sw * 0.04, sw * 0.04));
       group.add(bar);
+      cursor -= lh * 1.8;
+      if (cursor < panel.position.y - sh * 0.45) break;
     }
   }
 

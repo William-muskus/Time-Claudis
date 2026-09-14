@@ -70,6 +70,12 @@ const SHOTS = [
   // straight off the end of the level, at bare terrain.
   { name: '11_abbesses',         at: 'place_abbesses', back: 18, yaw: 172,
     why: 'The finish. Guimard edicule in green iron and amber glass.' },
+  // Close on the edicule. At real scale it is about four metres across, so
+  // from the far side of a twenty-two metre square it is correctly small —
+  // which is right for the level and useless for judging whether the ironwork
+  // and the amber glass read. This shot exists to judge the object.
+  { name: '11b_guimard_close',   at: 'place_abbesses', back: 7, yaw: 178, pitch: 4,
+    why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
   { name: '12_sacre_coeur',      at: 'moulin_galette',  look: 'sacre_coeur', lookHeight: 30,
     why: 'The basilica on the skyline. A silhouette, nothing more.' },
 
