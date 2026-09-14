@@ -50,7 +50,13 @@ export const FLASH_OFF_OPACITY = 0.06;
 export const FLASH_BEATS = 2;
 /** The plate also pops in size on the beat — scale change is caught even
  *  further out in the periphery than luminance change is. */
-export const FLASH_ON_SCALE = 1.38;
+export const FLASH_ON_SCALE = 1.18;
+/**
+ * How far the plate swells at commit. Larger than FLASH_ON_SCALE on purpose:
+ * the three stages must escalate in size as well as in steadiness, or the
+ * moment the player most needs to read is the one that looks smallest.
+ */
+export const COMMIT_SCALE = 1.34;
 
 /** Milliseconds between the rounds of a boss burst. */
 export const BOSS_BURST_GAP_MS = 130;
@@ -393,11 +399,17 @@ export class Enemy {
     // Commit: solid, maximum, and it stays solid. The shot WILL fire; the
     // player's only remaining move is the duck, and a flicker here would read
     // as "maybe" at exactly the moment the answer is "yes".
+    //
+    // And BIGGER than the flash beats, which it was not. Commit used to reset
+    // the plate to scale 1 while the flash stage had been running it at 1.38,
+    // so the most urgent stage in the game was the smallest mark an enemy ever
+    // made. The sequence has to grow: ramp, two hard beats, then the largest
+    // and steadiest state of all.
     this.flashBeat = null;
     this.flashBeatOn = true;
     if (plate) plate.opacity = 1;
     if (glow) glow.opacity = 1;
-    if (this.flashPlate) this.flashPlate.scale.set(1, 1, 1);
+    if (this.flashPlate) this.flashPlate.scale.set(COMMIT_SCALE, COMMIT_SCALE, 1);
     if (this.bodyMat) this.bodyMat.emissiveIntensity = 1.5;
   }
 
@@ -751,8 +763,18 @@ function buildEnemyMesh(type, carrier = false) {
 
   // The telegraph plate. Always PALETTE.telegraph, never the class colour —
   // the player learns one flash, not six.
+  // Sized against the torso (0.62 wide), not against realism. The plate is the
+  // single most important pixel in the game and it has to survive being twenty
+  // pixels tall; at 0.40 it covered under two thirds of the chest and read as
+  // a badge rather than as the enemy lighting up.
+  //
+  // And sized so that COMMIT_SCALE lands it at exactly the torso width, no
+  // wider. The first attempt at making it unmissable overshot: at commit the
+  // plate was broader than the enemy and every one of them turned into an
+  // identical pale rectangle. Colour is information in this game, and losing
+  // which class is shooting at you is too high a price for a brighter flash.
   const plate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.40 * s, 0.34 * s, 0.06 * s),
+    new THREE.BoxGeometry(0.46 * s, 0.38 * s, 0.06 * s),
     new THREE.MeshBasicMaterial({
       color: PALETTE.telegraph, transparent: true, opacity: 0, toneMapped: false,
     }));

@@ -309,9 +309,21 @@ window.__tour = {
       const dist = to.length();
       const ndc = p.clone().project(cam);
       const onScreen = Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1 && ndc.z < 1;
-      ray.set(cam.position, to.normalize());
-      ray.far = dist - 0.6;
-      const blocked = ray.intersectObjects(walls, false).length > 0;
+      // Three points up the body, and one clear ray is enough.
+      //
+      // A single ray at chest height cannot tell a wall from a lamp post, and
+      // this reported two enemies standing in plain sight on the far pavement
+      // as BLOCKED because one trunk clipped one line. An enemy behind a
+      // railing is visible and an enemy behind a terrace is not; the
+      // difference is whether ANY part of them can be seen.
+      let blocked = true;
+      for (const dy of [-0.5, 0, 0.6]) {
+        const at = new THREE.Vector3(p.x, p.y + dy, p.z);
+        const d = at.clone().sub(cam.position);
+        ray.set(cam.position, d.clone().normalize());
+        ray.far = d.length() - 0.6;
+        if (!ray.intersectObjects(walls, false).length) { blocked = false; break; }
+      }
       return {
         type: e.typeKey,
         stage: e.telegraphStage ?? e.state,

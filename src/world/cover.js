@@ -182,7 +182,13 @@ function planters(rnd = Math.random) {
       const shrub = new THREE.Mesh(
         new THREE.IcosahedronGeometry(0.3 + rnd() * 0.14, 0),
         flat(k % 2 ? PALETTE.foliageMid : PALETTE.foliageSun, { roughness: 1 }));
-      shrub.position.set(i * 1.65 - 0.42 + k * 0.42, 1.08, 0);
+      // Chest height, like every other piece of cover on the route.
+      //
+      // At 1.08 the shrubs topped out around 1.5 m and, with the base offset,
+      // sat exactly on the player's 1.66 m eye line — so the one area built
+      // around close-quarters fighting in a narrow lane put a hedge across the
+      // fight. Cover you cannot see over is a wall.
+      shrub.position.set(i * 1.65 - 0.42 + k * 0.42, 0.78, 0);
       shrub.castShadow = true;
       g.add(shrub);
     }

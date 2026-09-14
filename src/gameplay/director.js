@@ -205,7 +205,21 @@ export class Director {
         if (!seen && sight) continue;
       }
 
-      let score = facing * 2.0 - Math.abs(dist - 18) * 0.04;
+      // IDEAL RANGE, and why it came in from 18 m.
+      //
+      // At eighteen metres an enemy is about 25 px tall in a 675 px frame and
+      // its chest plate — the telegraph the entire fairness contract rests on
+      // — is about a dozen pixels. Staged combat frames read as small dolls
+      // standing on a far pavement rather than as a threat. Time Crisis fights
+      // at conversation distance; the enemy is a PRESENCE, and the flash is
+      // the brightest thing on screen because it is close as well as bright.
+      //
+      // Thirteen metres still leaves the player the full duck: an enemy round
+      // at 34 m/s takes 380 ms to arrive, against 200 ms to hide. The distance
+      // term is also weighted harder, so the preference actually competes with
+      // the facing term instead of being a tiebreak.
+      const IDEAL = spawn.type === 'SNIPER' ? 30 : 13;
+      let score = facing * 2.0 - Math.abs(dist - IDEAL) * 0.075;
       if (respectSide && spawn.side) {
         if (a.side === spawn.side) score += 1.2;
         else if (a.side === -spawn.side) score -= 0.8;
