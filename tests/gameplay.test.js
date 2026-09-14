@@ -7,6 +7,9 @@ import { Rail } from '../src/core/spline.js';
 import { railPoints } from '../src/data/route.js';
 import { EventBus } from '../src/core/events.js';
 import { MAX_CONCURRENT_COMMIT, ENEMY_BULLET_SPEED } from '../src/gameplay/enemyTypes.js';
+import * as enemyTypes from '../src/gameplay/enemyTypes.js';
+import { WEAPONS } from '../src/gameplay/weapons.js';
+import { EMERGE_MS, HIDE_MS } from '../src/core/cover.js';
 
 /**
  * Whole-game tests.
@@ -246,4 +249,94 @@ test('the boss only appears in the final area and gates it', () => {
   // Not a full playthrough; just assert none appears in area one.
   run(game, 70, IDLE);
   assert.equal(bosses.length, 0, 'no boss in the opening area');
+});
+
+/**
+ * The boss fight must have a punish window.
+ *
+ * This is the test that would have caught an unwinnable boss. The fight was
+ * shipped-shaped and completely impassable: he never ducks, so between the
+ * last round of one volley landing and the next flash beginning there was less
+ * time than it takes to emerge, fire once and hide again. Nothing asserted
+ * that gap existed, so nothing noticed it was negative.
+ *
+ * The numbers below are the player's own costs, from cover.js and the bullet
+ * speed — not magic constants. If the cover timings change, this recomputes.
+ */
+test('every boss phase leaves a window long enough to actually punish in', () => {
+  const { BOSS_PHASES, BOSS_HEAVY_RECOVER_MS, BOSS_HEAVY_ROUNDS } = enemyTypes;
+  // The furthest the boss reasonably fights from, in metres.
+  const RANGE = 25;
+  const flightMs = (RANGE / ENEMY_BULLET_SPEED) * 1000;
+  // Emerge, land one aimed shot, hide again. Anything less than this is a
+  // window the player cannot use, which is the same as no window.
+  const MIN_USEFUL = EMERGE_MS + 150 + HIDE_MS;
+
+  for (let i = 0; i < BOSS_PHASES.length; i++) {
+    const p = BOSS_PHASES[i];
+    assert.ok(p.recoverMs > 0, `phase ${i + 1} has no recovery beat at all`);
+    // The window only starts being useful once the last round has passed.
+    const usable = p.recoverMs - flightMs;
+    assert.ok(usable >= MIN_USEFUL,
+      `phase ${i + 1}: ${Math.round(usable)} ms of usable window, but emerging, ` +
+      `firing once and hiding costs ${MIN_USEFUL} ms. The phase is impassable.`);
+  }
+
+  // The sweep drives the player all the way into cover, so its window must be
+  // the longest in the fight — it is the beat the whole rhythm resolves onto.
+  const longest = Math.max(...BOSS_PHASES.map((p) => p.recoverMs));
+  assert.ok(BOSS_HEAVY_RECOVER_MS > longest,
+    'the sweep must open a bigger window than any ordinary volley');
+  assert.ok(BOSS_HEAVY_ROUNDS > BOSS_PHASES[BOSS_PHASES.length - 1].burst,
+    'the sweep must be heavier than an ordinary volley or it is not a sweep');
+});
+
+/**
+ * The boss must survive contact with the best weapon in the game.
+ *
+ * He was 12 HP, and the grenade launcher is 4 rounds at 3 damage: a player who
+ * picked it up ended the stage in four shots without seeing two of his three
+ * phases. A boss that one magazine deletes is not a boss.
+ *
+ * The unit here is the WINDOW, not the magazine. Magazine size is the wrong
+ * measure because the boss is only vulnerable in bursts — the machine gun
+ * holds thirty rounds but the fight never offers thirty consecutive rounds
+ * worth of exposed boss, so "one magazine of damage" is not something any
+ * weapon can actually deliver. A window's worth is, and that is what has to
+ * stay small against his health bar.
+ *
+ * The bound is every projectile landing on the body, pellets counted
+ * individually because each one is its own ray in Game.#resolveShot. It
+ * deliberately does NOT assume headshots: doubling every pellet of a 5.5°
+ * shotgun spread at twenty-five metres is not a performance ceiling, it is a
+ * number no player can reach, and a test tuned against impossible play stops
+ * describing the game.
+ */
+test('no weapon can end the boss fight in a couple of punish windows', () => {
+  const boss = enemyTypes.ENEMY_TYPES.BOSS;
+  const { BOSS_PHASES } = enemyTypes;
+  const RANGE = 25;
+  const flightMs = (RANGE / ENEMY_BULLET_SPEED) * 1000;
+
+  for (const [name, w] of Object.entries(WEAPONS)) {
+    for (let i = 0; i < BOSS_PHASES.length; i++) {
+      // Time actually spent shooting: the window, less the last volley still
+      // in the air, less getting out of cover and back into it.
+      const shooting = BOSS_PHASES[i].recoverMs - flightMs - EMERGE_MS - HIDE_MS;
+      const shots = Math.max(1, Math.floor(shooting / w.rofMs) + 1);
+      const perWindow = shots * (w.pellets ?? 1) * w.damage;
+      const windows = boss.hp / perWindow;
+      assert.ok(windows >= 4,
+        `${name} in phase ${i + 1} lands ${perWindow} damage per window, ` +
+        `killing a ${boss.hp} HP boss in ${windows.toFixed(1)} windows. ` +
+        `The fight ends before its own phases do.`);
+    }
+  }
+
+  // And the floor: the weapon that is never taken away must still finish him.
+  // Body shots only, so this is the slowest anyone plays rather than the
+  // fastest — if even this fits the area's par time, the fight always does.
+  const handgunShots = boss.hp / WEAPONS.HANDGUN.damage;
+  assert.ok(handgunShots <= 40,
+    `${handgunShots} handgun shots is beyond what a punish-window fight can deliver`);
 });

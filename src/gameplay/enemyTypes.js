@@ -96,17 +96,29 @@ export const ENEMY_TYPES = {
    * THE STAGE BOSS. Area A5, on the Ravignan steps.
    *
    * A Time Crisis stage does not end on a wave, it ends on a person with a
-   * name and a health bar. Everything here is sized against the handgun,
-   * because the boss must be beatable with the weapon that is never taken
-   * away: 12 HP is 12 trigger pulls, which at the handgun's 6-round magazine
-   * is exactly two full magazines plus the two reloads between them. That is
-   * the fight — three trips out of cover, minimum, and the boss's telegraph
-   * is tuned so each trip buys you about one magazine.
+   * name and a health bar. The fight is a loop — he volleys, he recovers, you
+   * punish — and HP is simply how many times round that loop the player goes.
+   *
+   * 30 HP is sized from both ends. A punish window fits roughly two aimed
+   * shots after the emerge and before the hide, and one full loop runs about
+   * 2.1–2.8 s depending on phase, so:
+   *
+   *   handgun, 1 damage      ~15 loops   ~38 s   the floor: always beatable
+   *   grenade, 3 damage       ~5 loops   ~13 s   the reward for finding it
+   *
+   * It was 12, which is two handgun magazines, and that number came from a
+   * time when the handgun was the only thing the arithmetic considered. One
+   * grenade magazine is 4 rounds at 3 damage — exactly 12 — so a player who
+   * brought the right weapon deleted the boss in four shots and five seconds
+   * without ever seeing phase 3. The stage ended on a QTE.
+   *
+   * Raising it keeps the grenade launcher decisively the right answer (a third
+   * of the fight) without letting it skip the fight.
    */
   BOSS: {
     name: 'LE CORBEAU',
     color: PALETTE.enemyHeavy,
-    hp: 12,
+    hp: 30,
     telegraphMs: 1400,
     score: 12000,
     gates: true,                 // the stage cannot end around him
@@ -129,10 +141,51 @@ export const ENEMY_TYPES = {
  * turns the last third of the fight into pure cover rhythm.
  */
 export const BOSS_PHASES = [
-  { from: 1.00, telegraphMs: 1400, burst: 1, heavyEvery: 3 },
-  { from: 0.66, telegraphMs: 1100, burst: 2, heavyEvery: 3 },
-  { from: 0.33, telegraphMs: 850,  burst: 3, heavyEvery: 2 },
+  { from: 1.00, telegraphMs: 1400, burst: 1, heavyEvery: 3, recoverMs: 1560 },
+  { from: 0.66, telegraphMs: 1100, burst: 2, heavyEvery: 3, recoverMs: 1440 },
+  { from: 0.33, telegraphMs: 850,  burst: 3, heavyEvery: 2, recoverMs: 1360 },
 ];
+
+/**
+ * THE PUNISH WINDOW, and why `recoverMs` exists at all.
+ *
+ * Without it this fight was unwinnable, and not obviously so — it read as
+ * "hard". The boss never ducks (`exposureMs: Infinity`), so the only gap
+ * between one volley landing and the next telegraph starting was the wind-up
+ * itself. Measure that against what the player has to do in it:
+ *
+ *   the last round of the volley is still in the air   ~0.74 s at 34 m/s, 25 m
+ *   emerge from cover                                   0.26 s
+ *   land a shot                                        ~0.15 s
+ *   hide again before the next commit                   0.20 s
+ *                                                      -------
+ *                                                      ~1.35 s needed
+ *
+ * The phase-0 wind-up is 1.40 s, of which only the first 55 % is not already
+ * the flash a player is trained to hide from — 0.77 s. By phase 1 it is 0.60 s
+ * and by phase 2, 0.47 s. The window was negative for two thirds of the fight:
+ * rounds from the previous volley were still travelling when the next flash
+ * began. An oracle player that simply respected incoming fire spent 93 % of
+ * the fight in cover and got 44 shots off in 34 seconds, which is why
+ * `tests/playthrough.test.js` could not kill him.
+ *
+ * `recoverMs` is a beat AFTER the volley and BEFORE the next wind-up in which
+ * the boss does nothing and is fully vulnerable. It is sized at the figure
+ * above plus a margin, and it shortens only slightly with each phase. That is
+ * deliberate: escalation belongs in the telegraph (which halves) and the burst
+ * (which triples), because those tighten how HARD the fight hits. Escalating
+ * the recovery instead would tighten whether the player can act at all, and a
+ * window that only fits an emerge and a hide is the same as no window.
+ *
+ * This is the loop a Time Crisis boss is built on: he shoots, he recovers, you
+ * punish. Take the recovery out and you have a metronome with no downbeat.
+ *
+ * The sweep gets a longer one still. It is the attack that forces the player
+ * all the way into cover, so it is also the attack they come out of with a
+ * full magazine and nothing in the air — the biggest punish in the fight, and
+ * the reason the sweep is worth baiting rather than merely surviving.
+ */
+export const BOSS_HEAVY_RECOVER_MS = 1900;
 
 /**
  * The heavy attack: a wide sweep that cannot be dodged by aiming, only by

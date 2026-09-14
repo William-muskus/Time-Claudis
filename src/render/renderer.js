@@ -310,7 +310,7 @@ const GRADE_SHADER = {
       // the floor, not enough to tint what is already lit.
       // Weighted to the shadows rather than applied flat.
       //
-      // `HAZE + col * (1 - HAZE)` is a linear remap: it lifts the floor AND
+      // 'HAZE + col * (1 - HAZE)' is a linear remap: it lifts the floor AND
       // everything above it, which is why an earlier, stronger version of this
       // washed the limestone toward pink and had to be pulled back — at which
       // point a completely unlit surface landed at 7/255, which is black by

@@ -4,6 +4,7 @@ import {
   ENEMY_TYPES, TELEGRAPH_SPLIT, STAGGER_MS,
   CARRIER_MARK_COLOR, CARRIER_PULSE_HZ,
   BOSS_PHASES, BOSS_HEAVY_TELEGRAPH_MS, BOSS_HEAVY_ROUNDS, BOSS_PHASE_GUARD_MS,
+  BOSS_HEAVY_RECOVER_MS,
 } from './enemyTypes.js';
 
 /**
@@ -53,6 +54,13 @@ export const FLASH_ON_SCALE = 1.38;
 
 /** Milliseconds between the rounds of a boss burst. */
 export const BOSS_BURST_GAP_MS = 130;
+
+/**
+ * The cool cast on a recovering boss. Deliberately far from PALETTE.telegraph
+ * on the colour wheel: in this game warm light on an enemy always means a shot
+ * is coming, and the punish window must never be mistaken for one.
+ */
+const RECOVER_TINT = new THREE.Color('#6FD3E8');
 
 let _nextId = 1;
 
@@ -461,6 +469,11 @@ export class Boss extends Enemy {
     this.firingHeavy = false;
     this.burstLeft = 0;
     this.burstTimer = 0;
+    /**
+     * Counts down the punish window after a volley. See BOSS_HEAVY_RECOVER_MS
+     * in enemyTypes.js for why the fight is unwinnable without it.
+     */
+    this.recoverMs = 0;
     /** Set for one frame when the phase advances, so the director can announce. */
     this.phaseJustAdvanced = false;
   }
@@ -468,6 +481,8 @@ export class Boss extends Enemy {
   get phaseSpec() { return BOSS_PHASES[this.phase]; }
   get healthFraction() { return Math.max(0, this.hp / this.maxHp); }
   get isGuarding() { return this.guardMs > 0; }
+  /** The punish window: open, vulnerable, and not winding anything up. */
+  get isRecovering() { return this.recoverMs > 0; }
 
   /** The current wind-up length: the phase's, or the sweep's if one is coming. */
   get telegraphTotalMs() {
@@ -486,6 +501,7 @@ export class Boss extends Enemy {
       telegraph: this.telegraphStage,
       heavyIncoming: this.heavy && this.telegraphStage !== null,
       guarding: this.isGuarding,
+      recovering: this.isRecovering,
       alive: this.isAlive,
     };
   }
@@ -518,6 +534,19 @@ export class Boss extends Enemy {
       return;
     }
     this.group.rotation.z = 0;
+
+    // --- the punish window --------------------------------------------------
+    // Deliberately BEFORE the burst check and AFTER the stagger one: being
+    // shot during recovery must not cancel it, or the player's own hits would
+    // shorten the window their hits depend on.
+    if (this.recoverMs > 0) {
+      this.recoverMs -= dtMs;
+      this.telegraphStage = null;
+      this._applyTelegraphVisual(null, 0);
+      this.#applyRecoverVisual();
+      if (this.recoverMs <= 0) this.#clearRecoverVisual();
+      return;
+    }
 
     // --- a burst in progress ------------------------------------------------
     if (this.burstLeft > 0) {
@@ -574,6 +603,9 @@ export class Boss extends Enemy {
 
   #endVolley() {
     this.firingHeavy = false;
+    // The window opens the instant the last round leaves the barrel, so it is
+    // measured from there and includes that round's own flight time.
+    this.recoverMs = this.heavy ? BOSS_HEAVY_RECOVER_MS : this.phaseSpec.recoverMs;
     if (this.heavy) {
       this.heavy = false;
       this.volleysSinceHeavy = 0;
@@ -581,6 +613,40 @@ export class Boss extends Enemy {
       this.volleysSinceHeavy++;
       if (this.volleysSinceHeavy >= this.phaseSpec.heavyEvery) this.heavy = true;
     }
+  }
+
+  /**
+   * What the punish window looks like.
+   *
+   * It has to read as an INVITATION, from peripheral vision, and it must not
+   * borrow any part of the telegraph's vocabulary — the flash is warm white
+   * and means hide, so this is posture plus a cool cast and means shoot. He
+   * drops his guard: arms down, weight forward, head low. The same read as a
+   * fighter between combinations.
+   *
+   * Posture does the work rather than colour, because colour is the one thing
+   * that can be lost — to bloom, to a bright façade behind him, to a player
+   * who cannot separate warm from cool. A silhouette that changes shape is
+   * legible on any background at any range this fight happens at.
+   */
+  #applyRecoverVisual() {
+    const spec = this.heavy ? BOSS_HEAVY_RECOVER_MS : this.phaseSpec.recoverMs;
+    // Slump in over the first fifth of the window and hold, so the drop is a
+    // beat the player sees rather than a state they find themselves in.
+    const t = Math.min(1, (spec - this.recoverMs) / (spec * 0.2));
+    const ease = t * t * (3 - 2 * t);
+    this.group.rotation.x = 0.17 * ease;
+    this.group.position.y = this.homePos.y - 0.14 * ease;
+    if (this.bodyMat) {
+      this.bodyMat.emissive.copy(RECOVER_TINT);
+      this.bodyMat.emissiveIntensity = 0.45 * ease;
+    }
+  }
+
+  #clearRecoverVisual() {
+    this.group.rotation.x = 0;
+    this.group.position.y = this.homePos.y;
+    if (this.bodyMat) this.bodyMat.emissiveIntensity = 0;
   }
 
   /**
@@ -624,6 +690,10 @@ export class Boss extends Enemy {
         this.telegraphMs = 0;
         this.commitGranted = false;
         this.telegraphStage = null;
+        // The guard replaces the window rather than queueing behind it: two
+        // vulnerable-looking beats back to back read as the fight stalling.
+        this.recoverMs = 0;
+        this.#clearRecoverVisual();
       }
       return { killed: false, part, phaseAdvanced: this.phaseJustAdvanced };
     }
@@ -632,6 +702,8 @@ export class Boss extends Enemy {
     this.deathKick = fromDirection.clone().setY(0).normalize().multiplyScalar(0.5);
     this.burstLeft = 0;
     this.firingHeavy = false;
+    this.recoverMs = 0;
+    this.#clearRecoverVisual();
     this._enter(EnemyState.DYING);
     this._applyTelegraphVisual(null, 0);
     return { killed: true, part };
