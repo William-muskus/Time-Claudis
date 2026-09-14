@@ -416,6 +416,20 @@ const GRADE_SHADER = {
       float vig = 1.0 - dot(d, d) * 0.46;
       col *= vig;
 
+      // THE FLOOR HAS TO SURVIVE THE VIGNETTE.
+      //
+      // The haze lift at the top of this shader puts an unlit surface at about
+      // 22/255, comfortably above where the palette check calls a pixel a
+      // hole. Then the vignette multiplies it by as little as 0.8 and it lands
+      // at 17, which is a hole — and only in the corners, so it appears as one
+      // dark frame in a tour of otherwise clean ones and reads as a bad
+      // material rather than as an ordering mistake. One unlit façade near the
+      // edge of frame measured 46% of the picture as crushed.
+      //
+      // Re-applying the floor after every multiplicative stage is what makes
+      // it a floor. It costs nothing anywhere the picture is already above it.
+      col = max(col, HAZE * 0.72);
+
       // Damage: red creeping in from the edges, pulsing.
       if (uDamage > 0.001) {
         float edge = smoothstep(0.18, 0.62, dot(d, d));

@@ -87,6 +87,14 @@ function characterAt(t, rng) {
   }
   if (t < 0.48) {
     // Place Dalida and its approaches. The best addresses on the Butte.
+    //
+    // DO NOT REWEIGHT THESE LISTS TO CHANGE THE COLOUR BALANCE. Different
+    // styles consume different numbers of draws inside buildBuilding, so
+    // changing which style comes out of a pick shifts the whole rng stream
+    // after it and relays the entire street wall. Tried once, to make pink
+    // rarer: the reshuffled layout put an unlit façade across half the frame
+    // at the station and failed the forward-arc test at Girardon. Adjust the
+    // palette entry instead — it moves no geometry at all.
     return { floors: rng.int(3, 5), style: rng.pick(['stone', 'stone', 'plaster', 'pink']),
              shopfront: rng.chance(0.08), width: rng.range(9, 14) };
   }

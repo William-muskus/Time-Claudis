@@ -59,7 +59,12 @@ export const PALETTE = {
   limestoneDeep:   c('#B98A63'),
   plasterCream:    c('#F0D9B5'),
   plasterOchre:    c('#D9A05B'),
-  plasterPink:     c('#E8A99A'),   // La Maison Rose and its imitators
+  // La Maison Rose and its imitators. Pulled back from #E8A99A, which under
+  // the grade's warm highlight tint came out of a full-height sunlit façade as
+  // a saturated magenta — two of those framing the Blute-fin shot read as
+  // confectionery rather than as painted plaster. The real colour is a dusty
+  // rose that has been on a wall for a century.
+  plasterPink:     c('#DCAAA1'),
   plasterGrey:     c('#C4B5A8'),
 
   // --- roofs --------------------------------------------------------------

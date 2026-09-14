@@ -96,6 +96,32 @@ the rim light and widening the grade's crossover took it to 21-40% cool. It
 also caught rue Ravignan clipping across a tenth of the frame, and one shot
 where half the picture measured as near-black.
 
+The current tour: **27 frames, every one at 0.2% clipped and 0% crushed**, and
+24 of 27 over the cool-side target.
+
+The three that are not — `05_dalida_bust`, `05b_dalida_close`, `07b_moulin_close`
+— sit between 13.6% and 15.7%, and they are all the same shot: a close-up of a
+single warm object filling the frame against a sunset sky. There is almost no
+shadow in them to be violet. **The target is scoped to frames that contain a
+street**, and the honest reading of those three is that the measure does not
+apply, not that the frames are wrong. They are left in the listing rather than
+excluded, because a check you quietly narrow until it passes has stopped being
+a check.
+
+Two traps this metric set, both worth keeping:
+
+- **`clip%` went UP when highlight desaturation was added** — 0.6% of a frame
+  to 28%. Pulling the weak channels toward the strongest turns a neon yellow
+  into a nicer colour that is exactly as blown out. The fix that worked brings
+  peaks down through a shoulder; the number that proved it is the one that
+  exposed the first attempt.
+- **`dark%` is sensitive to the ORDER of the grade, not only its values.** The
+  haze lift puts an unlit surface at about 22/255, safely above the floor —
+  and then the vignette multiplied it to 17 in the corners, so one frame in a
+  tour measured 46% crushed and looked like a bad material rather than an
+  ordering mistake. The floor is re-applied after every multiplicative stage,
+  which is what makes it a floor.
+
 ---
 
 ## Things learned the hard way

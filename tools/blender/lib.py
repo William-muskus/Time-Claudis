@@ -27,7 +27,7 @@ PALETTE = {
     "limestoneDeep":  "#B98A63",
     "plasterCream":   "#F0D9B5",
     "plasterOchre":   "#D9A05B",
-    "plasterPink":    "#E8A99A",
+    "plasterPink":    "#DCAAA1",
     "plasterGrey":    "#C4B5A8",
     "zincLit":        "#9AA0B8",
     "zincShadow":     "#5A5F7D",
