@@ -259,6 +259,21 @@ export function buildBuilding({
   // the only thing that breaks the cream/lilac wall with a cool green.
   if (ch(0.22)) addIvy(group, width, frontZ, SOCLE_H, corniceY, rr, ch);
 
+  // --- 3b. the flanks -----------------------------------------------------
+  // A building seen from the side was a blank box, and at 58 degrees of field
+  // of view a near building occupies a quarter of the frame while leaning
+  // inward on perspective — so a quarter of the screen was one flat tone. The
+  // front gets all the modelling because that is what a street wall shows, but
+  // the moment the camera turns a corner the flank is the main event.
+  //
+  // Deliberately sparser than the front: a real Paris flank has fewer and
+  // smaller openings than the street elevation, because it faces a courtyard
+  // or a neighbour rather than the public way.
+  addFlankFaces(group, {
+    width, depth, floors, socleH: SOCLE_H, groundH: GROUND_H, floorH: FLOOR_H,
+    wallH, glassMat, ironMat, socleMat, rng,
+  });
+
   // --- 4. cornice ---------------------------------------------------------
   // Two members, not one: a thin frieze band tucked under the main lip. The
   // pair reads as a shadowed recess at any distance, where a single slab reads
@@ -1251,5 +1266,75 @@ function addPorteCochere(ctx) {
       leaf.castShadow = true;
       group.add(leaf);
     }
+  }
+}
+
+
+/**
+ * Openings and relief on the two side elevations.
+ *
+ * The string course matters more than the windows. A horizontal band at every
+ * floor level catches the low sun along its whole length and gives the flank a
+ * scale and a rhythm; without one, no number of small windows stops a large
+ * wall reading as a slab.
+ */
+function addFlankFaces(group, {
+  width, depth, floors, socleH, groundH, floorH, wallH, glassMat, ironMat, socleMat, rng,
+}) {
+  const halfW = width / 2;
+  const bays = Math.max(1, Math.floor(depth / 3.6));
+
+  for (const side of [-1, 1]) {
+    const x = side * (halfW + 0.02);
+
+    // String course at each floor line, standing slightly proud.
+    for (let f = 0; f <= floors; f++) {
+      const y = socleH + groundH + f * floorH;
+      if (y > socleH + wallH - 0.3) break;
+      const band = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.16, depth * 0.97),
+        flat(PALETTE.limestoneMid, { roughness: 0.9 }));
+      band.position.set(x, y, 0);
+      band.castShadow = true;
+      group.add(band);
+    }
+
+    // A plinth course along the base, which is what stops the wall looking
+    // like it was dropped onto the pavement.
+    const plinth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 0.42, depth * 0.99), socleMat);
+    plinth.position.set(x, socleH + 0.21, 0);
+    plinth.castShadow = true;
+    group.add(plinth);
+
+    // Sparse windows: not every bay, and never on the ground floor, which on a
+    // flank is almost always blind.
+    for (let f = 0; f < floors; f++) {
+      const y = socleH + groundH + f * floorH + floorH * 0.52;
+      for (let b = 0; b < bays; b++) {
+        if (rng() < 0.42) continue;
+        const z = -depth / 2 + (depth / bays) * (b + 0.5);
+        const w = 0.72, h = 1.35;
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.08, h, w), glassMat);
+        glass.position.set(x, y, z);
+        group.add(glass);
+        const surround = new THREE.Mesh(
+          new THREE.BoxGeometry(0.07, h + 0.2, w + 0.2),
+          flat(PALETTE.limestoneMid, { roughness: 0.9 }));
+        surround.position.set(x + side * 0.02, y, z);
+        surround.castShadow = true;
+        group.add(surround);
+      }
+    }
+
+    // A downpipe running the full height, one per flank. Thin, dark, vertical,
+    // and it catches the sun on one side — the cheapest possible way to break
+    // a long wall.
+    const pipe = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.07, wallH * 0.96, 6), ironMat);
+    pipe.position.set(x + side * 0.08, socleH + wallH * 0.48,
+      -depth / 2 + rng() * depth * 0.25 + 0.4);
+    pipe.castShadow = true;
+    group.add(pipe);
   }
 }
