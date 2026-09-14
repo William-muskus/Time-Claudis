@@ -429,7 +429,9 @@ function buildGuimardEdicule() {
   const glass = new THREE.MeshStandardMaterial({
     color: PALETTE.guimardAmber, flatShading: true,
     roughness: 0.18, metalness: 0.1,
-    emissive: PALETTE.guimardAmber, emissiveIntensity: 0.45,
+    // Matches the Blender material: see tools/blender/landmarks.py. At 0.45
+    // the roof outshone the sky it is supposed to be lit by.
+    emissive: PALETTE.guimardAmber, emissiveIntensity: 0.12,
     transparent: true, opacity: 0.88,
   });
 

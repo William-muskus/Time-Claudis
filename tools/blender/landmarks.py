@@ -89,8 +89,14 @@ def guimard_edicule():
     """
     reset_scene()
     iron = material("guimard_iron", PALETTE["guimardGreen"], roughness=0.42, metallic=0.5)
+    # Amber glass, not a light fitting.
+    #
+    # At 0.45 emission the roof cleared the bloom threshold on its own and came
+    # back as a blown orange slab — brighter than the sky behind it, which
+    # glass lit only by that sky cannot be. It needs just enough glow to say
+    # "lit from within" at dusk without competing with the sun.
     glass = material("guimard_glass", PALETTE["guimardAmber"],
-                     roughness=0.18, metallic=0.1, emission=0.45, alpha=0.88)
+                     roughness=0.18, metallic=0.1, emission=0.12, alpha=0.88)
     dark = material("stair_mouth", "#14131C", roughness=1.0)
 
     parts = [

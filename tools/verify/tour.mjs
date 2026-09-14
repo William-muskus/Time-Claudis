@@ -74,7 +74,7 @@ const SHOTS = [
   // from the far side of a twenty-two metre square it is correctly small —
   // which is right for the level and useless for judging whether the ironwork
   // and the amber glass read. This shot exists to judge the object.
-  { name: '11b_guimard_close',   at: 'place_abbesses', back: 7, yaw: 178, pitch: 4,
+  { name: '11b_guimard_close',   at: 'place_abbesses', back: 15, lateral: 3, yaw: 186, pitch: 2,
     why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
   { name: '12_sacre_coeur',      at: 'moulin_galette',  look: 'sacre_coeur', lookHeight: 30,
     why: 'The basilica on the skyline. A silhouette, nothing more.' },
