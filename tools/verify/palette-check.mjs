@@ -14,7 +14,8 @@
  *
  *   node tools/verify/palette-check.mjs artifacts/foo/bar.png [...]
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 
 /** Minimal PNG decoder: enough for what Playwright writes. */
@@ -108,8 +109,14 @@ export const TARGET = {
 };
 
 if (process.argv[1]?.endsWith('palette-check.mjs')) {
-  const files = process.argv.slice(2);
-  if (!files.length) { console.error('usage: palette-check.mjs <png...>'); process.exit(2); }
+  // Accept directories as well as files. A tour writes a folder, so being
+  // handed one is the normal case, and passing it used to crash inside the
+  // PNG reader with EISDIR after the whole render had already been paid for.
+  const files = process.argv.slice(2).flatMap((p) => {
+    if (!statSync(p).isDirectory()) return [p];
+    return readdirSync(p).filter((f) => f.endsWith('.png')).sort().map((f) => join(p, f));
+  });
+  if (!files.length) { console.error('usage: palette-check.mjs <png|dir...>'); process.exit(2); }
   let worst = 0;
   console.log('file'.padEnd(34), 'clip%'.padStart(6), 'dark%'.padStart(6), 'warm%'.padStart(6), 'cool%'.padStart(6), 'mid%'.padStart(6));
   for (const f of files) {

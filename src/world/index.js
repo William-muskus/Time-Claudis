@@ -9,6 +9,7 @@ import { LANDMARKS, geoToLocal } from '../data/route.js';
 import { makeRng } from '../core/rng.js';
 import { batchStatic } from './optimize.js';
 import { buildSky } from '../render/sky.js';
+import { occluder } from './occluders.js';
 import { PALETTE, flat } from '../render/palette.js';
 
 /**
@@ -38,16 +39,19 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   // which is exactly where the building row wants to put a terrace, so the
   // most sensitive landmark on the route was being swallowed by a generated
   // house. The authored geometry always wins over the generated geometry.
-  const lm = buildLandmarks(rail, assets);
+  const lm = buildLandmarks(rail, assets, rng);
   root.add(lm.group);
 
   const anchors = [...lm.anchors];
+  // Coarse boxes for the line-of-sight test the director runs before it picks
+  // a spawn anchor. See src/world/occluders.js for why this is not a raycast.
+  const occluders = [];
   const reserved = landmarkFootprints(rail);
-  root.add(buildBuildingRows(rail, rng, anchors, reserved));
-  root.add(buildEndCaps(rail, rng, anchors));
+  root.add(buildBuildingRows(rail, rng, anchors, reserved, occluders));
+  root.add(buildEndCaps(rail, rng, anchors, occluders));
 
   root.add(buildProps(rail, rng, assets));
-  root.add(buildCover(rail));
+  root.add(buildCover(rail, rng));
   root.add(buildGroundPlane(rail));
 
   const sky = buildSky();
@@ -63,7 +67,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
     console.info(`[world] batched ${stats.before} meshes into ${stats.after} draw calls`);
   }
 
-  return { root, anchors, stats, sky };
+  return { root, anchors, occluders, stats, sky };
 }
 
 /**
@@ -143,7 +147,7 @@ function landmarkFootprints(rail) {
   return zones;
 }
 
-function buildBuildingRows(rail, rng, anchors, reserved = []) {
+function buildBuildingRows(rail, rng, anchors, reserved = [], occluders = []) {
   const group = new THREE.Group();
   group.name = 'facades';
 
@@ -205,6 +209,15 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
           wall.castShadow = wall.receiveShadow = true;
           group.add(wall);
         }
+        // The two side walls of an alley mouth block just as much as a
+        // façade does, and they flank the very anchor the alley publishes.
+        for (const s2 of [-1, 1]) {
+          const c = p.clone()
+            .addScaledVector(right, side * (setback + 4.5))
+            .addScaledVector(tan, s2 * (w / 2));
+          const levelTan = new THREE.Vector3(tan.x, 0, tan.z).normalize();
+          occluders.push(occluder(c, levelTan, 0.3, 4.5, p.y, 9));
+        }
         d += w * 0.55;
         continue;
       }
@@ -246,6 +259,13 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
       b.lookAt(facing.x, b.position.y, facing.z);
       group.add(b);
 
+      // The box the director tests against. Its depth axis is the street
+      // normal, so the frontage lies across it — exactly the shape of the
+      // thing that keeps hiding enemies.
+      occluders.push(occluder(
+        b.position, right.clone().multiplyScalar(side),
+        w / 2, depth / 2, p.y, floors * 3.2 + 2));
+
       // Promote local anchors to world space once, here, so gameplay never has
       // to know about the building's transform.
       b.updateMatrixWorld(true);
@@ -280,7 +300,7 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
  * matters: positionAt clamps, so every sample beyond the end returns the same
  * point and the whole cap would collapse into one stack of coincident boxes.
  */
-function buildEndCaps(rail, rng, anchors) {
+function buildEndCaps(rail, rng, anchors, occluders = []) {
   const group = new THREE.Group();
   group.name = 'endcaps';
 
@@ -314,6 +334,9 @@ function buildEndCaps(rail, rng, anchors) {
         const facing = b.position.clone().addScaledVector(right, -side * depth);
         b.lookAt(facing.x, b.position.y, facing.z);
         group.add(b);
+        occluders.push(occluder(
+          b.position, right.clone().multiplyScalar(side),
+          w / 2, depth / 2, origin.y, 20));
 
         b.updateMatrixWorld(true);
         for (const a of ba) {

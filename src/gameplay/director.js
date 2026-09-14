@@ -3,6 +3,7 @@ import { Enemy, Boss, EnemyState } from './enemy.js';
 import { ENCOUNTERS } from './encounters.js';
 import { MAX_CONCURRENT_COMMIT } from './enemyTypes.js';
 import { AREAS } from '../data/route.js';
+import { blocked } from '../world/occluders.js';
 
 /**
  * The director.
@@ -39,11 +40,17 @@ export class Director {
    * @param {import('../core/events.js').EventBus} deps.bus
    * @param {() => number} deps.rng
    */
-  constructor({ scene, railCamera, rail, anchors, bus, rng }) {
+  constructor({ scene, railCamera, rail, anchors, occluders = [], bus, rng }) {
     this.scene = scene;
     this.railCamera = railCamera;
     this.rail = rail;
     this.anchors = anchors;
+    /**
+     * Coarse building boxes, used to refuse anchors the player cannot see.
+     * Empty is a valid value and means "test nothing" — a world built without
+     * them still spawns, it just spawns the way it used to.
+     */
+    this.occluders = occluders;
     this.bus = bus;
     this.rng = rng;
 
@@ -137,11 +144,25 @@ export class Director {
      * cannot be finished.
      */
     const passes = [
-      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: true },
-      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: false },
-      { near: 4, far: 58, facing: -0.1, types: spawn.anchorTypes, respectSide: false },
-      // Last resort: any opening a person could plausibly come out of.
-      { near: 4, far: 58, facing: -0.1, types: GROUND_LEVEL_ANCHORS, respectSide: false },
+      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: true, sight: true },
+      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: false, sight: true },
+      { near: 4, far: 58, facing: -0.1, types: spawn.anchorTypes, respectSide: false, sight: true },
+      // Last resort: any opening a person could plausibly come out of, seen or
+      // not.
+      //
+      // Line of sight is the LAST constraint given up, and it still has to be
+      // given up. It was a hard filter across every pass for one run, and the
+      // stage lost its boss: at the métro only one door of seven is visible
+      // from where the player stands, so a wave needing two of them failed,
+      // the area never cleared, and the run timed out on area one for ten
+      // straight minutes without ever reaching the fight it was supposed to
+      // end on. That is the same unwinnable-stage failure the cascade was
+      // written to prevent, arrived at from the other direction.
+      //
+      // An enemy the player cannot see is bad. An area that cannot be finished
+      // is worse, and it is the only thing worse — so this pass exists, and
+      // the scoring below still pulls hard toward anything visible.
+      { near: 4, far: 58, facing: -0.1, types: GROUND_LEVEL_ANCHORS, respectSide: false, sight: false },
     ];
 
     for (const pass of passes) {
@@ -151,7 +172,8 @@ export class Director {
     return null;
   }
 
-  #searchAnchors(spawn, cameraPos, cameraFwd, { near, far, facing: minFacing, types, respectSide }) {
+  #searchAnchors(spawn, cameraPos, cameraFwd,
+    { near, far, facing: minFacing, types, respectSide, sight = true }) {
     const wanted = new Set(types);
     const scored = [];
     for (const a of this.anchors) {
@@ -164,6 +186,25 @@ export class Director {
       const facing = to.dot(cameraFwd);
       if (facing < minFacing) continue;
 
+      // LINE OF SIGHT. A hard filter, never a score penalty.
+      //
+      // The other terms here trade off against each other — a slightly worse
+      // angle can be bought back with a better distance — and visibility must
+      // not be tradeable, because an anchor the player cannot see is worth
+      // nothing at any angle. Measured before this existed: most staged fights
+      // put every enemy behind a building, alive and telegraphing at someone
+      // who had no way to see, let alone answer, the shot.
+      //
+      // The eye point is the standing enemy's chest rather than its feet,
+      // since that is the part the player shoots at and the part a garden wall
+      // does not necessarily hide.
+      let seen = true;
+      if (this.occluders.length) {
+        const eye = { x: a.worldPos.x, y: a.worldPos.y + 1.1, z: a.worldPos.z };
+        seen = !blocked(this.occluders, cameraPos, eye);
+        if (!seen && sight) continue;
+      }
+
       let score = facing * 2.0 - Math.abs(dist - 18) * 0.04;
       if (respectSide && spawn.side) {
         if (a.side === spawn.side) score += 1.2;
@@ -173,6 +214,10 @@ export class Director {
       const high = a.worldPos.y - cameraPos.y;
       if (spawn.type === 'SNIPER') score += Math.min(high, 12) * 0.22;
       else score -= Math.max(0, high - 4) * 0.3;
+      // Big enough that no combination of angle and distance can outweigh it.
+      // In the one pass that tolerates a blocked anchor, a visible one still
+      // wins every time there is a visible one to be had.
+      if (!seen) score -= 100;
       score += this.rng() * 0.6;
       scored.push({ a, score });
     }

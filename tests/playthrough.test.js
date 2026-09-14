@@ -28,11 +28,11 @@ function setup(seed) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(58, 16 / 9, 0.1, 900);
   const rail = new Rail(railPoints());
-  const { anchors } = buildWorld(rail, seed);
+  const { anchors, occluders } = buildWorld(rail, seed);
   const railCamera = new RailCamera(camera, rail);
   railCamera.snapTo(0);
   const bus = new EventBus();
-  return { game: new Game({ scene, camera, railCamera, rail, anchors, bus, seed }), bus, camera };
+  return { game: new Game({ scene, camera, railCamera, rail, anchors, occluders, bus, seed }), bus, camera };
 }
 
 /**

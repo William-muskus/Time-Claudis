@@ -26,7 +26,7 @@ export const CONTINUE_SECONDS = 10;
 export const RESPAWN_DELAY_MS = 1500;
 
 export class Game {
-  constructor({ scene, camera, railCamera, rail, anchors, bus, seed = 0xA11CE }) {
+  constructor({ scene, camera, railCamera, rail, anchors, occluders = [], bus, seed = 0xA11CE }) {
     this.scene = scene;
     this.camera = camera;
     this.railCamera = railCamera;
@@ -38,7 +38,7 @@ export class Game {
     this.weapons = new WeaponSystem(bus);
     this.effects = new Effects(scene);
     this.bullets = new BulletPool(scene);
-    this.director = new Director({ scene, railCamera, rail, anchors, bus, rng: this.rng });
+    this.director = new Director({ scene, railCamera, rail, anchors, occluders, bus, rng: this.rng });
 
     this.score = 0;
     this.combo = 0;

@@ -361,9 +361,44 @@ const GRADE_SHADER = {
       // white, not toward its own hue at maximum. Pulling the weaker channels
       // up toward the strongest reproduces that, and it costs the picture
       // nothing anywhere else: below the threshold the weight is zero.
+      //
+      // Desaturating alone is not enough, and measuring proved it: pulling the
+      // weak channels up turned (1.0, 1.0, 0.45) into (1.0, 1.0, 0.75), which
+      // is a nicer colour and exactly as blown out. Frames went from 0.6% of
+      // pixels at the ceiling to 28%. Redistribution is not reduction.
+      //
+      // So the peak comes DOWN first, through a shoulder, and only then gets
+      // desaturated. The shoulder is a Reinhard curve on the brightest channel
+      // with the others carried along in proportion, so hue survives: above
+      // SHOULDER the curve compresses hard and approaches 1.0 asymptotically
+      // but never reaches it.
+      //
+      // The point of the asymptote is that it still tells light sources apart
+      // from lit surfaces. Tone mapping has already flattened every ordinary
+      // surface to about 1.0, so nothing in the value alone distinguishes a
+      // sunlit wall from a muzzle flash — except that the flash is drawn with
+      // toneMapped false and arrives at three or four in a half-float buffer.
+      // Through this curve a wall at 1.0 lands at 0.89 and stops looking like
+      // a hole, while a flash at 3.0 lands at 0.98 and still blazes.
+      //
+      // 0.78 was too low. It held clipping at 0.2% of every frame in the tour
+      // and did it by compressing a quarter of the tonal range, which read as
+      // milk: the Ravignan descent lost the arcade punch it is there for. The
+      // job is to stop the top of the range piling up at the ceiling, not to
+      // rescale the picture. At 0.86 a surface arriving at 1.0 still lands at
+      // 0.93 — comfortably below where the check counts a pixel as blown —
+      // while everything below 0.86, which is most of what is in shot, passes
+      // through untouched.
+      const float SHOULDER = 0.86;
       float peak = max(max(col.r, col.g), col.b);
-      float bleach = smoothstep(0.74, 1.10, peak);
-      col = mix(col, vec3(peak), bleach * 0.62);
+      if (peak > SHOULDER) {
+        float over = peak - SHOULDER;
+        float rolled = SHOULDER + over / (1.0 + over / (1.0 - SHOULDER));
+        col *= rolled / peak;
+        peak = rolled;
+      }
+      float bleach = smoothstep(0.88, 1.00, peak);
+      col = mix(col, vec3(peak), bleach * 0.35);
 
       // Slight saturation lift — the palette is bold by design.
       //

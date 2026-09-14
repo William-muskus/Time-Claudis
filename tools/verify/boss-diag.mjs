@@ -27,11 +27,11 @@ const DT = 1 / 60;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(58, 16 / 9, 0.1, 900);
 const rail = new Rail(railPoints());
-const { anchors } = buildWorld(rail, 0x5EED);
+const { anchors, occluders } = buildWorld(rail, 0x5EED);
 const railCamera = new RailCamera(camera, rail);
 railCamera.snapTo(0);
 const bus = new EventBus();
-const game = new Game({ scene, camera, railCamera, rail, anchors, bus, seed: 0x5EED });
+const game = new Game({ scene, camera, railCamera, rail, anchors, occluders, bus, seed: 0x5EED });
 
 function oracle() {
   const s = game.snapshot();
@@ -50,6 +50,7 @@ function oracle() {
 }
 
 let boss = null;
+bus.on('spawn.failed', (p) => console.log('SPAWN FAILED', JSON.stringify(p), 'frame', frames));
 bus.on('enemy.spawned', (p) => { if (p.isBoss) console.log('boss spawned at frame', frames); });
 
 let recoverFrames = 0;

@@ -107,6 +107,9 @@ export class Enemy {
     this.carries = opts.carries ?? null;
 
     this.group = buildEnemyMesh(this.type, !!this.carries);
+    // Marked so the verification harness can tell an enemy hidden behind a
+    // wall from one hidden behind another enemy.
+    this.group.traverse((o) => { o.userData.isEnemy = true; });
     this.group.userData.enemy = this;
 
     // Spawn below/behind the anchor and rise into place — nobody in Time

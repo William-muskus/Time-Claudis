@@ -14,7 +14,20 @@ import { EMPTY_REGISTRY } from './assets.js';
  * Landmarks are the one part of the world that is NOT procedural. Everything
  * else is generated; these are authored.
  */
-export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
+export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
+  /**
+   * A seeded source of scatter, never Math.random.
+   *
+   * The ivy on the Orchampt gate and the fragments on the Mur des Je t'aime
+   * were scattered with Math.random, which made the world non-deterministic
+   * for a fixed seed. That is not a cosmetic complaint: the entire
+   * verification approach here rests on a given seed producing a given frame,
+   * and a test that fires rays at the Orchampt lane failed four times in ten
+   * on identical code because the ivy landed somewhere different each build.
+   * An intermittently failing test is worse than no test — it trains you to
+   * re-run rather than to look.
+   */
+  const scatter = rng ? () => rng() : Math.random;
   const group = new THREE.Group();
   group.name = 'landmarks';
   const anchors = [];
@@ -28,14 +41,24 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
    */
   const authored = (key, procedural) => assets.instance(key) ?? procedural();
 
-  group.add(placeAt('place_dalida', authored('dalida_bust', () => buildDalidaBust()), 0, 1.2));
+  // Off the path, on the left hand of the southbound rail — which here is the
+  // east side of the square, where she actually stands and where the
+  // Abreuvoir sightline the survey insists on is preserved.
+  group.add(placeOffRail(
+    rail, 'place_dalida', authored('dalida_bust', () => buildDalidaBust()), -1, 5.2, 1.2));
   group.add(placeAt('lamarck_station', buildMetroEntrance(), 0, 0));
   // Placed at its own surveyed coordinate rather than offset from the rail.
   group.add(atGeo('moulin_blutefin', authored('moulin_galette', () => buildMoulin())));
-  group.add(placeAt('maison_dalida', buildDalidaHouseGate(), -7, 0));
+  group.add(placeAt('maison_dalida', buildDalidaHouseGate(scatter), -7, 0));
   group.add(placeAt('emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 7, 0));
   group.add(placeAt('emile_goudeau', buildBateauLavoir(), -13, 0));
-  group.add(placeAt('place_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()), 0, 0));
+  // Beside the rail, not on it — the same mistake the bust made. The edicule
+  // is the last thing the level shows you and it was built around the camera:
+  // the player finished the stage standing inside the metro entrance. The real
+  // one sits in the middle of the square with the pavement passing to its
+  // north, which is the rail's left hand coming down off the Butte.
+  group.add(placeOffRail(
+    rail, 'place_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()), -1, 5.6));
   group.add(placeAt('place_abbesses', buildCarousel(), 13, 0));
   group.add(placeAt('trois_freres', authored('wallace_fountain', buildWallaceFountain), -8, 0));
 
@@ -43,7 +66,7 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
   group.add(atGeo('maison_rose', buildMaisonRose()));
   group.add(atGeo('sacre_coeur', buildSacreCoeur()));
   group.add(atGeo('st_jean', buildSaintJean()));
-  group.add(atGeo('mur_des_je', buildMurDesJeTaime()));
+  group.add(atGeo('mur_des_je', buildMurDesJeTaime(scatter)));
   group.add(atGeo('le_refuge', buildCafeTerrace()));
   group.add(atGeo('moulin_radet', buildMoulinRadet()));
 
@@ -69,6 +92,37 @@ function placeAt(waypointId, obj, lateral = 0, up = 0) {
   const w = waypointById(waypointId);
   const p = geoToLocal(w.lat, w.lon, w.elev);
   obj.position.set(p.x + lateral, p.y + up, p.z);
+  return obj;
+}
+
+/**
+ * Put an object beside the rail rather than on it.
+ *
+ * A waypoint is a point on the PLAYER'S PATH, so anything placed at one is
+ * placed in the player's way. The Dalida bust was, and at hero scale it is
+ * four metres tall: the rail passed 1.8 m from it, which meant the whole view
+ * at the Place Dalida combat node was bronze. Every enemy the director spawned
+ * there was behind it. Measured with a ray from the camera, the first thing
+ * hit was the statue, 1.3 m out.
+ *
+ * The survey note for this waypoint is explicit that the player stands BEHIND
+ * the bust with rue de l'Abreuvoir falling away east, which is also where the
+ * real one is — set back on the terrace with the pavement passing to its west.
+ * So the offset is measured off the rail's own perpendicular, which keeps it
+ * correct however the path curves through the square.
+ *
+ * `side` is +1 for the rail's right hand, -1 for its left.
+ */
+function placeOffRail(rail, waypointId, obj, side, lateral, up = 0) {
+  const w = waypointById(waypointId);
+  const p = geoToLocal(w.lat, w.lon, w.elev);
+  const d = rail.distanceToWaypoint(waypointId);
+  const tan = rail.tangentAt(d);
+  const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+  obj.position.set(
+    p.x + right.x * side * lateral,
+    p.y + up,
+    p.z + right.z * side * lateral);
   return obj;
 }
 
@@ -262,7 +316,7 @@ function buildMoulinRadet() {
  * carriage gate that stays shut. Only the roofline shows above. Faking a view
  * of the house would be the single most obvious lie in the level.
  */
-function buildDalidaHouseGate() {
+function buildDalidaHouseGate(rnd = Math.random) {
   const g = new THREE.Group();
   g.name = 'maison_dalida';
 
@@ -281,9 +335,9 @@ function buildDalidaHouseGate() {
   // Ivy spilling over the top.
   for (let i = 0; i < 16; i++) {
     const ivy = new THREE.Mesh(
-      new THREE.BoxGeometry(0.8 + Math.random() * 0.7, 0.5 + Math.random() * 0.9, 0.5),
+      new THREE.BoxGeometry(0.8 + rnd() * 0.7, 0.5 + rnd() * 0.9, 0.5),
       flat(PALETTE.ivyGreen, { roughness: 1 }));
-    ivy.position.set(-6 + i * 0.8, 3.4 - Math.random() * 0.5, 0.15);
+    ivy.position.set(-6 + i * 0.8, 3.4 - rnd() * 0.5, 0.15);
     ivy.castShadow = true;
     g.add(ivy);
   }
@@ -567,7 +621,7 @@ export function buildWallaceFountain() {
 }
 
 /** Le Mur des Je t'aime: 612 dark blue enamelled tiles. */
-function buildMurDesJeTaime() {
+function buildMurDesJeTaime(rnd = Math.random) {
   const g = new THREE.Group();
   g.name = 'mur_des_je_taime';
   const wall = new THREE.Mesh(new THREE.BoxGeometry(12, 4.2, 0.4),
@@ -578,10 +632,10 @@ function buildMurDesJeTaime() {
   // The scattered red fragments — the pieces of a broken heart.
   for (let i = 0; i < 9; i++) {
     const frag = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3 + Math.random() * 0.5, 0.25 + Math.random() * 0.4, 0.06),
+      new THREE.BoxGeometry(0.3 + rnd() * 0.5, 0.25 + rnd() * 0.4, 0.06),
       flat(PALETTE.awningRed, { roughness: 0.5 }));
-    frag.position.set(-5 + Math.random() * 10, 0.9 + Math.random() * 2.6, 0.23);
-    frag.rotation.z = Math.random() * 0.5;
+    frag.position.set(-5 + rnd() * 10, 0.9 + rnd() * 2.6, 0.23);
+    frag.rotation.z = rnd() * 0.5;
     g.add(frag);
   }
   return g;

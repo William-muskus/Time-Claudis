@@ -30,7 +30,10 @@ const COVER_BY_AREA = {
   A5: 'fountain_bench',    // Place Emile-Goudeau: Wallace fountain and benches
 };
 
-export function buildCover(rail) {
+export function buildCover(rail, rng = null) {
+  // Seeded, for the same reason landmarks.js is: a fixed seed must produce a
+  // fixed world or nothing downstream can be measured twice.
+  const rnd = rng ? () => rng() : Math.random;
   const group = new THREE.Group();
   group.name = 'cover';
 
@@ -51,7 +54,7 @@ export function buildCover(rail) {
       .addScaledVector(tan, AHEAD)
       .addScaledVector(right, lateral);
 
-    const piece = buildPiece(COVER_BY_AREA[enc.areaId] ?? 'stone_wall');
+    const piece = buildPiece(COVER_BY_AREA[enc.areaId] ?? 'stone_wall', rnd);
     piece.position.copy(base);
     piece.position.y = p.y + 0.16;
     // atan2 on the horizontal components only; the tangent climbs and a
@@ -63,13 +66,13 @@ export function buildCover(rail) {
   return group;
 }
 
-function buildPiece(kind) {
+function buildPiece(kind, rnd) {
   switch (kind) {
     case 'metro_balustrade': return metroBalustrade();
     case 'terrace': return cafeTerrace();
-    case 'planters': return planters();
+    case 'planters': return planters(rnd);
     case 'fountain_bench': return fountainBench();
-    default: return stoneWall();
+    default: return stoneWall(rnd);
   }
 }
 
@@ -104,7 +107,7 @@ function metroBalustrade() {
 }
 
 /** A rendered garden wall with a stone coping and ivy over the top. */
-function stoneWall() {
+function stoneWall(rnd = Math.random) {
   const g = new THREE.Group();
   const W = 5.0, H = 1.12;
   const wall = new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.42),
@@ -121,7 +124,7 @@ function stoneWall() {
 
   for (let i = 0; i < 7; i++) {
     const ivy = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.26 + Math.random() * 0.18, 0),
+      new THREE.IcosahedronGeometry(0.26 + rnd() * 0.18, 0),
       flat(PALETTE.ivyGreen, { roughness: 1 }));
     ivy.position.set(-W / 2 + 0.5 + i * (W - 1) / 6, H + 0.12, 0.12);
     ivy.castShadow = true;
@@ -163,7 +166,7 @@ function cafeTerrace() {
 }
 
 /** Stone troughs and a bin store. The walled lane has no room for furniture. */
-function planters() {
+function planters(rnd = Math.random) {
   const g = new THREE.Group();
   const stone = flat(PALETTE.limestoneMid, { roughness: 0.94 });
   for (let i = -1; i <= 1; i++) {
@@ -177,7 +180,7 @@ function planters() {
     g.add(soil);
     for (let k = 0; k < 3; k++) {
       const shrub = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.14, 0),
+        new THREE.IcosahedronGeometry(0.3 + rnd() * 0.14, 0),
         flat(k % 2 ? PALETTE.foliageMid : PALETTE.foliageSun, { roughness: 1 }));
       shrub.position.set(i * 1.65 - 0.42 + k * 0.42, 1.08, 0);
       shrub.castShadow = true;

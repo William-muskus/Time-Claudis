@@ -86,7 +86,11 @@ const SHOTS = [
   // and the amber glass read. This shot exists to judge the object.
   { name: '11b_guimard_close',   at: 'place_abbesses', back: 15, lateral: 3, yaw: 186, pitch: 2,
     why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
-  { name: '12_sacre_coeur',      at: 'moulin_galette',  look: 'sacre_coeur', lookHeight: 30,
+  // Backed off to where 07 stands. Parked on the mill's own waypoint the
+  // sightline east runs straight into the building next door, and the shot
+  // came back as a wall filling the frame — 93% warm, 4% cool, no basilica.
+  { name: '12_sacre_coeur',      at: 'moulin_galette', back: 20,
+    look: 'sacre_coeur', lookHeight: 40,
     why: 'The basilica on the skyline. A silhouette, nothing more.' },
 
   // --- the first-person weapon, in each of its states --------------------
@@ -187,6 +191,10 @@ for (const shot of SHOTS) {
   const ok = await page.evaluate((s) => {
     try {
       window.__tour.freeze(true);
+      // Every shot starts from an empty street. Without this each staged fight
+      // inherited every earlier one — sixteen enemies alive by the last combat
+      // frame, thirteen of them posed for a camera hundreds of metres back.
+      window.__tour.clearEnemies();
       window.__tour.at(s.at, { lateral: s.lateral ?? 0, back: s.back ?? 0 });
 
       // Force a weapon and a pose so each state can be reviewed deliberately
@@ -228,9 +236,17 @@ for (const shot of SHOTS) {
   // and the difference matters.
   let where = '';
   if (shot.spawn) {
-    const live = await page.evaluate(() => window.__game.director.enemies.map(
-      (e) => `${e.typeKey}:${e.telegraphStage ?? e.state}`));
-    where = `  [${live.join(' ')}]`;
+    // Not just "are they alive" — where they landed and whether anything is in
+    // front of them. The manifest used to report five enemies telegraphing on
+    // a frame that contained none, because listing states proves the
+    // simulation ran and says nothing about the picture.
+    const live = await page.evaluate(() => window.__tour.enemyScreenPos());
+    where = `  [${live.map((e) => {
+      const mark = e.visible ? '' : e.onScreen ? ' BLOCKED' : ' OFFSCREEN';
+      return `${e.type}:${e.stage}@${e.xPct},${e.yPct} ${e.dist}m${mark}`;
+    }).join(' | ')}]`;
+    const seen = live.filter((e) => e.visible).length;
+    if (!seen) console.log(`[tour] ${shot.name} WARNING: staged a fight and not one enemy is visible`);
   } else if (shot.weapon) {
     const pos = await page.evaluate(() => window.__tour.weaponScreenPos());
     where = pos && pos.xPct !== undefined ? `  [gun at ${pos.xPct}%, ${pos.yPct}%]` : '';

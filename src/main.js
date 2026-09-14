@@ -47,7 +47,7 @@ const rail = new Rail(railPoints());
  * pipeline that was not re-run degrades instead of leaving holes.
  */
 const assets = await new AssetRegistry('assets/models/').load();
-const { root: world, anchors, sky } = buildWorld(rail, SEED, assets);
+const { root: world, anchors, occluders, sky } = buildWorld(rail, SEED, assets);
 renderer.scene.add(world);
 renderer.attachSky(sky);
 
@@ -58,6 +58,7 @@ const game = new Game({
   scene: renderer.scene,
   camera: renderer.camera,
   railCamera,
+  occluders,
   rail,
   anchors,
   bus,
@@ -262,6 +263,68 @@ window.__tour = {
     const o = document.getElementById('overlay');
     if (o) o.className = 'overlay';
   },
+  /**
+   * Remove every enemy from the world.
+   *
+   * The tour used to stage each fight on top of the last one. Nothing cleared
+   * between shots and every enemy had exposureMs measured in seconds of
+   * simulated time that a frozen game never advances, so they simply
+   * accumulated: by the final combat frame there were sixteen alive, thirteen
+   * of them staged for earlier shots at camera positions up to three hundred
+   * metres back down the hill. That makes a fight unreviewable and it makes
+   * the manifest lie about what is in the picture.
+   */
+  clearEnemies() {
+    const d = game.director;
+    for (const e of d.enemies) e.dispose(renderer.scene);
+    d.enemies.length = 0;
+    d.committed?.clear();
+    d.occupied?.clear();
+    return 0;
+  },
+
+  /**
+   * Where every live enemy actually landed, in normalised screen coordinates,
+   * and whether anything in the world is in front of it.
+   *
+   * "The manifest said five enemies were alive and telegraphing, and the frame
+   * had none in it" is not a state a verification harness should be able to
+   * reach. Reporting the stage an enemy is in proves the SIMULATION ran;
+   * proving the RENDER contains it needs the projection and the occlusion
+   * test, because on-screen-but-behind-a-wall and off-screen-entirely look
+   * identical in a screenshot and have completely different causes.
+   */
+  enemyScreenPos() {
+    const cam = renderer.camera;
+    cam.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster();
+    const walls = [];
+    renderer.scene.traverse((o) => {
+      if (o.isMesh && o.visible && !o.userData.isEnemy) walls.push(o);
+    });
+    return game.director.enemies.filter((e) => e.isAlive).map((e) => {
+      const p = e.group.position.clone();
+      p.y += 1.1;
+      const to = p.clone().sub(cam.position);
+      const dist = to.length();
+      const ndc = p.clone().project(cam);
+      const onScreen = Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1 && ndc.z < 1;
+      ray.set(cam.position, to.normalize());
+      ray.far = dist - 0.6;
+      const blocked = ray.intersectObjects(walls, false).length > 0;
+      return {
+        type: e.typeKey,
+        stage: e.telegraphStage ?? e.state,
+        xPct: Math.round(((ndc.x + 1) / 2) * 100),
+        yPct: Math.round(((-ndc.y + 1) / 2) * 100),
+        dist: +dist.toFixed(1),
+        onScreen,
+        blocked,
+        visible: onScreen && !blocked,
+      };
+    });
+  },
+
   places: () => [...WAYPOINTS.map((w) => w.id), ...LANDMARKS.map((l) => l.id)],
 };
 window.__frozen = false;
