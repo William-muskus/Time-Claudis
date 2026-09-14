@@ -4,6 +4,7 @@ import { buildBuilding } from './buildings.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildProps } from './props.js';
 import { buildCover } from './cover.js';
+import { EMPTY_REGISTRY } from './assets.js';
 import { makeRng } from '../core/rng.js';
 import { batchStatic } from './optimize.js';
 import { buildSky } from '../render/sky.js';
@@ -21,7 +22,7 @@ import { PALETTE, flat } from '../render/palette.js';
  *
  * Returns the scene group plus the anchor list gameplay draws spawns from.
  */
-export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
+export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_REGISTRY) {
   const rng = makeRng(seed);
   const root = new THREE.Group();
   root.name = 'montmartre';
@@ -36,7 +37,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
   // which is exactly where the building row wants to put a terrace, so the
   // most sensitive landmark on the route was being swallowed by a generated
   // house. The authored geometry always wins over the generated geometry.
-  const lm = buildLandmarks(rail);
+  const lm = buildLandmarks(rail, assets);
   root.add(lm.group);
 
   const anchors = [...lm.anchors];
@@ -44,7 +45,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
   root.add(buildBuildingRows(rail, rng, anchors, reserved));
   root.add(buildEndCaps(rail, rng, anchors));
 
-  root.add(buildProps(rail, rng));
+  root.add(buildProps(rail, rng, assets));
   root.add(buildCover(rail));
   root.add(buildGroundPlane(rail));
 
@@ -154,8 +155,10 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
       const p = rail.positionAt(d + w / 2);
       const tan = rail.tangentAt(d + w / 2);
       const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-      const halfW = rail.widthAt(d + w / 2) * 0.5;
-      const setback = halfW + 2.4;   // kerb plus pavement
+      // Same rule as src/world/street.js: the survey width is building to
+      // building, so the setback is half of it. Anything else and the facades
+      // stop agreeing with the kerb they are supposed to stand behind.
+      const setback = Math.max(2.6, rail.widthAt(d + w / 2) * 0.5);
 
       // Skip anything that would land inside a landmark's reserved circle.
       const centre = p.clone().addScaledVector(right, side * (setback + 6));
@@ -273,7 +276,7 @@ function buildEndCaps(rail, rng, anchors) {
     const origin = rail.positionAt(cap.at);
     const tan = rail.tangentAt(cap.at).clone().multiplyScalar(cap.dir);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const halfW = rail.widthAt(cap.at) * 0.5;
+    const halfW = Math.max(2.6, rail.widthAt(cap.at) * 0.5);
 
     // A short continuation of the street wall, so the road reads as going
     // somewhere rather than ending.
@@ -289,7 +292,7 @@ function buildEndCaps(rail, rng, anchors) {
         });
         b.position.copy(origin)
           .addScaledVector(tan, along + w / 2)
-          .addScaledVector(right, side * (halfW + 2.4 + depth / 2));
+          .addScaledVector(right, side * (halfW + depth / 2));
         b.position.y = origin.y;
         const facing = b.position.clone().addScaledVector(right, -side * depth);
         b.lookAt(facing.x, b.position.y, facing.z);

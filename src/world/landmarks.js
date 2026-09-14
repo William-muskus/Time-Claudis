@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { geoToLocal, LANDMARKS, waypointById } from '../data/route.js';
+import { EMPTY_REGISTRY } from './assets.js';
 
 /**
  * The named things.
@@ -13,20 +14,29 @@ import { geoToLocal, LANDMARKS, waypointById } from '../data/route.js';
  * Landmarks are the one part of the world that is NOT procedural. Everything
  * else is generated; these are authored.
  */
-export function buildLandmarks(rail) {
+export function buildLandmarks(rail, assets = EMPTY_REGISTRY) {
   const group = new THREE.Group();
   group.name = 'landmarks';
   const anchors = [];
 
-  group.add(placeAt('place_dalida', buildDalidaBust(), 0, 1.2));
+  /**
+   * Prefer the Blender-authored GLB; fall back to the procedural version.
+   *
+   * The fallback is not a formality. A missing or truncated export must not
+   * leave a hole where the Dalida bust should be, and the failure is reported
+   * on the console rather than swallowed.
+   */
+  const authored = (key, procedural) => assets.instance(key) ?? procedural();
+
+  group.add(placeAt('place_dalida', authored('dalida_bust', () => buildDalidaBust()), 0, 1.2));
   group.add(placeAt('lamarck_station', buildMetroEntrance(), 0, 0));
-  group.add(placeAt('moulin_galette', buildMoulin(), -14, 6.5));
+  group.add(placeAt('moulin_galette', authored('moulin_galette', () => buildMoulin()), -14, 6.5));
   group.add(placeAt('maison_dalida', buildDalidaHouseGate(), -7, 0));
-  group.add(placeAt('emile_goudeau', buildWallaceFountain(), 7, 0));
+  group.add(placeAt('emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 7, 0));
   group.add(placeAt('emile_goudeau', buildBateauLavoir(), -13, 0));
-  group.add(placeAt('place_abbesses', buildGuimardEdicule(), 0, 0));
+  group.add(placeAt('place_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()), 0, 0));
   group.add(placeAt('place_abbesses', buildCarousel(), 13, 0));
-  group.add(placeAt('trois_freres', buildWallaceFountain(), -8, 0));
+  group.add(placeAt('trois_freres', authored('wallace_fountain', buildWallaceFountain), -8, 0));
 
   // Off-rail but on the sightlines.
   group.add(atGeo('maison_rose', buildMaisonRose()));

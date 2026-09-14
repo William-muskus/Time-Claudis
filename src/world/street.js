@@ -41,7 +41,22 @@ export function buildStreet(rail) {
     const t = rail.tangentAt(d);
     // Right-hand normal in the ground plane.
     const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
-    frames.push({ d, p, t, right, halfWidth: rail.widthAt(d) * 0.5 });
+    // The survey's `width` is BUILDING TO BUILDING, not kerb to kerb.
+    //
+    // Treating it as the carriageway and then adding 2.4 m of pavement on each
+    // side inflated every street by nearly five metres: rue Girardon, which is
+    // about nine metres wall to wall, was rendering at fourteen and reading as
+    // a boulevard. That width is also what created the dead empty foreground
+    // in every frame.
+    //
+    // Pavements narrow with the street, the way they really do — rue
+    // d'Orchampt has barely a kerb, Place des Abbesses has a proper footway.
+    const total = rail.widthAt(d);
+    const pavement = Math.max(0.8, Math.min(2.4, total * 0.18));
+    frames.push({
+      d, p, t, right, pavement,
+      halfWidth: Math.max(1.5, total * 0.5 - pavement),
+    });
   }
 
   // The apron goes down FIRST so everything else sits on it.
@@ -82,7 +97,7 @@ function buildApron(frames) {
     const f = frames[i];
     for (const side of [-1, 1]) {
       for (const b of BANDS) {
-        const off = side * (f.halfWidth + 2.4 + b * REACH);
+        const off = side * (f.halfWidth + f.pavement + b * REACH);
         pos.push(
           f.p.x + f.right.x * off,
           f.p.y - 0.02 - DROP * b * b,
@@ -154,11 +169,11 @@ function buildCarriageway(frames) {
 /** Raised pavement on one side. side = +1 right, -1 left. */
 function buildPavement(frames, side) {
   const pos = [], idx = [];
-  const WIDTH = 2.4, HEIGHT = 0.16;
+  const HEIGHT = 0.16;
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
     const inner = f.halfWidth * side;
-    const outer = (f.halfWidth + WIDTH) * side;
+    const outer = (f.halfWidth + f.pavement) * side;
     // inner top, outer top
     pos.push(f.p.x + f.right.x * inner, f.p.y + HEIGHT, f.p.z + f.right.z * inner);
     pos.push(f.p.x + f.right.x * outer, f.p.y + HEIGHT, f.p.z + f.right.z * outer);

@@ -11,6 +11,16 @@ import { resolve } from 'node:path';
  */
 export default defineConfig({
   build: {
+    /**
+     * The default target is es2020, which predates top-level await.
+     *
+     * Raising it rather than restructuring the code is the honest choice here:
+     * this game already requires WebGL2, getUserMedia and a MediaPipe WASM
+     * runtime, so every browser that can run it at all has supported top-level
+     * await for years. Contorting the boot sequence around a target we do not
+     * actually ship to would be pure ceremony.
+     */
+    target: 'es2022',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

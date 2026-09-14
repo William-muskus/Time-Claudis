@@ -4,6 +4,7 @@ import { ViewModel } from './render/viewmodel.js';
 import { Rail } from './core/spline.js';
 import { railPoints, WAYPOINTS, LANDMARKS, geoToLocal } from './data/route.js';
 import { buildWorld } from './world/index.js';
+import { AssetRegistry } from './world/assets.js';
 import { RailCamera } from './rail/camera.js';
 import { Game } from './gameplay/game.js';
 import { Hud } from './ui/hud.js';
@@ -36,7 +37,17 @@ const renderer = new Renderer(canvas);
 renderer.setAdaptiveEnabled(!DEMO);
 
 const rail = new Rail(railPoints());
-const { root: world, anchors, sky } = buildWorld(rail, SEED);
+
+/**
+ * Load the Blender-exported models before building the world.
+ *
+ * The world builder is synchronous by design — it is a pure function of the
+ * survey — so the assets have to be in hand first. Anything that fails to load
+ * simply falls back to the procedural version, so a blocked network or a
+ * pipeline that was not re-run degrades instead of leaving holes.
+ */
+const assets = await new AssetRegistry('assets/models/').load();
+const { root: world, anchors, sky } = buildWorld(rail, SEED, assets);
 renderer.scene.add(world);
 renderer.attachSky(sky);
 

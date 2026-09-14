@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { buildWallaceFountain } from './landmarks.js';
+import { EMPTY_REGISTRY } from './assets.js';
 
 /**
  * Street furniture: lamps, plane trees, benches, bollards, Morris columns.
@@ -15,7 +16,7 @@ import { buildWallaceFountain } from './landmarks.js';
  * real 18-22 m spacing, which is close enough that the receding line of them
  * is a strong perspective cue up the hill.
  */
-export function buildProps(rail, rng) {
+export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
   const group = new THREE.Group();
   group.name = 'props';
 
@@ -25,8 +26,8 @@ export function buildProps(rail, rng) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const off = rail.widthAt(d) * 0.5 + 1.2;
-    const lamp = buildStreetLamp();
+    const off = rail.widthAt(d) * 0.5 - 0.9;
+    const lamp = assets.instance('street_lamp') ?? buildStreetLamp();
     lamp.position.copy(p).addScaledVector(right, side * off);
     lamp.position.y = p.y + 0.16;
     lamp.rotation.y = Math.atan2(right.x * -side, right.z * -side);
@@ -44,7 +45,7 @@ export function buildProps(rail, rng) {
     // pollarded crown is up to 1.5 m in radius, so a trunk at +1.5 m put
     // foliage inside the facade — which rendered as leaves floating in front
     // of a wall with no trunk and no ground contact.
-    const off = rail.widthAt(d) * 0.5 + 1.15;
+    const off = rail.widthAt(d) * 0.5 - 1.0;
     const tree = buildPlaneTree(rng);
     tree.position.copy(p).addScaledVector(right, side * off);
     tree.position.y = p.y + 0.16;
@@ -57,7 +58,7 @@ export function buildProps(rail, rng) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const off = rail.widthAt(d) * 0.5 + 1.6;
+    const off = rail.widthAt(d) * 0.5 - 0.8;
     const b = rng.chance(0.55) ? buildBench() : buildBollardRow(rng);
     b.position.copy(p).addScaledVector(right, side * off);
     b.position.y = p.y + 0.16;
@@ -72,8 +73,8 @@ export function buildProps(rail, rng) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const col = buildMorrisColumn();
-    col.position.copy(p).addScaledVector(right, rail.widthAt(d) * 0.5 + 1.8);
+    const col = assets.instance('morris_column') ?? buildMorrisColumn();
+    col.position.copy(p).addScaledVector(right, rail.widthAt(d) * 0.5 - 0.9);
     col.position.y = p.y + 0.16;
     group.add(col);
   }
@@ -84,8 +85,8 @@ export function buildProps(rail, rng) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const w = buildWallaceFountain();
-    w.position.copy(p).addScaledVector(right, -(rail.widthAt(d) * 0.5 + 1.6));
+    const w = assets.instance('wallace_fountain') ?? buildWallaceFountain();
+    w.position.copy(p).addScaledVector(right, -(rail.widthAt(d) * 0.5 - 0.9));
     w.position.y = p.y + 0.16;
     group.add(w);
   }
