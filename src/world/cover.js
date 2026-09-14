@@ -54,6 +54,8 @@ export function buildCover(rail) {
     const piece = buildPiece(COVER_BY_AREA[enc.areaId] ?? 'stone_wall');
     piece.position.copy(base);
     piece.position.y = p.y + 0.16;
+    // atan2 on the horizontal components only; the tangent climbs and a
+    // yaw taken from a tilted vector leans the cover.
     piece.rotation.y = Math.atan2(tan.x, tan.z);
     piece.name = `cover_${enc.areaId}`;
     group.add(piece);

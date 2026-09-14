@@ -257,7 +257,10 @@ function buildStairFlights(rail) {
       // Stack each tread up to the height the ramp would have had, so the
       // stepped surface averages onto the surveyed gradient exactly.
       step.position.y = THREE.MathUtils.lerp(pA.y, pB.y, t0) + seg.riser * 0.5;
-      step.lookAt(step.position.clone().add(tan));
+      // Steps follow the street's yaw but stay level: a tread that tilts with
+      // the gradient is a ramp with lines on it, not a stair.
+      const levelTan = new THREE.Vector3(tan.x, 0, tan.z).normalize();
+      step.lookAt(step.position.clone().add(levelTan));
       step.castShadow = true;
       step.receiveShadow = true;
       flight.add(step);
@@ -272,6 +275,8 @@ function buildStairFlights(rail) {
     const mid = rail.positionAt((lo + hi) / 2);
     railMesh.position.copy(mid);
     railMesh.position.y = (pA.y + pB.y) / 2 + 0.95;
+    // The handrail, by contrast, SHOULD follow the slope — that is what a
+    // handrail does — so it keeps the full tangent.
     railMesh.lookAt(railMesh.position.clone().add(rail.tangentAt((lo + hi) / 2)));
     railMesh.castShadow = true;
     flight.add(railMesh);

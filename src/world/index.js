@@ -184,7 +184,13 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
             .addScaledVector(right, side * (setback + 4.5))
             .addScaledVector(tan, s2 * (w / 2));
           wall.position.y += 4.5;
-          wall.lookAt(wall.position.clone().add(tan));
+          // Level the tangent before aiming. The rail climbs 39 m over its
+          // length, so its tangent has a real vertical component — on the
+          // Girardon slope, aiming a nine-metre wall down it tips the whole
+          // slab about thirty degrees and it reads, correctly, as a building
+          // falling over. Walls stand up; only the ground follows the grade.
+          const levelTan = new THREE.Vector3(tan.x, 0, tan.z).normalize();
+          wall.lookAt(wall.position.clone().add(levelTan));
           wall.castShadow = wall.receiveShadow = true;
           group.add(wall);
         }
