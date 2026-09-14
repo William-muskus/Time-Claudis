@@ -58,7 +58,9 @@ const SHOTS = [
     why: 'The Blute-fin on its mound. Crest of the level.' },
   { name: '07b_moulin_close',    at: 'moulin_galette', back: 12, yaw: 250, pitch: 10,
     why: 'The mill itself: tower, cap, and the four sails on their hub.' },
-  { name: '08_orchampt_gate',    at: 'maison_dalida',   yaw: 230,
+  // Backed off down the lane: parked on the waypoint in a six-metre street we
+  // were within touching distance of a wall and it filled the whole frame.
+  { name: '08_orchampt_gate',    at: 'maison_dalida', back: 16, look: 'maison_dalida', lookHeight: 2.0,
     why: '11 bis. The gate is shut and only the roofline shows. That is correct.' },
   { name: '09_goudeau',          at: 'emile_goudeau',   yaw: 170,
     why: 'Place Emile-Goudeau. Wallace fountain, plane trees, Bateau-Lavoir.' },

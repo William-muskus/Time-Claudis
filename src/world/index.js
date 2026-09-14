@@ -27,13 +27,21 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
 
   root.add(buildStreet(rail));
 
-  const anchors = [];
-  root.add(buildBuildingRows(rail, rng, anchors));
-  root.add(buildEndCaps(rail, rng, anchors));
-
+  // Landmarks are placed FIRST and their footprints reserved, so the
+  // procedural street wall cannot be built on top of them.
+  //
+  // This was a real bug and an invisible one: the gate of 11 bis rue
+  // d'Orchampt sits seven metres off the centreline of a six-metre lane,
+  // which is exactly where the building row wants to put a terrace, so the
+  // most sensitive landmark on the route was being swallowed by a generated
+  // house. The authored geometry always wins over the generated geometry.
   const lm = buildLandmarks(rail);
   root.add(lm.group);
-  anchors.push(...lm.anchors);
+
+  const anchors = [...lm.anchors];
+  const reserved = landmarkFootprints(rail);
+  root.add(buildBuildingRows(rail, rng, anchors, reserved));
+  root.add(buildEndCaps(rail, rng, anchors));
 
   root.add(buildProps(rail, rng));
   root.add(buildGroundPlane(rail));
@@ -89,7 +97,39 @@ function characterAt(t, rng) {
            shopfront: rng.chance(0.72), width: rng.range(8, 13) };
 }
 
-function buildBuildingRows(rail, rng, anchors) {
+/**
+ * Circles on the ground plane that the procedural street wall must avoid.
+ *
+ * Radii are generous on purpose: a landmark needs breathing room around it to
+ * read, not merely non-intersection. The Moulin's mound is nine metres across
+ * before the tower even starts, and Place Dalida has to stay a square.
+ */
+function landmarkFootprints(rail) {
+  const zones = [];
+  const add = (waypointId, radius, lateral = 0) => {
+    let d;
+    try { d = rail.distanceToWaypoint(waypointId); } catch { return; }
+    const p = rail.positionAt(d);
+    const tan = rail.tangentAt(d);
+    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+    zones.push({
+      x: p.x + right.x * lateral,
+      z: p.z + right.z * lateral,
+      r: radius,
+      id: waypointId,
+    });
+  };
+
+  add('lamarck_station', 16);     // the metro mouth and its twin staircases
+  add('place_dalida', 15);        // the bust, and the square it needs
+  add('moulin_galette', 20, -14); // the mound is 9 m across on its own
+  add('maison_dalida', 12, -7);   // the wall and gate of 11 bis
+  add('emile_goudeau', 17);       // the square, fountain and Bateau-Lavoir
+  add('place_abbesses', 18);      // the edicule, carousel and Saint-Jean
+  return zones;
+}
+
+function buildBuildingRows(rail, rng, anchors, reserved = []) {
   const group = new THREE.Group();
   group.name = 'facades';
 
@@ -111,6 +151,12 @@ function buildBuildingRows(rail, rng, anchors) {
       const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
       const halfW = rail.widthAt(d + w / 2) * 0.5;
       const setback = halfW + 2.4;   // kerb plus pavement
+
+      // Skip anything that would land inside a landmark's reserved circle.
+      const centre = p.clone().addScaledVector(right, side * (setback + 6));
+      const blocked = reserved.some(
+        (z) => Math.hypot(centre.x - z.x, centre.z - z.z) < z.r + w * 0.5);
+      if (blocked) { d += w * 0.5; continue; }
 
       if (isGap) {
         const alleyPos = new THREE.Vector3().copy(p).addScaledVector(right, side * (setback + 1.5));

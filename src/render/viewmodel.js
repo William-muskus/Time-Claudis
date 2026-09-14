@@ -36,10 +36,21 @@ export class ViewModelPass extends Pass {
   }
 
   render(renderer, writeBuffer, readBuffer) {
+    // renderer.render() clears colour, depth and stencil when autoClear is on,
+    // which would wipe the world we are compositing onto. RenderPass disables
+    // it around its own draw for exactly this reason; leaving it on here
+    // produced a frame containing the weapon and nothing else.
+    const oldAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+
     const target = this.renderToScreen ? null : readBuffer;
+    // Bind first, THEN clear depth. This ordering is the whole reason this
+    // class exists — see the comment above.
     renderer.setRenderTarget(target);
     renderer.clearDepth();
     renderer.render(this.scene, this.camera);
+
+    renderer.autoClear = oldAutoClear;
   }
 }
 
