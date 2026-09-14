@@ -22,6 +22,11 @@ nothing else.
 | **SHOOT** — middle finger held perpendicular to the index, then curled into the palm | One curl, one shot. The reversed L is a finger on a *gâchette*. |
 | **RELOAD** — the whole finger gun raised vertical, perpendicular to the sky | Duck behind cover and reload. Bring it back down to pop out and shoot. |
 
+You can see the gun. It points where you point, kicks when the trigger gesture
+registers, drops out of frame when you duck, and raises to vertical when you
+raise your hand — so the picture always agrees with what your hand is doing.
+That is the fastest way to tell a player their gesture landed.
+
 That third one is the entire game. Time Crisis cabinets have one pedal: pressed,
 you are out of cover and can shoot and be shot; released, you are safe and
 reloading. This maps that pedal onto your hand. **Gun up means hide. Gun down

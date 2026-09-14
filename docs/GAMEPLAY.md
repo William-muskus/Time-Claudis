@@ -156,6 +156,37 @@ things a critic sub-agent must judge. None are optional.
 - **Enemies react before they die.** 120 ms of stagger, then the death animation.
   An enemy that vanishes on hit feels like a target, not a person.
 
+## 7b. The weapon you can see
+
+The player holds a visible first-person weapon, drawn in its own scene through
+a second render pass so it can never intersect Montmartre's narrow walls.
+
+It is not decoration. Because the player is aiming with a bare hand through a
+webcam, the hardest problem in the whole game is knowing what the machine
+currently thinks your hand is doing. The weapon answers that continuously,
+without any UI, and it is the fastest feedback channel available:
+
+| What your hand does | What the gun does | Why it matters |
+|---|---|---|
+| Moves | Barrel swings toward the crosshair, lagging it | Your aim becomes a physical thing, not a dot |
+| Middle finger curls | Hard recoil kick and a muzzle flash | Instant confirmation the trigger gesture registered |
+| Raises to vertical | Gun rotates to vertical beside your head | The picture agrees with your hand, so cover explains itself |
+| Stays down while covered | Gun drops out of frame | You can see you are behind something |
+| Runs dry | Gun hangs slightly lower | A free second hint that you are empty |
+
+The recoil is the important one. A gesture interface's worst failure mode is
+ambiguity about whether an input landed, and a 45 ms kick answers it before the
+player has finished the motion.
+
+Silhouettes are deliberately distinct so the current weapon is readable in
+peripheral vision: compact handgun, machine gun with a magazine hanging below,
+shotgun with a tube and pump, grenade launcher with a drum.
+
+The **visor** frames all of it. A rail shooter without one reads as a drone
+gliding down a street; an aperture edge reads as a person crouched behind a
+wall, which is precisely what the cover mechanic asks the player to imagine.
+It also darkens the corners, where nothing important ever happens.
+
 ## 8. Inversions we deliberately did NOT make
 
 Recorded so nobody "fixes" them later:

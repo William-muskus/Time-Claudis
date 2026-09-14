@@ -24,6 +24,12 @@ const DIST = join(ROOT, 'dist');
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : d; };
 const OUT = resolve(arg('out', join(ROOT, 'artifacts/tour')));
+/**
+ * Substring filter over shot names. A full tour is eighteen software-rendered
+ * frames and several minutes; when only the weapon changed, re-shooting the
+ * whole of Montmartre to look at it is waste.
+ */
+const ONLY = arg('only', null);
 
 /**
  * The shot list.
@@ -118,6 +124,7 @@ await page.evaluate(async () => {
 
 const manifest = [];
 for (const shot of SHOTS) {
+  if (ONLY && !shot.name.includes(ONLY)) continue;
   const ok = await page.evaluate((s) => {
     try {
       window.__tour.freeze(true);

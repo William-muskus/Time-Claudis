@@ -30,10 +30,22 @@ import { PALETTE, flat } from './palette.js';
  *     itself without a tutorial.
  */
 
-/** Resting pose, in the viewmodel camera's space. Lower-right, angled in. */
+/**
+ * Resting pose, in the viewmodel camera's space. Lower-right, angled in.
+ *
+ * ROTATION SIGNS, because they are easy to get backwards and the result looks
+ * merely "a bit off" rather than obviously broken. The barrel is model -Z.
+ * Rotating -Z about +Y by theta sends it to (-sin theta, 0, -cos theta), so a
+ * POSITIVE yaw swings the muzzle LEFT — toward the middle of the screen, which
+ * is where a gun held in the right hand should converge. The first version of
+ * this was negative and the weapon pointed off the right edge of the frame.
+ *
+ * Likewise, rotating -Z about +X sends it to (0, sin theta, -cos theta), so a
+ * positive pitch raises the muzzle.
+ */
 const REST = {
-  position: new THREE.Vector3(0.19, -0.175, -0.42),
-  rotation: new THREE.Euler(0.045, -0.085, 0.028),
+  position: new THREE.Vector3(0.205, -0.17, -0.44),
+  rotation: new THREE.Euler(0.035, 0.185, 0.055),
 };
 
 /** Where the gun goes when the player is fully behind cover. */
@@ -230,10 +242,14 @@ export class ViewModel {
     // gun indicates, it does not chase.
     const ax = (this.smoothAim.x - 0.5);
     const ay = (this.smoothAim.y - 0.5);
+    // Screen y grows DOWNWARD, so a crosshair below centre is ay > 0 and the
+    // muzzle must pitch DOWN, which is a negative rot.x. Adding here instead
+    // of subtracting made the gun point away from the crosshair vertically —
+    // subtly wrong in a way that reads as the aim being broken.
     pos.x += ax * 0.16;
     pos.y -= ay * 0.10;
-    rot.y += -ax * 0.30;
-    rot.x += ay * 0.26;
+    rot.y += -ax * 0.34;
+    rot.x -= ay * 0.28;
 
     // Idle sway. Two incommensurate frequencies so it never reads as a loop.
     const sway = 1 - cover * 0.7;
