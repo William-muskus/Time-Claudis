@@ -5,6 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { PALETTE, sunDirection } from './palette.js';
+import { buildSkyEnvironment } from './sky.js';
 import { AdaptiveResolution } from './adaptive.js';
 import { ViewModelPass } from './viewmodel.js';
 
@@ -171,6 +172,7 @@ export class Renderer {
     // muzzle flash still blooms.
     this.composer.insertPass(pass, 1);
     viewModel.resize(this.camera.aspect);
+    if (this.envMap) viewModel.scene.environment = this.envMap;
   }
 
   /** Hit flash, low-health pulse and area-clear wash all drive the grade pass. */
@@ -212,8 +214,19 @@ export class Renderer {
     }
   }
 
-  /** The sky dome is drawn around the camera, so it has to travel with it. */
-  attachSky(skyGroup) { this.skyGroup = skyGroup; }
+  /**
+   * The sky dome is drawn around the camera, so it has to travel with it.
+   *
+   * Attaching it also bakes an environment probe from the same gradient. Every
+   * metal in the game needs something to reflect or it renders black; see
+   * buildSkyEnvironment.
+   */
+  attachSky(skyGroup) {
+    this.skyGroup = skyGroup;
+    this.envMap = buildSkyEnvironment(this.renderer);
+    this.scene.environment = this.envMap;
+    if (this.viewModel) this.viewModel.scene.environment = this.envMap;
+  }
 
   render(timeSec) {
     const t0 = performance.now();

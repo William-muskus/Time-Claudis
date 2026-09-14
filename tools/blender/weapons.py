@@ -37,11 +37,20 @@ BRASS = "#C9A227"
 
 
 def _mats():
+    # Metalness is kept moderate rather than physically "correct" for steel.
+    # A fully metallic surface has no diffuse term at all, so it depends
+    # entirely on an environment probe; at 0.72 the guns were extremely
+    # sensitive to that probe and rendered black without one. Around 0.45 they
+    # still read as metal, still take a specular hit from the muzzle flash, and
+    # degrade gracefully if the probe ever fails to build.
     return {
-        "metal": material("gun_metal", GUNMETAL, roughness=0.42, metallic=0.72),
-        "light": material("gun_metal_light", GUNMETAL_LIGHT, roughness=0.38, metallic=0.66),
+        "metal": material("gun_metal", GUNMETAL, roughness=0.38, metallic=0.45),
+        "light": material("gun_metal_light", GUNMETAL_LIGHT, roughness=0.32, metallic=0.42),
         "wood": material("gun_wood", WOOD, roughness=0.72),
-        "brass": material("gun_brass", BRASS, roughness=0.3, metallic=0.85),
+        # Brass rounds in the grenade drum. Same reasoning as the gunmetal
+        # above: kept off the fully-metallic end so the base colour still
+        # carries them if the environment probe is ever missing.
+        "brass": material("gun_brass", BRASS, roughness=0.26, metallic=0.55),
         "sight": material("gun_sight", PALETTE["guimardAmber"], roughness=0.25, emission=0.7),
     }
 

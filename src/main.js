@@ -149,6 +149,7 @@ window.__frozen = false;
 
 window.__game = game;
 window.__vm = viewModel;
+window.__THREE = THREE;
 window.__rail = rail;
 window.__renderer = renderer;
 window.__anchors = anchors;

@@ -98,5 +98,40 @@ export function buildSky(radius = 800) {
   group.add(dome);
 
   void SUN_ELEVATION_DEG;
+  group.userData.domeMaterial = dome.material;
   return group;
+}
+
+/**
+ * Bake the sky into an environment map.
+ *
+ * WHY THIS IS NOT OPTIONAL. A PBR metal has no diffuse term — it is entirely
+ * reflection — so a `metalness: 0.72` surface with no environment to reflect
+ * renders BLACK no matter how many lights you point at it. That is not a
+ * subtle grading issue; it is the reason the first-person weapon was
+ * invisible, and it was silently making the Guimard ironwork, the bronze of
+ * the Dalida bust and both Wallace fountains far darker than intended.
+ *
+ * Rendering our own sky dome into the probe rather than loading an HDRI keeps
+ * the reflections physically consistent with the scene's own lighting: metal
+ * on the street reflects the same gold horizon and violet zenith that lights
+ * everything else, which is most of what makes a golden-hour metal read as
+ * golden hour rather than as chrome.
+ */
+export function buildSkyEnvironment(renderer) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+
+  // A throwaway scene holding only the dome. The dome is BackSide, which is
+  // exactly what an environment probe sitting at the centre needs to see.
+  const probeScene = new THREE.Scene();
+  probeScene.add(buildSky(40));
+
+  const target = pmrem.fromScene(probeScene, 0, 0.1, 100);
+  pmrem.dispose();
+  probeScene.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  return target.texture;
 }

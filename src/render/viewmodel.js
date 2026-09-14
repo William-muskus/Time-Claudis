@@ -96,7 +96,10 @@ export class ViewModelPass extends Pass {
  * positive pitch raises the muzzle.
  */
 const REST = {
-  position: new THREE.Vector3(0.205, -0.17, -0.44),
+  // Raised from -0.17: projecting the model's bounding box put its centre at
+  // 92% down the frame, underneath the visor's own bottom gradient, where it
+  // was invisible even when it was drawing correctly.
+  position: new THREE.Vector3(0.215, -0.098, -0.44),
   rotation: new THREE.Euler(0.035, 0.185, 0.055),
 };
 

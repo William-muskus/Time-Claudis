@@ -38,6 +38,7 @@ await page.waitForFunction(() => window.__ready === true, { timeout: 120000 });
 await page.evaluate(async () => { for (let i = 0; i < 60; i++) await new Promise((r) => requestAnimationFrame(() => r())); });
 
 const info = await page.evaluate(() => {
+  const THREE = window.__THREE;
   const vm = window.__vm;
   const r = window.__renderer;
   return {
@@ -55,6 +56,37 @@ const info = await page.evaluate(() => {
     vmPassClearDepth: r?.viewmodelPass?.clearDepth,
     vmCamAspect: vm?.camera?.aspect,
     meshCount: (() => { let n = 0; vm?.root?.traverse?.((o) => { if (o.isMesh) n++; }); return n; })(),
+
+    // Where is the gun actually, in screen space?
+    projected: (() => {
+      if (!vm?.current || !THREE) return 'no THREE on window';
+      vm.camera.updateMatrixWorld(true);
+      vm.camera.updateProjectionMatrix();
+      vm.root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(vm.current);
+      if (box.isEmpty()) return 'EMPTY BOUNDING BOX';
+      const c = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const ndc = c.clone().project(vm.camera);
+      return {
+        worldCentre: c.toArray().map((n) => +n.toFixed(3)),
+        size: size.toArray().map((n) => +n.toFixed(3)),
+        ndc: ndc.toArray().map((n) => +n.toFixed(3)),
+        onScreen: Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1 && ndc.z >= -1 && ndc.z <= 1,
+        screenPct: [((ndc.x + 1) / 2 * 100).toFixed(1), ((1 - ndc.y) / 2 * 100).toFixed(1)],
+      };
+    })(),
+    camNear: vm?.camera?.near,
+    camFar: vm?.camera?.far,
+    camPos: vm?.camera?.position?.toArray?.(),
+    materialCount: (() => {
+      const mats = [];
+      vm?.current?.traverse?.((o) => { if (o.isMesh && o.material) mats.push({
+        type: o.material.type, visible: o.visible, transparent: o.material.transparent,
+        opacity: o.material.opacity, depthTest: o.material.depthTest, colorWrite: o.material.colorWrite,
+      }); });
+      return mats.slice(0, 3);
+    })(),
   };
 });
 console.log(JSON.stringify(info, null, 2));
