@@ -72,10 +72,27 @@ player.died       {livesLeft}
 cover.changed     {state, previous}
 weapon.empty      {}
 weapon.reloaded   {weapon}
-area.started      {areaId, par}
-area.cleared      {areaId, timeLeft, noHit}
-game.over         {score}
+area.started      {areaId, name, par, index}
+area.cleared      {areaId, name, timeLeft, noHit, bonus, isLast}
+area.timeout      {areaId}
+area.retry        {areaId}
+weapon.granted    {weapon}
+weapon.expired    {}
+weapon.pickup     {weapon, worldPos}
+spawn.failed      {type, anchorTypes}
+player.died       {livesLeft, areaId}
+continue.tick     {secondsLeft}
+continue.expired  {score}
+game.continued    {continuesUsed}
+game.over         {score, bestCombo, accuracy, rank, continueSeconds}
+stage.complete    {}
 ```
+
+`tests/wiring.test.js` keeps this list honest. The bus decouples gameplay from
+audio and the HUD, which is what makes an arcade game retunable — but a
+publisher with no subscriber fails silently, and so does a subscriber waiting
+on an event nobody emits. Four synthesised announcer words sat fully
+implemented and unreachable for exactly that reason.
 
 ## The render chain
 

@@ -89,8 +89,22 @@ export class Announcer {
     b.on('weapon.reloaded', () => this.reloadClack());
     b.on('player.hit', () => this.playerHit());
     b.on('area.started', () => this.callout('action'));
-    b.on('area.cleared', () => this.callout('clear'));
+    b.on('area.cleared', ({ noHit }) => {
+      this.callout('clear');
+      // The no-hit bonus deserves its own callout, slightly behind the first,
+      // the way an arcade stacks them. It is the only thing in the game that
+      // rewards perfect play on an area rather than merely surviving it.
+      if (noHit) setTimeout(() => this.callout('nohit'), 900);
+    });
+    b.on('area.timeout', () => this.callout('timeup'));
+    b.on('stage.complete', () => this.callout('stage'));
     b.on('game.over', () => this.callout('over'));
+    b.on('continue.tick', ({ secondsLeft }) => {
+      // Say it once as the countdown opens, then let the ticks carry it.
+      if (secondsLeft === 9) this.callout('continue');
+      if (secondsLeft <= 5 && secondsLeft > 0) this.#tone(880, 0.07, { type: 'square', gain: 0.16 });
+    });
+    b.on('game.continued', () => this.callout('ready'));
     b.on('enemy.detonated', () => this.explosion());
   }
 
