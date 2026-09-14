@@ -1,6 +1,47 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { PALETTE, flat } from './palette.js';
+
+/**
+ * A render pass that draws the weapon over the world with a cleared depth
+ * buffer.
+ *
+ * WHY THIS EXISTS INSTEAD OF `RenderPass` WITH `clearDepth = true`.
+ * three's RenderPass does this, in this order:
+ *
+ *     if (this.clearDepth) renderer.clearDepth();
+ *     renderer.setRenderTarget(renderToScreen ? null : readBuffer);
+ *
+ * The clear happens BEFORE the target is bound, so it clears whatever was
+ * bound previously and not the buffer about to be drawn into. The world's
+ * depth therefore survives into the weapon's draw.
+ *
+ * That is not a harmless inefficiency. The two cameras have very different
+ * near planes — 0.1 for the world, 0.01 for the viewmodel — so their depth
+ * values are not comparable at all. A weapon 44 cm from a 1 cm near plane
+ * lands at a depth of roughly 0.9998, while a building twenty metres from a
+ * 10 cm near plane lands around 0.995. The gun loses the depth test to a
+ * building it is nowhere near, and vanishes completely with no error.
+ *
+ * Binding first and clearing second is the entire fix.
+ */
+export class ViewModelPass extends Pass {
+  constructor(scene, camera) {
+    super();
+    this.scene = scene;
+    this.camera = camera;
+    // Draws into readBuffer in place, like RenderPass; must not swap.
+    this.needsSwap = false;
+  }
+
+  render(renderer, writeBuffer, readBuffer) {
+    const target = this.renderToScreen ? null : readBuffer;
+    renderer.setRenderTarget(target);
+    renderer.clearDepth();
+    renderer.render(this.scene, this.camera);
+  }
+}
 
 /**
  * The first-person weapon.

@@ -128,11 +128,27 @@ window.__tour = {
   },
   /** Stop the simulation so a parked camera is not immediately overridden. */
   freeze(on = true) { window.__frozen = on; },
+  /**
+   * Clear transient HUD so a tour frame shows the world, not a banner.
+   *
+   * The tour used to run 200 settling frames purely to let the ACTION banner
+   * time out. On a software rasteriser that is minutes of pure waste across a
+   * full tour; dismissing it directly costs nothing.
+   */
+  clearHud() {
+    hud.showBanner('', 'action', 0);
+    hud.hideHints();
+    const b = document.getElementById('banner');
+    if (b) b.className = 'banner';
+    const o = document.getElementById('overlay');
+    if (o) o.className = 'overlay';
+  },
   places: () => [...WAYPOINTS.map((w) => w.id), ...LANDMARKS.map((l) => l.id)],
 };
 window.__frozen = false;
 
 window.__game = game;
+window.__vm = viewModel;
 window.__rail = rail;
 window.__renderer = renderer;
 window.__anchors = anchors;

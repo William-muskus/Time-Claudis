@@ -6,6 +6,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { PALETTE, sunDirection } from './palette.js';
 import { AdaptiveResolution } from './adaptive.js';
+import { ViewModelPass } from './viewmodel.js';
 
 /**
  * Renderer, lighting rig and post chain.
@@ -82,6 +83,25 @@ export class Renderer {
     // bias is the cheap fix and flat-shaded geometry hides the peter-panning.
     this.sun.shadow.normalBias = 0.055;
     this.sun.shadow.bias = -0.0004;
+
+    /**
+     * Lighten the shadows.
+     *
+     * At 11.5 degrees of sun elevation a fifteen-metre terrace throws a
+     * seventy-five-metre shadow, so on a narrow Montmartre street almost
+     * everything below the top two floors is shadowed — including the whole
+     * camera-facing side of the Moulin at the crest. That is physically
+     * correct and artistically useless: the most recognisable landmark on the
+     * route was rendering as a black cut-out.
+     *
+     * Raising the fill light does not fix it, because the problem is occlusion
+     * and not a lack of ambient. `shadow.intensity` is the right control: it
+     * scales how much the shadow map darkens, so shadows stay exactly where
+     * they are and keep their shape, they just stop being holes. This is the
+     * same cheat stylised films use, and it is why their shadows read as
+     * colour rather than as absence.
+     */
+    this.sun.shadow.intensity = 0.66;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
@@ -136,14 +156,19 @@ export class Renderer {
     this.composer.addPass(this.fxaa);
   }
 
-  /** Insert a viewmodel scene between the world render and the bloom. */
+  /**
+   * Insert the viewmodel scene between the world render and the bloom.
+   *
+   * Uses ViewModelPass rather than a RenderPass with clearDepth, because
+   * three's RenderPass clears depth before binding its target and therefore
+   * clears the wrong buffer — see the comment on ViewModelPass.
+   */
   attachViewModel(viewModel) {
     this.viewModel = viewModel;
-    const pass = new RenderPass(viewModel.scene, viewModel.camera);
-    pass.clear = false;        // keep the world we just drew
-    pass.clearDepth = true;    // but let the gun sit in front of all of it
+    const pass = new ViewModelPass(viewModel.scene, viewModel.camera);
     this.viewmodelPass = pass;
-    // Index 1 == immediately after the world RenderPass, before bloom.
+    // Index 1 == immediately after the world RenderPass, before bloom, so the
+    // muzzle flash still blooms.
     this.composer.insertPass(pass, 1);
     viewModel.resize(this.camera.aspect);
   }

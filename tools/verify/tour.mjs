@@ -54,8 +54,10 @@ const SHOTS = [
     why: 'THE landmark. Polished chest, swept hair, facing east.' },
   { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
     why: 'The sightline down rue de l Abreuvoir. Most photographed view here.' },
-  { name: '07_moulin',           at: 'moulin_galette',  yaw: 210,
+  { name: '07_moulin',           at: 'moulin_galette', back: 26, yaw: 214, pitch: 6,
     why: 'The Blute-fin on its mound. Crest of the level.' },
+  { name: '07b_moulin_close',    at: 'moulin_galette', back: 12, yaw: 250, pitch: 10,
+    why: 'The mill itself: tower, cap, and the four sails on their hub.' },
   { name: '08_orchampt_gate',    at: 'maison_dalida',   yaw: 230,
     why: '11 bis. The gate is shut and only the roofline shows. That is correct.' },
   { name: '09_goudeau',          at: 'emile_goudeau',   yaw: 170,
@@ -117,9 +119,11 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(`http://localhost:${port}/?demo=1&fixed=${1 / 60}`, { waitUntil: 'load', timeout: 90000 });
 await page.waitForFunction(() => window.__ready === true, { timeout: 90000 });
 
-// Let the scene settle and the HUD banner clear so the world is unobstructed.
+// Settle the scene, then dismiss the HUD directly rather than waiting out the
+// banner's own timeout — on a software rasteriser that wait was minutes.
 await page.evaluate(async () => {
-  for (let i = 0; i < 200; i++) await new Promise((r) => requestAnimationFrame(() => r()));
+  for (let i = 0; i < 24; i++) await new Promise((r) => requestAnimationFrame(() => r()));
+  window.__tour.clearHud();
 });
 
 const manifest = [];
@@ -138,6 +142,7 @@ for (const shot of SHOTS) {
 
       if (s.look) window.__tour.look(s.look, s.lookHeight);
       else window.__tour.aim(s.yaw ?? 180, s.pitch ?? 0);
+      window.__tour.clearHud();
       return true;
     } catch (e) { return String(e.message); }
   }, shot);
