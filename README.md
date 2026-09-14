@@ -49,9 +49,17 @@ generating synthetic hand poses and feeding them through the *real* gesture
 recogniser, so it exercises the whole input stack rather than bypassing it.
 
 ```bash
-npm test           # the logic suite — cover timing, gestures, route topology
-npm run verify     # drive the built game in headless Chromium and screenshot it
+npm test           # 107 tests: cover timing, gestures, route topology, playthrough
+npm run tour       # drive the built game in headless Chromium and screenshot it
+npm run bench      # the first-person weapon, on its own, in seconds
+npm run palette    # measure a frame against the amber/violet contract
 ```
+
+The test that matters most is the last one added: `tests/playthrough.test.js`
+plays the whole stage against the real world with an oracle player and asserts
+it can be finished. It found that the stage was unwinnable past area one —
+three quarters of scheduled enemy spawns were failing silently, so the gating
+enemy never appeared and the area never cleared.
 
 ## What's in here
 
