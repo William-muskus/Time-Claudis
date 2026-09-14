@@ -92,12 +92,15 @@ export class Renderer {
     // side of a building is lit violet by it, not black. Under-fill is the
     // single most common way a stylised scene ends up looking like night with
     // a streetlamp, which is exactly what the first screenshots showed.
-    this.sky = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 3.5);
+    this.sky = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 4.6);
     this.scene.add(this.sky);
 
     // RIM — a dim cool light from the east, opposite the sun. Keeps a shadowed
     // façade from dissolving into the fog behind it.
-    this.rim = new THREE.DirectionalLight(PALETTE.skyZenith, 1.25);
+        // Raised again after the first golden-hour pass: looking into the sun
+    // means every camera-facing wall is a shadow face, and the rim is the only
+    // thing keeping those walls from merging into one black mass.
+    this.rim = new THREE.DirectionalLight(PALETTE.skyZenith, 1.7);
     this.rim.position.set(dir.x * -140, 60, dir.z * -140);
     this.scene.add(this.rim);
   }

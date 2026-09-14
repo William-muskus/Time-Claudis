@@ -69,7 +69,9 @@ export const ENCOUNTERS = [
       ]},
       { at: 8.0, spawns: [
         { type: 'SNIPER', anchorTypes: ['roof', 'dormer'], side: -1 },
-        { type: 'GRUNT', anchorTypes: ['door'], side: 1 },
+        // The first pickup carrier. A machine gun here rewards a player who has
+        // just learned the cover rhythm and is ready to be let off the leash.
+        { type: 'GRUNT', anchorTypes: ['door'], side: 1, carries: 'MACHINE_GUN' },
       ]},
       { at: 14.0, gate: true, spawns: [
         { type: 'RED', anchorTypes: ['door', 'alley'], side: 1 },
@@ -101,7 +103,7 @@ export const ENCOUNTERS = [
         { type: 'GRUNT', anchorTypes: ['door'], side: -1 },
       ]},
       { at: 12.0, spawns: [
-        { type: 'SNIPER', anchorTypes: ['roof'], side: 1 },
+        { type: 'SNIPER', anchorTypes: ['roof'], side: 1, carries: 'SHOTGUN' },
       ]},
       { at: 16.0, gate: true, spawns: [
         { type: 'HEAVY', anchorTypes: ['door', 'alley'], side: 0 },
@@ -134,6 +136,8 @@ export const ENCOUNTERS = [
       { at: 11.0, spawns: [
         { type: 'BOMBER', anchorTypes: ['alley', 'door'], side: -1 },
         { type: 'BOMBER', anchorTypes: ['alley', 'door'], side: 1 },
+        // A shotgun in the tightest area on the route, where it is worth most.
+        { type: 'SOLDIER', anchorTypes: ['door'], side: 0, carries: 'SHOTGUN' },
       ]},
       { at: 15.0, gate: true, spawns: [
         { type: 'RED', anchorTypes: ['door', 'alley'], side: -1 },
@@ -164,12 +168,20 @@ export const ENCOUNTERS = [
       { at: 9.0, spawns: [
         { type: 'SOLDIER', anchorTypes: ['balcony'], side: -1 },
         { type: 'SOLDIER', anchorTypes: ['balcony'], side: 1 },
-        { type: 'BOMBER', anchorTypes: ['alley'], side: 0 },
+        // The grenade launcher, immediately before the boss. Deliberate: it is
+        // the one weapon that makes LE CORBEAU tractable, and finding it is the
+        // difference between a fair last fight and a wall.
+        { type: 'BOMBER', anchorTypes: ['alley'], side: 0, carries: 'GRENADE' },
       ]},
       { at: 14.0, gate: true, spawns: [
-        { type: 'HEAVY', anchorTypes: ['door', 'alley'], side: 0 },
         { type: 'RED', anchorTypes: ['door', 'alley'], side: -1 },
         { type: 'RED', anchorTypes: ['balcony'], side: 1 },
+      ]},
+      // LE CORBEAU. The stage ends on him, on the steps, with the rooftops of
+      // the 9th behind. He arrives after the reds so the player has already
+      // been forced through one full cover cycle before the real fight starts.
+      { at: 21.0, gate: true, spawns: [
+        { type: 'BOSS', anchorTypes: ['door', 'alley', 'metro'], side: 0 },
       ]},
     ],
   },

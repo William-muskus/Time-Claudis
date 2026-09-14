@@ -188,6 +188,15 @@ function frame(now) {
 
   const intent = recognizer.update(landmarks, dt);
 
+  // Raising the gun spends a continue. Reusing the RELOAD gesture rather than
+  // adding a fourth is deliberate: the brief allows three gestures, and a
+  // player who has just died is already holding the gun up because that is
+  // what they were told to do when things go wrong.
+  if (game.gameOver && game.continueSecondsLeft > 0 && intent.gunUp) {
+    game.useContinue();
+    announcer.callout('ready');
+  }
+
   // --- 2..7. simulation ----------------------------------------------------
   // A frozen frame still renders and still updates the HUD, so a parked camera
   // can be screenshotted without the rig snapping back to the rail next frame.

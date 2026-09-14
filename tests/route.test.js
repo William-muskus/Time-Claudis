@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { WAYPOINTS, LANDMARKS, AREAS, geoToLocal, localToGeo, railPoints, ORIGIN } from '../src/data/route.js';
 import { Rail } from '../src/core/spline.js';
 import { ENCOUNTERS } from '../src/gameplay/encounters.js';
+import { ENEMY_TYPES } from '../src/gameplay/enemyTypes.js';
+import { WEAPONS } from '../src/gameplay/weapons.js';
 
 /**
  * These tests pin the TOPOLOGY of the walk, not its coordinates.
@@ -163,8 +165,11 @@ test('every area ends with a gating wave, or it cannot be cleared', () => {
     assert.ok(gating.length >= 1, `${e.areaId} has no gating wave`);
     const last = e.waves.at(-1);
     assert.ok(last.gate, `${e.areaId}'s final wave must be the gate`);
-    const hasGatingEnemy = last.spawns.some((s) => s.type === 'RED' || s.type === 'HEAVY');
-    assert.ok(hasGatingEnemy, `${e.areaId}'s gate wave must contain a RED or HEAVY`);
+    // Derived from the enemy table rather than a hardcoded list, so adding a
+    // new gating class (the boss, for instance) cannot silently fail this.
+    const hasGatingEnemy = last.spawns.some((s) => ENEMY_TYPES[s.type]?.gates);
+    assert.ok(hasGatingEnemy,
+      `${e.areaId}'s gate wave must contain an enemy whose type gates the area`);
   }
 });
 
@@ -178,5 +183,49 @@ test('waves are scheduled in order and fit inside the area par time', () => {
       prev = w.at;
       assert.ok(w.at < par, `${e.areaId} wave at ${w.at}s fires after par (${par}s)`);
     }
+  }
+});
+
+
+test('every spawn names an enemy type that exists', () => {
+  for (const e of ENCOUNTERS) {
+    for (const w of e.waves) {
+      for (const s of w.spawns) {
+        assert.ok(ENEMY_TYPES[s.type], `${e.areaId} spawns unknown enemy "${s.type}"`);
+      }
+    }
+  }
+});
+
+test('weapon carriers name weapons that exist, and there are not too many', () => {
+  const carriers = [];
+  for (const e of ENCOUNTERS) {
+    for (const w of e.waves) {
+      for (const s of w.spawns) {
+        if (s.carries) carriers.push({ area: e.areaId, weapon: s.carries });
+      }
+    }
+  }
+  for (const c of carriers) {
+    assert.ok(WEAPONS[c.weapon], `${c.area} carries unknown weapon "${c.weapon}"`);
+    assert.notEqual(c.weapon, 'HANDGUN', 'the handgun is never a pickup; you always have it');
+  }
+  // One pickup per area at most. More than that and the handgun stops being
+  // the weapon the game is actually balanced around.
+  const perArea = {};
+  for (const c of carriers) perArea[c.area] = (perArea[c.area] ?? 0) + 1;
+  for (const [area, n] of Object.entries(perArea)) {
+    assert.ok(n <= 1, `${area} has ${n} pickups; at most one per area`);
+  }
+});
+
+test('the stage ends on a boss', () => {
+  const last = ENCOUNTERS.at(-1);
+  const hasBoss = last.waves.some((w) => w.spawns.some((s) => ENEMY_TYPES[s.type]?.boss));
+  assert.ok(hasBoss, 'the final area must end on a boss');
+  // And no earlier area may, or it is not a boss.
+  for (const e of ENCOUNTERS.slice(0, -1)) {
+    const early = e.waves.some((w) => w.spawns.some((s) => ENEMY_TYPES[s.type]?.boss));
+    assert.ok(!early, `${e.areaId} spawns a boss before the final area`);
   }
 });

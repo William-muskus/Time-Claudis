@@ -75,6 +75,15 @@ export class Hud {
         <div class="popups" id="popups"></div>
         <div class="hit-flash" id="hit-flash"></div>
 
+        <div class="boss-bar" id="boss-bar">
+          <div class="boss-name" id="boss-name">LE CORBEAU</div>
+          <div class="boss-track"><div class="boss-fill" id="boss-fill"></div></div>
+        </div>
+
+        <div class="overlay" id="overlay">
+          <div class="overlay-card" id="overlay-card"></div>
+        </div>
+
         <div class="gesture-hint" id="gesture-hint">
           <div class="gh-row"><b>POINT</b><span>index finger aims</span></div>
           <div class="gh-row"><b>CURL</b><span>middle finger fires</span></div>
@@ -84,7 +93,8 @@ export class Hud {
 
     for (const id of ['score', 'timer', 'lives', 'combo', 'ammo', 'weapon',
       'crosshair', 'banner', 'area-name', 'cover-fill', 'cover-label',
-      'reload-fill', 'hit-flash', 'popups', 'cover-state', 'gesture-hint']) {
+      'reload-fill', 'hit-flash', 'popups', 'cover-state', 'gesture-hint',
+      'boss-bar', 'boss-name', 'boss-fill', 'overlay', 'overlay-card']) {
       this.el[id] = this.root.querySelector(`#${id}`);
     }
   }
@@ -104,10 +114,122 @@ export class Hud {
     this.bus.on('game.over', () => this.showBanner('GAME OVER', 'fail', 9));
     this.bus.on('stage.complete', () => this.showBanner('STAGE CLEAR!', 'clear', 9));
     this.bus.on('player.hit', () => { this.hitTtl = 0.5; });
+    this.bus.on('weapon.granted', ({ weapon }) => {
+      this.showBanner(weapon.replace('_', ' '), 'pickup', 1.3);
+      this.popup(`${weapon.replace('_', ' ')} ACQUIRED`, 'bonus');
+    });
+    this.bus.on('weapon.expired', () => this.popup('HANDGUN', 'kill'));
+
+    this.bus.on('player.died', ({ livesLeft }) => {
+      this.showBanner(livesLeft === 1 ? 'LAST LIFE' : 'LIFE LOST', 'fail', 1.4);
+    });
+    this.bus.on('area.retry', () => this.showBanner('RETRY', 'action', 1.2));
+
+    this.bus.on('area.cleared', (p) => this.#showResults(p));
+    this.bus.on('game.over', (p) => this.#showGameOver(p));
+    this.bus.on('continue.tick', ({ secondsLeft }) => this.#tickContinue(secondsLeft));
+    this.bus.on('game.continued', () => this.#hideOverlay());
+    this.bus.on('stage.complete', () => this.#showStageClear());
+
     this.bus.on('enemy.killed', ({ score, part, multiplier }) => {
       this.popup(`${part === 'head' ? 'HEAD ' : ''}+${score.toLocaleString()}${multiplier > 1 ? ` x${multiplier}` : ''}`,
         part === 'head' ? 'head' : 'kill');
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Overlays
+  //
+  // Arcade results screens COUNT. The number climbing is the reward, not the
+  // final figure — a total that simply appears is a fact, and a total that
+  // ticks up is a small ceremony. Every panel here animates its numbers for
+  // that reason, and the tick has a sound behind it.
+  // -------------------------------------------------------------------------
+
+  #showOverlay(html, kind = '') {
+    this.el['overlay-card'].innerHTML = html;
+    this.el.overlay.className = `overlay show ${kind}`;
+  }
+
+  #hideOverlay() {
+    this.el.overlay.className = 'overlay';
+  }
+
+  /** Count a number up over `ms`, calling back each step. */
+  #countUp(el, to, ms = 900, prefix = '') {
+    if (!el) return;
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / ms);
+      // Ease out, so it slams toward the total and settles rather than
+      // crawling linearly.
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = prefix + Math.round(to * eased).toLocaleString();
+      if (t < 1) requestAnimationFrame(tick);
+      else this.bus.emit('ui.countFinished', {});
+    };
+    requestAnimationFrame(tick);
+  }
+
+  #showResults({ name, timeLeft, noHit, bonus }) {
+    const timeBonus = Math.floor(timeLeft ?? 0) * 100;
+    this.#showOverlay(`
+      <h3>AREA CLEAR</h3>
+      <div class="sub">${(name ?? '').toUpperCase()}</div>
+      <dl>
+        <div><dt>TIME REMAINING</dt><dd>${Math.floor(timeLeft ?? 0)}s</dd></div>
+        <div><dt>TIME BONUS</dt><dd id="r-time">0</dd></div>
+        ${noHit ? '<div class="hl"><dt>NO HIT BONUS</dt><dd id="r-nohit">0</dd></div>' : ''}
+        <div class="total"><dt>AREA TOTAL</dt><dd id="r-total">0</dd></div>
+      </dl>`, 'results');
+    const card = this.el['overlay-card'];
+    this.#countUp(card.querySelector('#r-time'), timeBonus, 600);
+    if (noHit) this.#countUp(card.querySelector('#r-nohit'), 5000, 800);
+    this.#countUp(card.querySelector('#r-total'), (bonus ?? 0) + (noHit ? 5000 : 0), 1100);
+    setTimeout(() => this.#hideOverlay(), 2000);
+  }
+
+  #showGameOver({ score, bestCombo, accuracy, rank, continueSeconds }) {
+    this.#showOverlay(`
+      <h3 class="danger">GAME OVER</h3>
+      <dl>
+        <div><dt>SCORE</dt><dd>${(score ?? 0).toLocaleString()}</dd></div>
+        <div><dt>BEST COMBO</dt><dd>${bestCombo ?? 0}</dd></div>
+        <div><dt>ACCURACY</dt><dd>${Math.round((accuracy ?? 0) * 100)}%</dd></div>
+        <div class="total"><dt>RANK</dt><dd class="rank">${rank ?? '-'}</dd></div>
+      </dl>
+      <div class="continue">
+        <div class="continue-label">CONTINUE?</div>
+        <div class="continue-count" id="cont-count">${continueSeconds ?? 10}</div>
+        <div class="continue-hint">raise the gun to continue</div>
+      </div>`, 'gameover');
+  }
+
+  #tickContinue(secondsLeft) {
+    const el = this.el['overlay-card'].querySelector('#cont-count');
+    if (!el) return;
+    el.textContent = String(secondsLeft);
+    // Re-trigger the slam animation on every tick so the countdown pulses.
+    el.classList.remove('slam');
+    void el.offsetWidth;
+    el.classList.add('slam');
+    el.classList.toggle('critical', secondsLeft <= 3);
+  }
+
+  #showStageClear() {
+    const s = this.lastSnapshot ?? {};
+    this.#showOverlay(`
+      <h3 class="win">STAGE CLEAR</h3>
+      <div class="sub">MONTMARTRE &mdash; LAMARCK TO ABBESSES</div>
+      <dl>
+        <div><dt>FINAL SCORE</dt><dd id="sc-score">0</dd></div>
+        <div><dt>BEST COMBO</dt><dd>${s.bestCombo ?? 0}</dd></div>
+        <div><dt>ACCURACY</dt><dd>${Math.round((s.accuracy ?? 0) * 100)}%</dd></div>
+        <div><dt>NO-HIT AREAS</dt><dd>${s.areasNoHit ?? 0} / 5</dd></div>
+        <div><dt>CREDITS USED</dt><dd>${s.continuesUsed ?? 0}</dd></div>
+        <div class="total"><dt>RANK</dt><dd class="rank">${s.rank ?? '-'}</dd></div>
+      </dl>`, 'stageclear');
+    this.#countUp(this.el['overlay-card'].querySelector('#sc-score'), s.score ?? 0, 1600);
   }
 
   showBanner(text, kind = 'action', seconds = 1.6) {
@@ -134,7 +256,23 @@ export class Hud {
    * @param {number} dt
    */
   update(s, aim, dt) {
+    // Kept so the stage-clear panel can report the whole run; that event
+    // carries no payload of its own.
+    this.lastSnapshot = s;
+
     this.el.score.textContent = s.score.toLocaleString();
+
+    // Boss health. Only visible while there is a boss, because a permanent
+    // empty bar trains the player to ignore that part of the screen.
+    if (s.boss) {
+      this.el['boss-bar'].classList.add('show');
+      this.el['boss-name'].textContent = s.boss.name;
+      const frac = Math.max(0, s.boss.hp / s.boss.maxHp);
+      this.el['boss-fill'].style.width = `${frac * 100}%`;
+      this.el['boss-fill'].classList.toggle('low', frac <= 0.34);
+    } else {
+      this.el['boss-bar'].classList.remove('show');
+    }
 
     const t = Math.ceil(s.timeLeft);
     this.el.timer.textContent = String(Math.max(0, t)).padStart(2, '0');

@@ -60,10 +60,13 @@ export function buildSky(radius = 800) {
           // h < 1 a fractional power pulls the value UP, so the mix reached
           // 53% dark blue only eleven degrees above the horizon and the gold
           // band was gone before it cleared the rooflines. At 1.7 the same
-          // eleven degrees is 6%, so the warm band survives up past the
-          // roofs — which is what golden hour actually looks like and what
-          // the whole palette is built around.
-          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 1.7));
+          // eleven degrees is well under half, so the warm band survives up
+          // past the roofs. But it must not go all the way either: at 1.7 the
+          // blue was pushed so high that the frame was uniformly orange and
+          // read as a sunset postcard rather than as late afternoon. 1.15
+          // keeps gold at the rooflines AND cerulean overhead, which is the
+          // contrast the whole amber/violet palette is built on.
+          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 1.15));
 
           // A warm mid-band just above the roofline, where the sun's glow
           // bleeds into the blue. Without it the gradient is a clean two-stop

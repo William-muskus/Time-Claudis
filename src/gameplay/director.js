@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Enemy, EnemyState } from './enemy.js';
+import { Enemy, Boss, EnemyState } from './enemy.js';
 import { ENCOUNTERS } from './encounters.js';
 import { MAX_CONCURRENT_COMMIT } from './enemyTypes.js';
 import { AREAS } from '../data/route.js';
@@ -151,11 +151,23 @@ export class Director {
     this.occupied ??= new Set();
     this.occupied.add(anchor.id);
 
-    const e = new Enemy(spawn.type, anchor, cameraPos, this.rng);
+    // The boss is its own class with phases and a guard cycle; everything else
+    // is a plain Enemy. Choosing here rather than inside Enemy keeps the base
+    // class free of any knowledge that a boss exists.
+    const e = spawn.type === 'BOSS'
+      ? new Boss(anchor, cameraPos, this.rng)
+      : new Enemy(spawn.type, anchor, cameraPos, this.rng);
+
+    // Weapon carriers. In Time Crisis a pickup is carried by a specific enemy
+    // who is visibly marked, and killing them drops it. That is much better
+    // than a floating crate: it makes the pickup a TARGET rather than a place,
+    // which is the only verb this game has.
+    if (spawn.carries) e.carries = spawn.carries;
     this.scene.add(e.group);
     this.enemies.push(e);
     this.bus.emit('enemy.spawned', {
-      id: e.id, class: spawn.type, worldPos: anchor.worldPos.clone(), anchorType: anchor.type,
+      id: e.id, class: spawn.type, worldPos: anchor.worldPos.clone(),
+      anchorType: anchor.type, carries: e.carries ?? null, isBoss: !!e.isBoss,
     });
     return e;
   }
@@ -276,6 +288,11 @@ export class Director {
     this.stateTime = 0;
     const d = this.rail.distanceToWaypoint(this.area.waypoint);
     this.railCamera.travelTo(d, this.area.node);
+  }
+
+  /** The live boss, if this area has one. The HUD reads its health bar. */
+  boss() {
+    return this.enemies.find((e) => e.isBoss && e.isAlive) ?? null;
   }
 
   /** All enemies currently shootable, for the player's hit test. */

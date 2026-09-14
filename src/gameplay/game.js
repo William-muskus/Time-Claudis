@@ -20,6 +20,10 @@ export const HITSTOP_MS = 45;
 export const HITSTOP_HEAD_MS = 80;
 export const IFRAME_MS = 1200;
 export const START_LIVES = 3;
+/** Arcade continue countdown. Spec §5. */
+export const CONTINUE_SECONDS = 10;
+/** Beat between losing a life and the area restarting. */
+export const RESPAWN_DELAY_MS = 1500;
 
 export class Game {
   constructor({ scene, camera, railCamera, rail, anchors, bus, seed = 0xA11CE }) {
@@ -45,6 +49,18 @@ export class Game {
     this.iframeMs = 0;
     this.gameOver = false;
 
+    /**
+     * Arcade lifecycle. Time Crisis does not end when you die — it takes your
+     * money. Losing a life restarts the CURRENT AREA rather than the stage,
+     * which is what makes a fifty-second area the real unit of the game.
+     */
+    this.continuesUsed = 0;
+    this.continueSecondsLeft = 0;
+    this.respawnDelayMs = 0;
+    this.shotsFired = 0;
+    this.shotsHit = 0;
+    this.areasNoHit = 0;
+
     /** Normalised crosshair, 0..1, set by the input layer each frame. */
     this.crosshair = { x: 0.5, y: 0.5 };
 
@@ -60,6 +76,7 @@ export class Game {
   #wireScoring() {
     this.bus.on('area.cleared', ({ bonus, noHit }) => {
       this.score += bonus + (noHit ? 5000 : 0);
+      if (noHit) this.areasNoHit++;
     });
   }
 
@@ -101,6 +118,28 @@ export class Game {
     this.weapons.update(this.nowMs, this.cover.timeInCoverMs);
 
     if (this.gameOver) {
+      // The continue countdown runs on real time even though everything else
+      // is frozen, because it is addressed to the player and not to the world.
+      if (this.continueSecondsLeft > 0) {
+        const before = Math.ceil(this.continueSecondsLeft);
+        this.continueSecondsLeft = Math.max(0, this.continueSecondsLeft - dt);
+        const after = Math.ceil(this.continueSecondsLeft);
+        if (after !== before) {
+          this.bus.emit('continue.tick', { secondsLeft: after });
+          if (after === 0) this.bus.emit('continue.expired', { score: this.score });
+        }
+      }
+      this.railCamera.update(dt, this.cover.exposure);
+      this.effects.update(dt);
+      return;
+    }
+
+    // After losing a life, hold for a beat before the area restarts. An
+    // instant reset reads as a glitch; the pause is what makes it read as a
+    // consequence.
+    if (this.respawnDelayMs > 0) {
+      this.respawnDelayMs -= dt * 1000;
+      if (this.respawnDelayMs <= 0) this.#restartArea();
       this.railCamera.update(dt, this.cover.exposure);
       this.effects.update(dt);
       return;
@@ -156,6 +195,7 @@ export class Game {
     this.effects.ejectShell(muzzleAt, right, this.rng);
     this.railCamera.addShake(spec.name === 'SHOTGUN' ? 0.32 : 0.15);
 
+    this.shotsFired++;
     let anyHit = false;
     for (let p = 0; p < pellets; p++) {
       const hit = this.#traceShot(spec, p, muzzleAt);
@@ -163,6 +203,7 @@ export class Game {
     }
 
     if (anyHit) {
+      this.shotsHit++;
       this.combo++;
       this.bestCombo = Math.max(this.bestCombo, this.combo);
     } else {
@@ -230,6 +271,14 @@ export class Game {
     });
 
     if (res.killed) {
+      // A carrier drops its weapon on death. Spec §2: pickups are timed and
+      // the handgun is never taken away.
+      if (best.enemy.carries) {
+        this.weapons.grant(best.enemy.carries, this.nowMs);
+        this.bus.emit('weapon.pickup', {
+          weapon: best.enemy.carries, worldPos: impact.clone(),
+        });
+      }
       const base = best.enemy.type.score * (best.part === 'head' ? 2 : 1);
       const gained = base * this.multiplier;
       this.score += gained;
@@ -273,10 +322,68 @@ export class Game {
 
     if (this.lives <= 0) {
       this.gameOver = true;
-      this.bus.emit('game.over', { score: this.score, bestCombo: this.bestCombo });
+      this.continueSecondsLeft = CONTINUE_SECONDS;
+      this.bus.emit('game.over', {
+        score: this.score, bestCombo: this.bestCombo,
+        accuracy: this.accuracy, rank: this.rank,
+        continueSeconds: CONTINUE_SECONDS,
+      });
     } else {
-      this.bus.emit('player.died', { livesLeft: this.lives });
+      this.respawnDelayMs = RESPAWN_DELAY_MS;
+      this.bus.emit('player.died', {
+        livesLeft: this.lives, areaId: this.director.area?.areaId,
+      });
     }
+  }
+
+  #restartArea() {
+    this.combo = 0;
+    this.iframeMs = IFRAME_MS;
+    this.bullets.clear();
+    this.cover.forceCover();
+    this.director.retryArea();
+    this.bus.emit('area.retry', { areaId: this.director.area?.areaId });
+  }
+
+  /**
+   * Spend a continue.
+   *
+   * Score is KEPT, which is how arcade continues work and is deliberately not
+   * how a modern checkpoint works: the score is a record of the whole sitting,
+   * not of one life. Lives reset, the area restarts, and the continue count
+   * goes on the results screen so a one-credit clear still means something.
+   */
+  useContinue() {
+    if (!this.gameOver) return false;
+    this.continuesUsed++;
+    this.lives = START_LIVES;
+    this.gameOver = false;
+    this.continueSecondsLeft = 0;
+    this.#restartArea();
+    this.bus.emit('game.continued', { continuesUsed: this.continuesUsed });
+    return true;
+  }
+
+  get accuracy() {
+    return this.shotsFired === 0 ? 0 : this.shotsHit / this.shotsFired;
+  }
+
+  /**
+   * Arcade rank.
+   *
+   * Weighted so that surviving cleanly beats scoring highly — an S needs a
+   * one-credit run with real accuracy, not just a big number, which is what
+   * makes the grade worth chasing on a second play.
+   */
+  get rank() {
+    if (this.shotsFired < 5) return '-';
+    const acc = this.accuracy;
+    const clean = this.areasNoHit;
+    const credits = this.continuesUsed;
+    if (credits === 0 && acc >= 0.72 && clean >= 4) return 'S';
+    if (credits === 0 && acc >= 0.58 && clean >= 2) return 'A';
+    if (credits <= 1 && acc >= 0.42) return 'B';
+    return 'C';
   }
 
   /** Current state for the HUD. */
@@ -298,6 +405,17 @@ export class Game {
       directorState: this.director.state,
       gatingAlive: this.director.gatingAlive,
       gameOver: this.gameOver,
+      continueSecondsLeft: this.continueSecondsLeft,
+      continuesUsed: this.continuesUsed,
+      respawning: this.respawnDelayMs > 0,
+      accuracy: this.accuracy,
+      rank: this.rank,
+      areasNoHit: this.areasNoHit,
+      bestCombo: this.bestCombo,
+      boss: (() => {
+        const b = this.director.boss?.();
+        return b ? { name: b.type.name, hp: b.hp, maxHp: b.type.hp, phase: b.phase ?? 0 } : null;
+      })(),
       iframe: this.iframeMs > 0,
       reloading: this.cover.state === 'COVERED' &&
                  this.weapons.rounds < this.weapons.spec.mag,

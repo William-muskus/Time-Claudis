@@ -19,8 +19,9 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
+import { rmSync } from 'node:fs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const DIST = join(ROOT, 'dist');
@@ -66,6 +67,33 @@ function serve(dir, port) {
     srv.listen(port, () => ok(srv));
   });
 }
+
+/**
+ * Single-instance lock.
+ *
+ * A SwiftShader render can take minutes and outlives the shell that started
+ * it, so it is very easy to end up with several runs competing for four cores.
+ * That does not just slow things down — it makes every run appear to hang, and
+ * the obvious diagnosis (the game is broken) is wrong. One run at a time.
+ */
+const LOCK = join(ROOT, 'artifacts/.verify.lock');
+await mkdir(join(ROOT, 'artifacts'), { recursive: true });
+try {
+  const prev = Number(await readFile(LOCK, 'utf8'));
+  if (prev && prev !== process.pid) {
+    try {
+      process.kill(prev, 0);          // throws if it is gone
+      console.error(`[verify] another run (pid ${prev}) is already going. ` +
+        `Wait for it, or kill it and delete ${LOCK}.`);
+      process.exit(2);
+    } catch { /* stale lock, ours now */ }
+  }
+} catch { /* no lock */ }
+await writeFile(LOCK, String(process.pid));
+const releaseLock = async () => { try { await rm(LOCK, { force: true }); } catch { /* ignore */ } };
+// `require` does not exist in an ES module, so the synchronous exit handler
+// needs the real sync API imported up front.
+process.on('exit', () => { try { rmSync(LOCK, { force: true }); } catch { /* ignore */ } });
 
 const server = await serve(DIST, PORT);
 const boundPort = server.address().port;
@@ -174,4 +202,5 @@ if (errors.length) {
 
 await browser.close();
 server.close();
+await releaseLock();
 process.exit(errors.length ? 1 : 0);

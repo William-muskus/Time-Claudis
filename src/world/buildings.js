@@ -697,8 +697,122 @@ function addPartyWall(group, { width, depth, frontZ, topY, rr, ch }) {
     cope.castShadow = true;
     group.add(cope);
 
+    // The flank is the biggest single surface the player ever looks at, and a
+    // bare slab of it reads as an untextured box — it was filling a quarter of
+    // the opening frame and doing nothing. A real exposed Montmartre firewall
+    // is never blank, so give it the four things it actually carries.
+    addFlankRelief(group, { x, thick: THICK, height: h, zFar: z - len, zNear: z, rr, ch, renderMat });
+
     z -= len;
   }
+}
+
+/**
+ * What an exposed party wall actually has on it.
+ *
+ * FLUE LINES. Chimneys were built into the boundary wall, so when the
+ * neighbour came down the flues stayed as shallow vertical pilasters running
+ * the full height. They are the most recognisable marking on any Paris
+ * firewall and they are pure vertical rhythm, which is exactly what a blank
+ * slab is missing.
+ *
+ * RENDER PATCHES. Cement render gets repaired in blocks and the patches never
+ * match. Two or three rectangles a shade off the base tone turn a flat plane
+ * into a surface with history.
+ *
+ * THE GHOST SIGN. A mur peint — a painted advertisement, sun-bleached to
+ * nearly nothing. Montmartre has dozens. This is the single highest-value
+ * detail on the whole wall: it is large, it is high-contrast, it reads from
+ * the far end of the street, and it is unmistakably Paris. Deliberately NOT on
+ * every wall, because their rarity is what makes them land.
+ *
+ * THE DOWNPIPE. A cast-iron rainwater pipe down one edge, with its hopper
+ * head. Thin, dark, vertical, and it catches the low sun on one side.
+ */
+function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMat }) {
+  const depth = Math.abs(zNear - zFar);
+  if (depth < 2 || height < 4) return;
+  const midZ = (zNear + zFar) / 2;
+  // Face outward, away from the building this wall belongs to.
+  const faceX = x - thick / 2 - 0.03;
+
+  // --- flue lines ---------------------------------------------------------
+  const flues = Math.max(1, Math.round(depth / 4.5));
+  for (let i = 0; i < flues; i++) {
+    const z = zNear - (depth / (flues + 1)) * (i + 1);
+    const w = rr(0.55, 0.95);
+    const h = height * rr(0.72, 0.97);
+    const flue = new THREE.Mesh(new THREE.BoxGeometry(0.1, h, w), renderMat);
+    flue.position.set(faceX, h / 2, z);
+    flue.castShadow = true;
+    group.add(flue);
+    // The flue terminates in a small stack above the coping.
+    if (ch(0.55)) {
+      const stack = new THREE.Mesh(new THREE.BoxGeometry(0.42, rr(0.5, 1.0), w * 0.8),
+        flat(PALETTE.plasterGrey, { roughness: 0.95 }));
+      stack.position.set(x, height + stack.geometry.parameters.height / 2, z);
+      stack.castShadow = true;
+      group.add(stack);
+    }
+  }
+
+  // --- render patches -----------------------------------------------------
+  const patchTones = [PALETTE.plasterGrey, PALETTE.limestoneDeep, PALETTE.limestoneMid];
+  for (let i = 0; i < 2 + (ch(0.5) ? 1 : 0); i++) {
+    const pw = rr(1.4, 3.2), ph = rr(1.2, 3.0);
+    if (pw > depth * 0.8) continue;
+    const patch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, ph, pw),
+      flat(patchTones[Math.floor(rr(0, patchTones.length)) % patchTones.length],
+        { roughness: 0.95 }));
+    patch.position.set(faceX - 0.02,
+      rr(1.0, Math.max(1.2, height - ph)),
+      zNear - rr(pw / 2, Math.max(pw / 2 + 0.1, depth - pw / 2)));
+    group.add(patch);
+  }
+
+  // --- the ghost sign -----------------------------------------------------
+  if (height > 8 && depth > 6 && ch(0.34)) {
+    const sw = depth * rr(0.45, 0.7);
+    const sh = Math.min(height * 0.42, rr(2.6, 4.6));
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, sh, sw),
+      flat(ch(0.5) ? PALETTE.limestoneLit : PALETTE.plasterCream, { roughness: 0.98 }));
+    panel.position.set(faceX - 0.04, height * rr(0.5, 0.68), midZ);
+    group.add(panel);
+
+    // Three bands of lettering, reduced to bars. At the distance this is ever
+    // seen, painted text IS bars — modelling glyphs would be invisible detail
+    // and would break the flat-shaded look.
+    const lineColor = ch(0.5) ? PALETTE.ironwork : PALETTE.chimneyTerra;
+    const lines = 3;
+    for (let i = 0; i < lines; i++) {
+      const lh = sh / (lines * 2.1);
+      const lw = sw * rr(0.42, 0.86);
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, lh, lw),
+        flat(lineColor, { roughness: 0.98 }));
+      bar.position.set(faceX - 0.08,
+        panel.position.y + sh / 2 - (i + 0.9) * (sh / (lines + 0.6)),
+        midZ + rr(-sw * 0.06, sw * 0.06));
+      group.add(bar);
+    }
+  }
+
+  // --- downpipe -----------------------------------------------------------
+  const pipeZ = zNear - rr(0.4, 1.2);
+  const pipe = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.075, 0.075, height * 0.95, 6),
+    flat(PALETTE.ironwork, { roughness: 0.6, metalness: 0.3 }));
+  pipe.position.set(faceX - 0.09, height * 0.475, pipeZ);
+  pipe.castShadow = true;
+  group.add(pipe);
+  const hopper = new THREE.Mesh(
+    new THREE.BoxGeometry(0.26, 0.34, 0.26),
+    flat(PALETTE.ironwork, { roughness: 0.6, metalness: 0.3 }));
+  hopper.position.set(faceX - 0.09, height * 0.93, pipeZ);
+  hopper.castShadow = true;
+  group.add(hopper);
 }
 
 // ===========================================================================
