@@ -151,14 +151,27 @@ export class ViewModel {
     // The viewmodel scene needs its own rig. Matching the world's amber key
     // and violet fill keeps the gun in the same light as the street; without
     // that it reads as a sticker rather than as an object you are holding.
-    const key = new THREE.DirectionalLight(PALETTE.sunColor, 3.0);
+    // Deliberately brighter than the world rig, and deliberately not physical.
+    //
+    // A viewmodel is lit for READABILITY, not accuracy — it is the one object
+    // the player must be able to parse at every moment, and it spends most of
+    // its life in the shadow side of a narrow street where a physically honest
+    // exposure would leave it a black silhouette. Every shooter lights the
+    // weapon separately for this reason, which is exactly what a second scene
+    // makes cheap.
+    const key = new THREE.DirectionalLight(PALETTE.sunColor, 5.2);
     key.position.set(-0.6, 0.8, 0.4);
     this.scene.add(key);
-    const fill = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 2.4);
+    const fill = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 4.2);
     this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(PALETTE.skyZenith, 1.1);
+    const rim = new THREE.DirectionalLight(PALETTE.skyZenith, 2.4);
     rim.position.set(0.9, 0.2, -0.7);
     this.scene.add(rim);
+    // A dim warm bounce from below, so the underside of the slide is not a
+    // void. Cheap, and it is what stops the gun reading as a cut-out.
+    const bounce = new THREE.DirectionalLight(PALETTE.skyGround, 1.3);
+    bounce.position.set(0.1, -1, 0.3);
+    this.scene.add(bounce);
 
     // --- muzzle flash ---------------------------------------------------
     this.flash = new THREE.Group();

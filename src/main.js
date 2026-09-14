@@ -144,7 +144,10 @@ window.__tour = {
    */
   spawnWave(types = ['GRUNT', 'SOLDIER', 'RED'], stage = null) {
     const d = game.director;
-    const fwd = railCamera.forward(new THREE.Vector3()).clone();
+    // Take forward from the CAMERA's current orientation, not the rail's
+    // tangent: the tour aims the camera off-axis and the enemies must be
+    // placed in front of where it is actually looking.
+    const fwd = renderer.camera.getWorldDirection(new THREE.Vector3()).clone();
     const spawned = [];
     for (const type of types) {
       const e = d.spawnForReview
@@ -178,7 +181,7 @@ window.__tour = {
     const live = game.director.enemies.filter((e) => e.isAlive);
     for (const e of live.slice(0, 2)) {
       const from = e.muzzlePosition();
-      game.effects.spawnTracer(from, renderer.camera.position.clone(), undefined, 0.4);
+      game.effects.spawnTracer(from, renderer.camera.position.clone(), undefined, 0.09);
       game.bullets.fire(from, renderer.camera.position.clone(), 34, e.id);
     }
     // Step the bullets a little so they are visibly in mid-flight rather than

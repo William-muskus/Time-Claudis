@@ -300,9 +300,12 @@ export class Director {
    * something the game never does.
    */
   spawnForReview(type, cameraPos, cameraFwd) {
-    return this.#spawn(
-      { type, anchorTypes: ['door', 'alley', 'balcony', 'metro', 'roof', 'dormer'], side: 0 },
-      cameraPos, cameraFwd);
+    // Snipers belong up high; everyone else comes out of a ground-level
+    // opening, which is where the player is trained to watch.
+    const anchorTypes = type === 'SNIPER'
+      ? ['roof', 'dormer', 'balcony']
+      : ['door', 'alley', 'metro', 'balcony'];
+    return this.#spawn({ type, anchorTypes, side: 0 }, cameraPos, cameraFwd);
   }
 
   /** The live boss, if this area has one. The HUD reads its health bar. */

@@ -88,22 +88,27 @@ const SHOTS = [
     why: 'Hand raised to reload. The on-screen gun must mirror the gesture: barrel vertical.' },
 
   // --- combat, staged so the moment is deterministic ----------------------
-  { name: '20_wave_windup',      at: 'lamarck_station', back: 4, yaw: 250, weapon: 'HANDGUN',
+  // No `back` on the combat shots. The foreground cover is placed 3.4 m ahead
+  // of each combat node, so backing the camera off by eight metres put its own
+  // cover eleven metres away and left the bottom of the frame as empty road —
+  // the exact dead space the cover exists to fill. These are framed where the
+  // game actually parks the camera.
+  { name: '20_wave_windup',      at: 'lamarck_station', yaw: 250, weapon: 'HANDGUN',
     spawn: ['GRUNT', 'GRUNT', 'SOLDIER'], stage: 'windup',
     why: 'A wave out of real doorways, winding up. Enemies must read against the facade.' },
-  { name: '21_telegraph_commit', at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+  { name: '21_telegraph_commit', at: 'place_dalida', yaw: 196, weapon: 'HANDGUN',
     spawn: ['RED', 'GRUNT'], stage: 'commit',
     why: 'THE moment. Committed telegraph: white chest flash, unmissable in peripheral vision.' },
-  { name: '22_incoming_fire',    at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+  { name: '22_incoming_fire',    at: 'place_dalida', yaw: 196, weapon: 'HANDGUN',
     spawn: ['RED', 'SOLDIER'], stage: 'commit', incoming: true,
     why: 'Rounds in flight. Ducking now still saves you; this is why the game is fair.' },
-  { name: '23_behind_cover',     at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+  { name: '23_behind_cover',     at: 'place_dalida', yaw: 196, weapon: 'HANDGUN',
     spawn: ['RED', 'GRUNT'], stage: 'flash', duck: true,
     why: 'Ducked. The camera drops 92 cm and the foreground cover rises across the frame.' },
-  { name: '24_crowded_lane',     at: 'lepic_orchampt', back: 6, yaw: 235, weapon: 'SHOTGUN',
+  { name: '24_crowded_lane',     at: 'lepic_orchampt', yaw: 228, weapon: 'SHOTGUN',
     spawn: ['SOLDIER', 'GRUNT', 'BOMBER', 'RED'], stage: 'flash',
     why: 'The claustrophobic area. Four enemies at close range in a six-metre lane.' },
-  { name: '25_heavy_and_sniper', at: 'emile_goudeau', back: 10, yaw: 175, weapon: 'MACHINE_GUN',
+  { name: '25_heavy_and_sniper', at: 'emile_goudeau', yaw: 172, weapon: 'MACHINE_GUN',
     spawn: ['HEAVY', 'SNIPER', 'GRUNT'], stage: 'windup',
     why: 'Long sightlines. Colour must separate the classes at distance.' },
 ];
@@ -133,7 +138,15 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
          '--no-sandbox', '--disable-gpu-sandbox', '--ignore-gpu-blocklist'],
 });
-const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+/**
+ * 1200x675 rather than 1600x900.
+ *
+ * Measured on this container: the game renders at 0.8 frames per second under
+ * SwiftShader at 1200x675, and SwiftShader is fill-rate bound so 1600x900 is
+ * roughly half that. A full tour at the larger size takes long enough that the
+ * container often restarts before it finishes. Same image, fewer pixels of it.
+ */
+const page = await browser.newPage({ viewport: { width: 1200, height: 675 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -144,7 +157,7 @@ await page.waitForFunction(() => window.__ready === true, { timeout: 90000 });
 // Settle the scene, then dismiss the HUD directly rather than waiting out the
 // banner's own timeout — on a software rasteriser that wait was minutes.
 await page.evaluate(async () => {
-  for (let i = 0; i < 24; i++) await new Promise((r) => requestAnimationFrame(() => r()));
+  for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(() => r()));
   window.__tour.clearHud();
 });
 
@@ -158,6 +171,13 @@ for (const shot of SHOTS) {
 
       // Force a weapon and a pose so each state can be reviewed deliberately
       // rather than waiting for the attract pilot to happen into it.
+      // AIM BEFORE SPAWNING. The spawner places enemies relative to the
+      // camera's forward vector, so spawning first and then turning the camera
+      // leaves them behind the player — the staged fight happened correctly
+      // and none of it was in the frame.
+      if (s.look) window.__tour.look(s.look, s.lookHeight);
+      else window.__tour.aim(s.yaw ?? 180, s.pitch ?? 0);
+
       if (s.weapon) window.__tour.weapon(s.weapon);
       if (s.spawn) window.__tour.spawnWave(s.spawn, s.stage);
       if (s.incoming) window.__tour.incoming();
@@ -165,8 +185,10 @@ for (const shot of SHOTS) {
       if (s.gunUp) window.__tour.gunUp();
       if (s.fire) window.__tour.fire();
 
+      // Re-apply the aim: ducking moves the camera rig.
       if (s.look) window.__tour.look(s.look, s.lookHeight);
       else window.__tour.aim(s.yaw ?? 180, s.pitch ?? 0);
+
       window.__tour.clearHud();
       return true;
     } catch (e) { return String(e.message); }
