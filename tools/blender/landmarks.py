@@ -48,34 +48,76 @@ def dalida_bust():
     stone = material("plinth", PALETTE["limestoneMid"], roughness=0.92)
     stone_dark = material("plinth_base", PALETTE["limestoneDeep"], roughness=0.95)
 
-    parts = [
-        box("base", (1.25, 1.10, 0.22), (0, 0, 0.11), mat=stone_dark),
-        box("plinth", (0.95, 0.80, 1.50), (0, 0, 0.97), mat=stone),
-        # Torso, cut at the chest the way a bust is.
-        cylinder("torso", r1=0.44, r2=0.34, depth=0.62, verts=10, loc=(0, 0, 2.03), mat=bronze),
-        cylinder("neck", r1=0.15, r2=0.12, depth=0.18, verts=8, loc=(0, 0, 2.42), mat=bronze),
-    ]
-    # The polished band across the chest.
-    rub = cylinder("rub", r1=0.38, r2=0.356, depth=0.24, verts=10, loc=(0, 0.03, 2.18), mat=polish)
-    parts.append(rub)
+    # Bronze catches the sun on its upper surfaces and goes flat brown
+    # everywhere else, so the hair — which is all upper surface — gets its own
+    # lighter material. This is doing legibility work, not realism work: at any
+    # distance past a few metres the head and the torso are the same colour and
+    # the same value, and two dark masses stacked on each other read as one
+    # dark mass. Her hair is the most recognisable thing about her and it has
+    # to be a separate shape in the silhouette, not a bump on top of a drum.
+    bronze_lit = material("bronze_lit", PALETTE["bronzePolish"],
+                          roughness=0.5, metallic=0.4, emission=0.2)
 
-    head = sphere("head", r=0.21, segments=10, rings=8, loc=(0, 0, 2.64), mat=bronze)
-    head.scale = (0.92, 0.95, 1.12)
+    parts = [
+        box("base", (1.05, 0.95, 0.20), (0, 0, 0.10), mat=stone_dark),
+        # A SLIMMER PLINTH THAN BEFORE, and this is the main fix.
+        #
+        # It was 0.95 x 0.80 x 1.50 — wider than the bust's own shoulders and
+        # more than half the total height, in pale limestone against a bronze
+        # that reads dark. The composition put the brightest, largest mass
+        # under the subject, and from six metres the whole thing read as a
+        # chimney with a lump on it. The plinth is furniture; it should be the
+        # narrowest thing here, not the widest.
+        box("plinth", (0.60, 0.54, 1.34), (0, 0, 0.87), mat=stone),
+        # The cornice. A plinth ends in an overhanging cap, and the shadow line
+        # under it is what separates stone from bronze at a glance.
+        box("cornice", (0.76, 0.68, 0.13), (0, 0, 1.60), mat=stone),
+
+        # --- the bust itself, built as three distinct masses ----------------
+        # Shoulders first, and wide. A bust reads as a person because the
+        # shoulder line is the widest thing in it; without that it is a pillar.
+        cylinder("shoulders", r1=0.52, r2=0.50, depth=0.26, verts=10,
+                 loc=(0, 0, 1.80), mat=bronze),
+        # Chest, tapering up and cut off the way a bust is.
+        cylinder("chest", r1=0.49, r2=0.30, depth=0.52, verts=10,
+                 loc=(0, 0, 2.19), mat=bronze),
+        # A longer neck than is strictly anatomical. It exists to put a gap
+        # between two dark masses so the head is its own shape.
+        cylinder("neck", r1=0.145, r2=0.13, depth=0.24, verts=8,
+                 loc=(0, 0, 2.57), mat=bronze),
+    ]
+
+    # The polished band across the chest. Thirty years of tourists have rubbed
+    # it to bright gold while the rest went flat brown, and that two-tone is
+    # the detail people photograph.
+    parts.append(cylinder("rub", r1=0.44, r2=0.40, depth=0.26, verts=10,
+                          loc=(0, 0.02, 2.10), mat=polish))
+
+    head = sphere("head", r=0.215, segments=10, rings=8, loc=(0, 0, 2.86), mat=bronze)
+    head.scale = (0.90, 0.94, 1.10)
     parts.append(head)
 
-    # The hair. Big, swept, and most of the silhouette.
-    hair = sphere("hair", r=0.29, segments=10, rings=8, loc=(0, -0.045, 2.69), mat=bronze)
-    hair.scale = (1.08, 1.10, 1.02)
-    parts.append(hair)
+    # The hair. Big, swept, and most of the silhouette — so it is built as two
+    # masses rather than one sphere: the crown, and the fall of it down the
+    # back and to her left. The asymmetry is what makes it hair rather than a
+    # helmet, and it is the thing a resident would actually recognise.
+    crown = sphere("hair_crown", r=0.315, segments=10, rings=8,
+                   loc=(0, -0.03, 2.94), mat=bronze_lit)
+    crown.scale = (1.12, 1.10, 0.96)
+    parts.append(crown)
+    fall = sphere("hair_fall", r=0.245, segments=8, rings=6,
+                  loc=(0.115, -0.145, 2.70), mat=bronze_lit)
+    fall.scale = (0.95, 0.90, 1.25)
+    parts.append(fall)
 
     bust = join(parts, "dalida_bust")
     # Hero scale. The real bust is about 2.6 m to the crown of the head, which
-    # at a fourteen-metre engagement distance is barely thirty pixels tall — an
-    # honest dimension that makes the level's title landmark unreadable. Arcade
-    # games scale their hero objects and this one earns it; the plinth stays
-    # in proportion so it still reads as a bust on a plinth rather than a
-    # statue.
-    bust.scale = (1.38, 1.38, 1.38)
+    # at the distance this is actually viewed from is barely thirty pixels —
+    # an honest dimension that makes the level's title landmark unreadable.
+    # Arcade games scale their hero objects and this one earns it. Smaller than
+    # it was, because the rebuild above puts more of the height into the bust
+    # and less into the plinth, so it needs less help.
+    bust.scale = (1.26, 1.26, 1.26)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return export_glb("public/assets/models/dalida_bust.glb", "dalida_bust")
 
@@ -142,17 +184,66 @@ def moulin_galette():
     parts = [
         cylinder("mound", r1=9.5, r2=7.0, depth=5.0, verts=8, loc=(0, 0, -2.5), mat=earth),
         cylinder("tower", r1=2.5, r2=1.9, depth=5.5, verts=8, loc=(0, 0, 2.75), mat=plaster),
-        cylinder("cap", r1=2.2, r2=0.0, depth=1.8, verts=8, loc=(0, 0, 6.2), mat=zinc),
+        # The gallery. A tower mill has a working platform the miller walks to
+        # reach the sails, and it is the detail that stops the tower reading as
+        # a plain cone — it puts one hard horizontal across the silhouette at a
+        # height nothing else occupies.
+        # Kept close to the tower. At a metre proud these read as two black
+        # hoops floating round the mill rather than as a deck attached to it —
+        # the overhang has to be small enough that the eye reads it as part of
+        # the tower's own profile.
+        cylinder("gallery", r1=2.42, r2=2.42, depth=0.16, verts=8, loc=(0, 0, 3.3), mat=wood),
+        cylinder("gallery_rail", r1=2.34, r2=2.34, depth=0.07, verts=8, loc=(0, 0, 4.0), mat=lattice),
+        cylinder("cap", r1=2.2, r2=0.55, depth=1.9, verts=8, loc=(0, 0, 6.2), mat=zinc),
+        cylinder("cap_finial", r1=0.34, r2=0.0, depth=0.6, verts=6, loc=(0, 0, 7.35), mat=zinc),
+        # The windshaft, poking out of the cap toward the street. The sails
+        # have to be attached to something or they read as floating.
+        cylinder("windshaft", r1=0.30, depth=1.5, verts=6,
+                 loc=(0, 1.7, 6.0), rot=(math.pi / 2, 0, 0), mat=wood),
+        cylinder("hub", r1=0.62, depth=0.55, verts=8,
+                 loc=(0, 2.35, 6.0), rot=(math.pi / 2, 0, 0), mat=wood),
     ]
 
-    # Four sails on a hub, tilted the way a mill's sails actually sit.
+    # --- the sails ----------------------------------------------------------
+    #
+    # THE SAILS ARE THE WHOLE LANDMARK, so they get built like sails.
+    #
+    # The first version was four planks in a cross: one 0.22 m spar and one
+    # 1.0 m panel per arm. At the twenty metres this mill is actually viewed
+    # from that is a few pixels of solid colour on a thin stick, and the crest
+    # of the level — the thing the whole climb builds to — read as a rooftop
+    # television aerial.
+    #
+    # Two changes fix it. The lattice is built as SLATS with gaps, because
+    # what makes a mill sail recognisable is that you can see sky through it;
+    # a solid panel of the same size is just a board. And the cross is set at
+    # 45 degrees so it reads as an X rather than a +, which is both how mills
+    # are almost always depicted and the orientation whose diagonals survive
+    # being only a few pixels wide.
+    SAIL_LEN = 6.4
+    SAIL_WIDTH = 1.9
+    SLATS = 7
+    HUB_Z = 6.0
     for i in range(4):
-        a = i * math.pi / 2
-        dx, dz = math.sin(a) * 2.8, math.cos(a) * 2.8
-        parts.append(box(f"arm_{i}", (0.22, 0.12, 5.6),
-                         (dx, 2.5, 5.0 + dz), rot=(0, a, 0), mat=wood))
-        parts.append(box(f"lattice_{i}", (1.0, 0.05, 4.4),
-                         (dx, 2.52, 5.0 + dz), rot=(0, a, 0), mat=lattice))
+        a = i * math.pi / 2 + math.pi / 4
+        ux, uz = math.sin(a), math.cos(a)
+        # The whip: one spar running the length of the arm.
+        r = 0.7 + SAIL_LEN / 2
+        parts.append(box(f"whip_{i}", (0.20, 0.16, SAIL_LEN),
+                         (ux * r, 2.5, HUB_Z + uz * r), rot=(0, a, 0), mat=wood))
+        # The bars, narrowing toward the tip the way a real sail does.
+        for j in range(SLATS):
+            t = (j + 0.5) / SLATS
+            d = 0.9 + t * SAIL_LEN
+            w = SAIL_WIDTH * (1.0 - 0.35 * t)
+            parts.append(box(f"bar_{i}_{j}", (w, 0.06, 0.28),
+                             (ux * d, 2.52, HUB_Z + uz * d), rot=(0, a, 0), mat=lattice))
+        # A leading edge along one side, so each sail has a direction and the
+        # four of them read as turning rather than as a static star.
+        parts.append(box(f"edge_{i}", (0.14, 0.10, SAIL_LEN),
+                         (ux * r + math.cos(a) * SAIL_WIDTH * 0.42, 2.52,
+                          HUB_Z + uz * r - math.sin(a) * SAIL_WIDTH * 0.42),
+                         rot=(0, a, 0), mat=wood))
 
     join(parts, "moulin_galette")
     return export_glb("public/assets/models/moulin_galette.glb", "moulin_galette")

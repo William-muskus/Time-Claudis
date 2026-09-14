@@ -52,6 +52,13 @@ const SHOTS = [
   { name: '05_dalida_bust',      at: 'place_dalida', back: 13, lateral: -2.5,
     look: 'place_dalida', lookHeight: 2.4,
     why: 'THE landmark. Polished chest, swept hair, facing east.' },
+  // Close on the bust, for the same reason 07b and 11b exist: the level shot
+  // shows whether she is placed right, and this one shows whether she is
+  // MODELLED right. At thirteen metres a 0.6 m head is thirty pixels and any
+  // answer to "does the bust read" is really an answer about the framing.
+  { name: '05b_dalida_close',    at: 'place_dalida', back: 6, lateral: -1.5,
+    look: 'place_dalida', lookHeight: 2.5,
+    why: 'The bust itself: swept hair, the rubbed-gold chest, weathered bronze elsewhere.' },
   { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
     why: 'The sightline down rue de l Abreuvoir. Most photographed view here.' },
   // Both aimed AT the mill. The earlier yaws pointed across it into a distant
@@ -89,9 +96,13 @@ const SHOTS = [
     why: 'Muzzle flash and recoil kick. The flash must bloom.' },
   { name: '15_weapon_shotgun',   at: 'place_dalida', back: 6, yaw: 195, weapon: 'SHOTGUN', fire: true,
     why: 'Different silhouette, bigger kick, fatter flash.' },
-  { name: '16_weapon_mg',        at: 'emile_goudeau', back: 5, yaw: 175, weapon: 'MACHINE_GUN',
+  // No `back` on these two. Backing off five metres at Emile-Goudeau walks the
+  // camera into the facade on the east side of the square, and half the frame
+  // came back as one flat lavender wall — a framing artifact of the harness,
+  // not something the rail ever does (see 09, shot from the same node).
+  { name: '16_weapon_mg',        at: 'emile_goudeau', yaw: 175, weapon: 'MACHINE_GUN',
     why: 'Long magazine below the receiver is the recognition cue.' },
-  { name: '17_weapon_grenade',   at: 'emile_goudeau', back: 5, yaw: 175, weapon: 'GRENADE', fire: true,
+  { name: '17_weapon_grenade',   at: 'emile_goudeau', yaw: 175, weapon: 'GRENADE', fire: true,
     why: 'The drum. Rare, and the answer to the boss.' },
   { name: '18_gun_up_reload',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', gunUp: true,
     why: 'Hand raised to reload. The on-screen gun must mirror the gesture: barrel vertical.' },

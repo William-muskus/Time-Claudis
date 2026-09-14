@@ -348,9 +348,31 @@ const GRADE_SHADER = {
       col = clamp(col, 0.0, 4.0);
       col = col * col * (3.0 - 2.0 * clamp(col, 0.0, 1.0)) * 0.18 + col * 0.82;
 
+      // HIGHLIGHT DESATURATION. What stops a sunlit wall going neon.
+      //
+      // A bright warm surface saturates red and green long before blue, so
+      // limestone taking the sun full-on lands around (1.0, 1.0, 0.45) and
+      // renders as a flat sheet of highlighter yellow with every trace of the
+      // relief gone. Measured on the Ravignan descent: ten per cent of that
+      // frame, all of it one wall, all of it the same value.
+      //
+      // Film does not do this, because film loses saturation as it approaches
+      // the shoulder — the brightest part of a sunlit surface goes toward
+      // white, not toward its own hue at maximum. Pulling the weaker channels
+      // up toward the strongest reproduces that, and it costs the picture
+      // nothing anywhere else: below the threshold the weight is zero.
+      float peak = max(max(col.r, col.g), col.b);
+      float bleach = smoothstep(0.74, 1.10, peak);
+      col = mix(col, vec3(peak), bleach * 0.62);
+
       // Slight saturation lift — the palette is bold by design.
+      //
+      // Damped where the bleach is acting. Boosting saturation on a pixel that
+      // is already one channel short of clipping is how the neon happened: the
+      // lift was the last thing in the chain and it pushed exactly the values
+      // that had no headroom left.
       float g = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      col = mix(vec3(g), col, 1.16);
+      col = mix(vec3(g), col, mix(1.16, 1.0, bleach));
 
       // Vignette. Kept light — it stacks multiplicatively with the shadow
       // tint above, and at 0.85 the two together were taking another quarter

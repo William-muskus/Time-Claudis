@@ -164,8 +164,12 @@ export class ViewModel {
     this.scene.add(key);
     const fill = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 4.2);
     this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(PALETTE.skyZenith, 2.4);
-    rim.position.set(0.9, 0.2, -0.7);
+    // The rim is doing separation work, not mood work. The gun is frequently
+    // held against a bright sky or a sunlit facade — 07b puts it directly over
+    // the sun — and a cool edge along its top and back is the only thing that
+    // keeps the outline from dissolving into whatever is behind it.
+    const rim = new THREE.DirectionalLight(PALETTE.skyZenith, 3.6);
+    rim.position.set(0.9, 0.35, -0.7);
     this.scene.add(rim);
     // A dim warm bounce from below, so the underside of the slide is not a
     // void. Cheap, and it is what stops the gun reading as a cut-out.

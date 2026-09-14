@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 
 /** Minimal PNG decoder: enough for what Playwright writes. */
-function readPng(path) {
+export function readPng(path) {
   const d = readFileSync(path);
   let pos = 8, w = 0, h = 0, colorType = 6, idat = [];
   while (pos < d.length) {
