@@ -109,31 +109,38 @@ await page.waitForFunction(() => window.__ready === true, { timeout: 120000 });
 console.log('[action] game ready');
 
 const manifest = [];
-for (const shot of SHOTS) {
-  // Step in chunks so a long search does not hit the evaluate timeout, and so
-  // a condition that never holds fails after a bounded number of frames.
-  let found = false;
-  let framesUsed = 0;
-  const MAX = 60 * 90;   // 90 simulated seconds per condition
-  while (!found && framesUsed < MAX) {
-    const r = await page.evaluate(async (src) => {
-      // eslint-disable-next-line no-new-func
-      const pred = new Function(`return (${src})()`);
-      for (let i = 0; i < 30; i++) {
-        await new Promise((res) => requestAnimationFrame(() => res()));
-        if (pred()) return { hit: true, i };
-      }
-      return { hit: false, i: 30 };
-    }, shot.when.toString());
-    framesUsed += r.i;
-    found = r.hit;
-  }
 
-  if (!found) {
-    console.log(`[action] ${shot.name.padEnd(22)} CONDITION NEVER HELD in ${MAX} frames`);
-    manifest.push({ ...shot, when: undefined, file: null, found: false });
-    continue;
-  }
+/**
+ * Watch for every condition on ONE pass through the game.
+ *
+ * Searching for each condition in turn means replaying the level once per
+ * shot, and under a software rasteriser that is tens of minutes. Every
+ * condition is instead evaluated on each step, and whichever fire get
+ * captured. The whole set is usually satisfied inside a single area.
+ */
+const pending = new Map(SHOTS.map((s) => [s.name, s]));
+const MAX_STEPS = 400;           // 400 x 20 frames = ~133 simulated seconds
+let steps = 0;
+
+while (pending.size > 0 && steps < MAX_STEPS) {
+  steps++;
+  const fired = await page.evaluate(async (srcs) => {
+    const preds = srcs.map(([name, src]) => {
+      // eslint-disable-next-line no-new-func
+      return [name, new Function(`return (${src})()`)];
+    });
+    for (let i = 0; i < 20; i++) {
+      await new Promise((res) => requestAnimationFrame(() => res()));
+      for (const [name, p] of preds) {
+        try { if (p()) return name; } catch { /* not yet live */ }
+      }
+    }
+    return null;
+  }, [...pending.entries()].map(([n, s]) => [n, s.when.toString()]));
+
+  if (!fired) continue;
+  const shot = pending.get(fired);
+  pending.delete(fired);
 
   const snap = await page.evaluate(() => {
     const g = window.__game;
@@ -152,6 +159,11 @@ for (const shot of SHOTS) {
   console.log(`          area=${snap.area} enemies=${snap.enemies.length} ` +
               `[${snap.enemies.map((e) => `${e.t}:${e.tg ?? e.st}`).join(' ')}] ` +
               `bullets=${snap.bullets} cover=${snap.cover}`);
+}
+
+for (const [name, shot] of pending) {
+  console.log(`[action] ${name.padEnd(22)} CONDITION NEVER HELD`);
+  manifest.push({ name, why: shot.why, file: null, found: false });
 }
 
 await writeFile(join(OUT, 'manifest.json'), JSON.stringify({ seed: SEED, errors, shots: manifest }, null, 2));

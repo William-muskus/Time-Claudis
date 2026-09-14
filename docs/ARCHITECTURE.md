@@ -110,10 +110,26 @@ the viewmodel scene.
 ## Asset pipeline
 
 Blender runs headless as the `bpy` Python module (Blender 5.0.1). Scripts in
-`tools/blender/` build meshes procedurally from the survey data and export GLB
-into `public/assets/models/`. There is no hand-modelling step and no `.blend`
-files in the repo: the geometry is generated from the same coordinates the game
-reads, so the model and the rail can never drift apart.
+`tools/blender/` build meshes from code and export GLB into
+`public/assets/models/`. No hand-modelling step, no `.blend` files: the models
+are reviewable in a diff and regenerable from scratch.
+
+`src/world/assets.js` loads them at boot, before `buildWorld()` runs — the
+world builder is synchronous by design, since it is a pure function of the
+survey, so the assets have to be in hand first.
+
+**Every lookup falls back.** If a GLB is missing or fails to parse, the caller
+builds the procedural version instead and the failure is logged rather than
+swallowed. A blocked network or a pipeline that was not re-run must degrade,
+not punch a hole in Montmartre.
+
+What is GLB: the Dalida bust, the Guimard édicule, the Moulin, the Wallace
+fountains, the lamp standards, the Morris column, the enemy figure, and the
+four weapons.
+
+What is not, and why: the street surface has to follow the rail spline exactly,
+and the façades are generated from the same survey the rail reads so that four
+hundred metres of terrace does not have to be hand-placed.
 
 Run with `npm run assets`.
 

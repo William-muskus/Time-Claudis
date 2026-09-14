@@ -88,12 +88,20 @@ build environment could reach neither Street View nor the OpenStreetMap Overpass
 API and the survey is therefore hand-authored. `docs/CONSTRAINTS.md` §2 has the
 full accounting and the exact steps to replace it with real OSM data.
 
-**"Blender-exported GLTF."** The hero assets — the Dalida bust, the Guimard
-édicule, the Moulin, the Wallace fountains, the lamp standards, the enemy figure
-— are authored in Blender (running as a Python module, so there is no install
-and no `.blend` files) and exported to GLB. The street surface itself stays
-procedural, because it has to follow the rail spline exactly and a static mesh
-cannot.
+**"Blender-exported GLTF."** Every authored object loads from GLB at runtime:
+the Dalida bust, the Guimard édicule, the Moulin, the Wallace fountains, the
+lamp standards, the Morris column, the enemy figure and all four weapons. They
+are built by `tools/blender/`, which runs Blender as a Python module — no
+install, no GUI, no `.blend` files in the repo, so the models are reviewable in
+a diff and regenerable from scratch.
+
+Two things are deliberately *not* GLB. The street surface is procedural because
+it has to follow the rail spline exactly, and a static mesh cannot. The façades
+are procedural because they are generated from the same survey the rail reads,
+which is what keeps four hundred metres of terrace from needing to be
+hand-placed. Every authored object that *is* GLB keeps a procedural fallback,
+so a missing export degrades instead of leaving a hole where the bust should
+be — and `tests/assets.test.js` fails the build before it gets that far.
 
 The brief also asked for the MW3 *Resistance* map as a layout reference and for
 NVIDIA DLSS 5. Neither shipped. `docs/CONSTRAINTS.md` says exactly why, including
