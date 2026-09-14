@@ -86,6 +86,26 @@ const SHOTS = [
     why: 'The drum. Rare, and the answer to the boss.' },
   { name: '18_gun_up_reload',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', gunUp: true,
     why: 'Hand raised to reload. The on-screen gun must mirror the gesture: barrel vertical.' },
+
+  // --- combat, staged so the moment is deterministic ----------------------
+  { name: '20_wave_windup',      at: 'lamarck_station', back: 4, yaw: 250, weapon: 'HANDGUN',
+    spawn: ['GRUNT', 'GRUNT', 'SOLDIER'], stage: 'windup',
+    why: 'A wave out of real doorways, winding up. Enemies must read against the facade.' },
+  { name: '21_telegraph_commit', at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+    spawn: ['RED', 'GRUNT'], stage: 'commit',
+    why: 'THE moment. Committed telegraph: white chest flash, unmissable in peripheral vision.' },
+  { name: '22_incoming_fire',    at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+    spawn: ['RED', 'SOLDIER'], stage: 'commit', incoming: true,
+    why: 'Rounds in flight. Ducking now still saves you; this is why the game is fair.' },
+  { name: '23_behind_cover',     at: 'place_dalida', back: 8, yaw: 200, weapon: 'HANDGUN',
+    spawn: ['RED', 'GRUNT'], stage: 'flash', duck: true,
+    why: 'Ducked. The camera drops 92 cm and the foreground cover rises across the frame.' },
+  { name: '24_crowded_lane',     at: 'lepic_orchampt', back: 6, yaw: 235, weapon: 'SHOTGUN',
+    spawn: ['SOLDIER', 'GRUNT', 'BOMBER', 'RED'], stage: 'flash',
+    why: 'The claustrophobic area. Four enemies at close range in a six-metre lane.' },
+  { name: '25_heavy_and_sniper', at: 'emile_goudeau', back: 10, yaw: 175, weapon: 'MACHINE_GUN',
+    spawn: ['HEAVY', 'SNIPER', 'GRUNT'], stage: 'windup',
+    why: 'Long sightlines. Colour must separate the classes at distance.' },
 ];
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -139,6 +159,9 @@ for (const shot of SHOTS) {
       // Force a weapon and a pose so each state can be reviewed deliberately
       // rather than waiting for the attract pilot to happen into it.
       if (s.weapon) window.__tour.weapon(s.weapon);
+      if (s.spawn) window.__tour.spawnWave(s.spawn, s.stage);
+      if (s.incoming) window.__tour.incoming();
+      if (s.duck) window.__tour.duck();
       if (s.gunUp) window.__tour.gunUp();
       if (s.fire) window.__tour.fire();
 
@@ -162,7 +185,11 @@ for (const shot of SHOTS) {
   // viewmodel that is off-frame looks identical to one that failed to render,
   // and the difference matters.
   let where = '';
-  if (shot.weapon) {
+  if (shot.spawn) {
+    const live = await page.evaluate(() => window.__game.director.enemies.map(
+      (e) => `${e.typeKey}:${e.telegraphStage ?? e.state}`));
+    where = `  [${live.join(' ')}]`;
+  } else if (shot.weapon) {
     const pos = await page.evaluate(() => window.__tour.weaponScreenPos());
     where = pos && pos.xPct !== undefined ? `  [gun at ${pos.xPct}%, ${pos.yPct}%]` : '';
   }

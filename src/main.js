@@ -128,6 +128,75 @@ window.__tour = {
     const snap = { ...game.snapshot(), coverState: 'EXPOSED', exposure: 1 };
     for (let i = 0; i < 30; i++) viewModel.update(1 / 60, snap, { x: 0.5, y: 0.5 }, false);
   },
+  /**
+   * Stage a fight in front of the parked camera, immediately.
+   *
+   * Waiting for the attract pilot to reach a readable combat moment means
+   * replaying the level under a software rasteriser that manages one or two
+   * frames a second — minutes per screenshot, and the container often restarts
+   * first. Staging it directly is instant and, more usefully, deterministic:
+   * the same frame every time, which is what makes a visual regression
+   * reviewable at all.
+   *
+   * This drives the REAL director and the REAL Enemy class against the REAL
+   * anchors published by the architecture. It is not a mock — it is the same
+   * spawn path the game uses, called on demand.
+   */
+  spawnWave(types = ['GRUNT', 'SOLDIER', 'RED'], stage = null) {
+    const d = game.director;
+    const fwd = railCamera.forward(new THREE.Vector3()).clone();
+    const spawned = [];
+    for (const type of types) {
+      const e = d.spawnForReview
+        ? d.spawnForReview(type, renderer.camera.position, fwd)
+        : null;
+      if (e) spawned.push(e);
+    }
+    // Drive them out of the spawn animation and into the requested stage.
+    for (let i = 0; i < 40; i++) {
+      for (const e of spawned) {
+        e.update(1 / 60, renderer.camera.position, {
+          grantCommit: () => true, onFire: () => {}, onStage: () => {},
+        });
+      }
+    }
+    if (stage) {
+      const frac = { windup: 0.3, flash: 0.7, commit: 0.93 }[stage] ?? 0.7;
+      for (const e of spawned) {
+        e.telegraphMs = e.type.telegraphMs * frac;
+        e.commitGranted = true;
+        e.update(1 / 600, renderer.camera.position, {
+          grantCommit: () => true, onFire: () => {}, onStage: () => {},
+        });
+      }
+    }
+    return spawned.map((e) => ({ id: e.id, type: e.typeKey, state: e.state, stage: e.telegraphStage }));
+  },
+
+  /** Put a tracer and a live round in the air, for the bullet-in-flight shot. */
+  incoming() {
+    const live = game.director.enemies.filter((e) => e.isAlive);
+    for (const e of live.slice(0, 2)) {
+      const from = e.muzzlePosition();
+      game.effects.spawnTracer(from, renderer.camera.position.clone(), undefined, 0.4);
+      game.bullets.fire(from, renderer.camera.position.clone(), 34, e.id);
+    }
+    // Step the bullets a little so they are visibly in mid-flight rather than
+    // sitting on the muzzle.
+    for (let i = 0; i < 14; i++) {
+      game.bullets.update(1 / 60, renderer.camera.position, () => false, () => {});
+    }
+    return game.bullets.bullets.filter((b) => b.active).length;
+  },
+
+  /** Force the player behind cover, to show the framing change. */
+  duck() {
+    game.cover.forceCover();
+    for (let i = 0; i < 30; i++) railCamera.update(1 / 60, 0);
+    viewModel.update(1 / 60, { ...game.snapshot(), coverState: 'COVERED', exposure: 0 },
+      { x: 0.5, y: 0.5 }, false);
+  },
+
   /** Read back where the weapon actually is on screen, for diagnostics. */
   weaponScreenPos() {
     if (!viewModel.current) return null;

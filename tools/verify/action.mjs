@@ -99,7 +99,17 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
          '--no-sandbox', '--disable-gpu-sandbox', '--ignore-gpu-blocklist'],
 });
-const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+/**
+ * A smaller window than the tour uses.
+ *
+ * SwiftShader is fill-rate bound, so the cost of a frame is close to linear in
+ * pixel count and this scene runs at one or two frames a second at 1600x900.
+ * Condition-based capture has to step through real gameplay to reach its
+ * moments, so it needs many more frames than a parked-camera tour does.
+ * 1200x675 is the same image, just fewer pixels of it — an honest reduction,
+ * unlike turning down shadows or geometry, which would misrepresent the game.
+ */
+const page = await browser.newPage({ viewport: { width: 1200, height: 675 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 
@@ -119,7 +129,7 @@ const manifest = [];
  * captured. The whole set is usually satisfied inside a single area.
  */
 const pending = new Map(SHOTS.map((s) => [s.name, s]));
-const MAX_STEPS = 400;           // 400 x 20 frames = ~133 simulated seconds
+const MAX_STEPS = 520;           // 520 x 12 frames = ~104 simulated seconds
 let steps = 0;
 
 while (pending.size > 0 && steps < MAX_STEPS) {
@@ -138,7 +148,17 @@ while (pending.size > 0 && steps < MAX_STEPS) {
     return null;
   }, [...pending.entries()].map(([n, s]) => [n, s.when.toString()]));
 
-  if (!fired) continue;
+  if (!fired) {
+    if (steps % 10 === 0) {
+      const st = await page.evaluate(() => {
+        const g = window.__game;
+        return { t: +g.nowMs.toFixed(0), area: g.snapshot().area, n: g.director.enemies.length };
+      });
+      console.log(`[action] ...step ${steps}, sim ${(st.t / 1000).toFixed(0)}s, ` +
+                  `area=${st.area || '-'}, ${st.n} enemies, ${pending.size} conditions outstanding`);
+    }
+    continue;
+  }
   const shot = pending.get(fired);
   pending.delete(fired);
 

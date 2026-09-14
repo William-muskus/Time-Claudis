@@ -290,6 +290,21 @@ export class Director {
     this.railCamera.travelTo(d, this.area.node);
   }
 
+  /**
+   * Spawn one enemy on demand, for the verification harness.
+   *
+   * Deliberately routed through the same #spawn path the waves use, so a
+   * screenshot shows an enemy placed by the real anchor-selection rules — out
+   * of a real doorway, at a real engagement distance, on a real side of the
+   * street. A harness that placed enemies by hand would be photographing
+   * something the game never does.
+   */
+  spawnForReview(type, cameraPos, cameraFwd) {
+    return this.#spawn(
+      { type, anchorTypes: ['door', 'alley', 'balcony', 'metro', 'roof', 'dormer'], side: 0 },
+      cameraPos, cameraFwd);
+  }
+
   /** The live boss, if this area has one. The HUD reads its health bar. */
   boss() {
     return this.enemies.find((e) => e.isBoss && e.isAlive) ?? null;
