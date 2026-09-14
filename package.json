@@ -10,7 +10,9 @@
     "assets": "python3 tools/blender/build_all.py",
     "verify": "node tools/verify/shoot.mjs",
     "test": "node --test tests/*.test.js",
-    "tour": "node tools/verify/tour.mjs"
+    "tour": "node tools/verify/tour.mjs",
+    "bench": "node tools/verify/bench.mjs",
+    "action": "node tools/verify/action.mjs"
   },
   "dependencies": {
     "three": "^0.169.0",

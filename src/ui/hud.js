@@ -61,13 +61,23 @@ export class Hud {
         </div>
 
         <div class="crosshair" id="crosshair">
-          <svg viewBox="0 0 64 64" width="64" height="64">
+          <svg viewBox="0 0 64 64">
+            <!-- Dark outline pass first, light strokes over it. Drawing the
+                 outline as its own set of shapes rather than as a filter keeps
+                 it crisp at every scale. -->
+            <g class="ch-outline">
+              <circle cx="32" cy="32" r="19"/>
+              <line x1="32" y1="3"  x2="32" y2="17"/>
+              <line x1="32" y1="47" x2="32" y2="61"/>
+              <line x1="3"  y1="32" x2="17" y2="32"/>
+              <line x1="47" y1="32" x2="61" y2="32"/>
+            </g>
             <circle cx="32" cy="32" r="19" class="ch-ring"/>
-            <line x1="32" y1="4"  x2="32" y2="17" class="ch-tick"/>
-            <line x1="32" y1="47" x2="32" y2="60" class="ch-tick"/>
-            <line x1="4"  y1="32" x2="17" y2="32" class="ch-tick"/>
-            <line x1="47" y1="32" x2="60" y2="32" class="ch-tick"/>
-            <circle cx="32" cy="32" r="2.2" class="ch-dot"/>
+            <line x1="32" y1="3"  x2="32" y2="17" class="ch-tick"/>
+            <line x1="32" y1="47" x2="32" y2="61" class="ch-tick"/>
+            <line x1="3"  y1="32" x2="17" y2="32" class="ch-tick"/>
+            <line x1="47" y1="32" x2="61" y2="32" class="ch-tick"/>
+            <circle cx="32" cy="32" r="2.6" class="ch-dot"/>
           </svg>
         </div>
 

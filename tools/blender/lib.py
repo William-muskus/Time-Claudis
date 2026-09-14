@@ -138,11 +138,20 @@ def _finish(obj, mat, flat=True):
 
 
 def box(name, size=(1, 1, 1), loc=(0, 0, 0), rot=(0, 0, 0), mat=None):
+    """
+    An axis-aligned box of the given SIZE (not half-size).
+
+    `primitive_cube_add(size=1)` already produces a unit cube spanning -0.5 to
+    +0.5 on each axis, so the scale factor is `size` directly. Halving it here
+    — which is what this did originally — makes every part half its intended
+    dimensions while leaving the positions alone, so an assembly built from
+    boxes comes apart into a cloud of disconnected pieces with gaps between
+    them. The first-person handgun rendered as an exploded diagram.
+    """
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
     o = bpy.context.object
     o.name = name
-    o.scale = (size[0] / 2 * 2 / 2 * 2, size[1], size[2])
-    o.scale = (size[0] / 2, size[1] / 2, size[2] / 2)
+    o.scale = (size[0], size[1], size[2])
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return _finish(o, mat)
 

@@ -157,8 +157,17 @@ for (const shot of SHOTS) {
   });
   const file = join(OUT, `${shot.name}.png`);
   await page.screenshot({ path: file });
-  manifest.push({ ...shot, file: `${shot.name}.png` });
-  console.log(`[tour] ${shot.name}  ${shot.why}`);
+
+  // For weapon shots, report where the gun actually landed on screen. A
+  // viewmodel that is off-frame looks identical to one that failed to render,
+  // and the difference matters.
+  let where = '';
+  if (shot.weapon) {
+    const pos = await page.evaluate(() => window.__tour.weaponScreenPos());
+    where = pos && pos.xPct !== undefined ? `  [gun at ${pos.xPct}%, ${pos.yPct}%]` : '';
+  }
+  manifest.push({ ...shot, file: `${shot.name}.png`, where });
+  console.log(`[tour] ${shot.name}  ${shot.why}${where}`);
 }
 
 await writeFile(join(OUT, 'manifest.json'), JSON.stringify({ errors, shots: manifest }, null, 2));

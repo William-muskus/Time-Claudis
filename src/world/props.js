@@ -40,7 +40,11 @@ export function buildProps(rail, rng) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const off = rail.widthAt(d) * 0.5 + 1.5;
+    // Keep the crown clear of the building line. The pavement is 2.4 m and a
+    // pollarded crown is up to 1.5 m in radius, so a trunk at +1.5 m put
+    // foliage inside the facade — which rendered as leaves floating in front
+    // of a wall with no trunk and no ground contact.
+    const off = rail.widthAt(d) * 0.5 + 1.15;
     const tree = buildPlaneTree(rng);
     tree.position.copy(p).addScaledVector(right, side * off);
     tree.position.y = p.y + 0.16;

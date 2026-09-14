@@ -33,7 +33,13 @@ export class Renderer {
     // ACES rolls the gold highlights off without clipping them to white, which
     // is exactly the failure mode a golden-hour scene has under Linear.
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.46;
+        // Dropped from 1.46. ACES at that exposure was clipping the warm channel,
+    // and with everything past the old fog plane also tinted gold the result
+    // was frames containing essentially one hue — facade, kerb, pavement and
+    // sky separated only by value. The whole point of the amber/violet split
+    // is that HUE carries the shading information, because flat-shaded
+    // low-poly geometry has no detail to carry it.
+    this.renderer.toneMappingExposure = 1.18;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -42,7 +48,12 @@ export class Renderer {
     // Fog is doing real work here: the route climbs and then descends, and the
     // haze is what sells the drop to the rooftops of the 9th from the top of
     // the Ravignan stairs.
-    this.scene.fog = new THREE.Fog(PALETTE.fogColor, 45, 320);
+    // Fog range. A Montmartre block is 60-80 m end to end, so at the original
+    // near plane of 45 m the far end of EVERY street was already half
+    // dissolved — the payoff of the Ravignan descent, which is meant to open
+    // out over the rooftops of the 9th, arrived as a featureless cream smear.
+    // Fog should be atmosphere, not a draw-distance excuse.
+    this.scene.fog = new THREE.Fog(PALETTE.fogColor, 110, 560);
 
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);
 

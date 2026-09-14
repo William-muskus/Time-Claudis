@@ -32,24 +32,40 @@
     opacity:.9;letter-spacing:.16em;margin-bottom:2px;
     text-shadow:0 2px 0 rgba(0,0,0,.55)}
 
+  /* -webkit-text-stroke gives a real outline rather than four stacked
+     shadows, which matters because the webfont is often unavailable and the
+     fallback is lighter than Archivo Black. An arcade HUD has to be readable
+     across a lit room; a thin unoutlined numeral is not. */
   .panel .value{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-weight:900;
     font-size:clamp(26px,3.4vw,46px);line-height:.92;color:var(--white);
+    -webkit-text-stroke:2px var(--ink);paint-order:stroke fill;
     text-shadow:0 var(--stroke) 0 var(--ink),0 0 22px rgba(255,194,74,.35)}
 
-  .timer-wrap{text-align:center;flex:0 0 auto}
+  /* A solid plate behind the clock. Centre-top is where a landmark's skyline
+     silhouette lives — the timer was landing squarely on the Dalida bust's
+     head in the one shot that exists to show it. */
+  .timer-wrap{text-align:center;flex:0 0 auto;
+    background:linear-gradient(to bottom,rgba(20,16,27,.82),rgba(20,16,27,0));
+    padding:4px clamp(14px,2vw,26px) clamp(10px,1.6vw,18px);
+    border-radius:0 0 6px 6px}
   .timer{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-weight:900;
     font-size:clamp(44px,6.2vw,86px);line-height:.86;color:var(--white);
+    -webkit-text-stroke:3px var(--ink);paint-order:stroke fill;
     text-shadow:0 4px 0 var(--ink),0 0 30px rgba(255,194,74,.45)}
   .timer.critical{color:var(--red);animation:pulse .48s steps(2,end) infinite;
     text-shadow:0 4px 0 var(--ink),0 0 34px rgba(255,68,56,.75)}
   @keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
 
   .lives-panel{text-align:right}
-  .lives{display:flex;gap:7px;justify-content:flex-end;margin-top:3px}
-  .lives i{width:clamp(15px,1.7vw,22px);height:clamp(15px,1.7vw,22px);
-    background:var(--red);display:block;
-    clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%);
-    box-shadow:0 2px 0 var(--ink);transition:opacity .16s,transform .16s}
+  /* Bars on a dark plate, not pentagons on open sky. The pips were vanishing
+     against the gold horizon, and a pentagon does not signify anything. */
+  .lives{display:flex;gap:5px;justify-content:flex-end;margin-top:3px;
+    padding:4px 6px;background:rgba(20,16,27,.72);border:2px solid var(--ink)}
+  .lives i{width:clamp(7px,.85vw,11px);height:clamp(17px,1.9vw,25px);
+    background:var(--red);display:block;border-radius:1px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55);transition:opacity .16s,transform .16s}
   .lives i.lost{opacity:.16;transform:scale(.72)}
 
   /* ------------------------------------------------------------- combo */
@@ -95,13 +111,22 @@
   .reload-fill{height:100%;width:0;background:var(--blue);transition:width .04s linear}
 
   /* --------------------------------------------------------- crosshair */
+  /* Sized as a fraction of the viewport, not a fixed pixel box: a 48px
+     reticle on a 1600px frame is 3% of the width and needs study to find.
+     Every stroke is doubled — a dark outline under a light fill — so it
+     survives both the blazing limestone and the violet shadow without
+     relying on either. */
   .crosshair{position:absolute;left:50%;top:50%;
-    transform:translate(-50%,-50%);width:64px;height:64px;
+    transform:translate(-50%,-50%);
+    width:clamp(56px,5vw,92px);height:clamp(56px,5vw,92px);
     will-change:left,top}
-  .ch-ring{fill:none;stroke:var(--white);stroke-width:2.4;opacity:.92}
-  .ch-tick{stroke:var(--white);stroke-width:3.2;stroke-linecap:round}
-  .ch-dot{fill:var(--red)}
-  .crosshair svg{filter:drop-shadow(0 2px 2px rgba(0,0,0,.75))}
+  .crosshair svg{width:100%;height:100%;overflow:visible}
+  .ch-outline{fill:none;stroke:#14101B;stroke-width:7;stroke-linecap:round;opacity:.85}
+  .ch-ring{fill:none;stroke:var(--white);stroke-width:3;opacity:.96}
+  .ch-tick{stroke:var(--white);stroke-width:4;stroke-linecap:round}
+  .ch-dot{fill:var(--red);stroke:#14101B;stroke-width:1.6}
+  .crosshair svg{filter:drop-shadow(0 0 6px rgba(255,194,74,.45))
+                 drop-shadow(0 2px 2px rgba(0,0,0,.8))}
   /* In cover the crosshair COLLAPSES rather than merely changing colour —
      shape survives a busy amber frame where a hue shift does not. */
   .crosshair.covered{transform:translate(-50%,-50%) scale(.55);opacity:.4}

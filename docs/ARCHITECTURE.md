@@ -77,6 +77,36 @@ area.cleared      {areaId, timeLeft, noHit}
 game.over         {score}
 ```
 
+## The render chain
+
+```
+RenderPass(world, mainCamera)      near 0.1,  far 900
+ViewModelPass(weapon, vmCamera)    near 0.01, far 12     <- depth cleared here
+UnrealBloomPass                                          <- muzzle flash blooms
+ShaderPass(grade)                  haze lift, split tone, vignette, damage
+ShaderPass(FXAA)
+```
+
+Two details in that chain cost real debugging time and are worth stating
+plainly:
+
+**The weapon needs its own depth clear, and three cannot do it.** The stock
+`RenderPass` calls `clearDepth()` *before* `setRenderTarget()`, so it clears
+whichever buffer happened to be bound previously. With two cameras whose near
+planes differ by a factor of ten, their depth values are not comparable at all
+— a weapon 44 cm from a 1 cm near plane sits at depth ~0.9998 while a building
+twenty metres from a 10 cm near plane sits at ~0.995, so the gun loses the
+depth test to a building it is nowhere near and vanishes with no error.
+`ViewModelPass` in `src/render/viewmodel.js` binds first and clears second, and
+also disables `autoClear` around the draw so the world underneath survives.
+
+**Every metal needs an environment probe.** A PBR metal has no diffuse term, so
+a high-metalness surface with nothing to reflect renders black regardless of
+lighting. `buildSkyEnvironment()` bakes a PMREM from the game's own sky dome —
+not an external HDRI — so metal reflects the same gold horizon and violet
+zenith that lights everything else. It is assigned to both the world scene and
+the viewmodel scene.
+
 ## Asset pipeline
 
 Blender runs headless as the `bpy` Python module (Blender 5.0.1). Scripts in

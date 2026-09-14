@@ -103,16 +103,35 @@ window.__tour = {
     renderer.camera.lookAt(p.x, p.y + height, p.z);
     return p;
   },
-  /** Force a weapon into the player's hands, for reviewing the viewmodel. */
+  /**
+   * Force a weapon into the player's hands, for reviewing the viewmodel.
+   *
+   * Forces full exposure too. The attract pilot ducks constantly, and the gun
+   * correctly drops out of frame while it is in cover — so a tour shot taken
+   * at an arbitrary moment was capturing a hidden weapon and looking like a
+   * rendering failure.
+   */
   weapon(key) {
     game.weapons.grant(key, game.nowMs);
     viewModel.setWeapon(key);
-    viewModel.update(1 / 60, game.snapshot(), recognizer.last.aim, false);
+    const snap = { ...game.snapshot(), coverState: 'EXPOSED', exposure: 1 };
+    for (let i = 0; i < 30; i++) viewModel.update(1 / 60, snap, { x: 0.5, y: 0.5 }, false);
+  },
+  /** Read back where the weapon actually is on screen, for diagnostics. */
+  weaponScreenPos() {
+    if (!viewModel.current) return null;
+    viewModel.camera.updateMatrixWorld(true);
+    viewModel.root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(viewModel.current);
+    if (box.isEmpty()) return 'empty';
+    const ndc = box.getCenter(new THREE.Vector3()).project(viewModel.camera);
+    return { xPct: +((ndc.x + 1) / 2 * 100).toFixed(1), yPct: +((1 - ndc.y) / 2 * 100).toFixed(1) };
   },
   /** Trigger a muzzle flash and recoil without running the trigger logic. */
   fire() {
     viewModel.fire(game.weapons.current);
-    viewModel.update(1 / 200, game.snapshot(), recognizer.last.aim, false);
+    const snap = { ...game.snapshot(), coverState: 'EXPOSED', exposure: 1 };
+    viewModel.update(1 / 240, snap, { x: 0.5, y: 0.5 }, false);
   },
   /** Put the gun up, as if the player had raised their hand to reload. */
   gunUp() {

@@ -44,6 +44,8 @@ export function buildStreet(rail) {
     frames.push({ d, p, t, right, halfWidth: rail.widthAt(d) * 0.5 });
   }
 
+  // The apron goes down FIRST so everything else sits on it.
+  group.add(buildApron(frames));
   group.add(buildCarriageway(frames));
   group.add(buildPavement(frames, +1));
   group.add(buildPavement(frames, -1));
@@ -52,6 +54,63 @@ export function buildStreet(rail) {
   group.add(buildStairFlights(rail));
 
   return group;
+}
+
+/**
+ * The ground the street sits on.
+ *
+ * Without this the road is a ribbon hanging in space. The distant plain is
+ * thirty-eight metres below the route and starts a hundred and forty metres
+ * out, and the Butte's flank cone tops out at the route's LOWEST elevation —
+ * so everywhere the street climbs above that, there is a literal annular hole
+ * between the edge of the pavement and the start of the world, and the camera
+ * looks straight down into it. It is the single most damaging thing in any
+ * frame that shows the lower half of the screen.
+ *
+ * The apron is a wide skirt following the rail at the street's own elevation,
+ * falling away gently at its outer edge to meet the terrain. Generated from
+ * the same frames as the carriageway, so it can never drift out of alignment
+ * with the road it is supporting.
+ */
+function buildApron(frames) {
+  const pos = [], idx = [];
+  const REACH = 95;      // comfortably past the buildings and the alley walls
+  const DROP = 7;        // how far the outer edge falls, so it reads as a hill
+  const BANDS = [0, 0.16, 0.42, 1.0];
+
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    for (const side of [-1, 1]) {
+      for (const b of BANDS) {
+        const off = side * (f.halfWidth + 2.4 + b * REACH);
+        pos.push(
+          f.p.x + f.right.x * off,
+          f.p.y - 0.02 - DROP * b * b,
+          f.p.z + f.right.z * off,
+        );
+      }
+    }
+  }
+  const perRow = BANDS.length * 2;
+  for (let i = 0; i < frames.length - 1; i++) {
+    for (let side = 0; side < 2; side++) {
+      const base = i * perRow + side * BANDS.length;
+      const next = base + perRow;
+      for (let b = 0; b < BANDS.length - 1; b++) {
+        const a = base + b, c = a + 1, d = next + b, e = d + 1;
+        if (side === 1) idx.push(a, d, c, c, d, e);
+        else idx.push(a, c, d, c, e, d);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, flat(PALETTE.limestoneDeep, { roughness: 1.0 }));
+  mesh.receiveShadow = true;
+  mesh.name = 'apron';
+  return mesh;
 }
 
 /** The cobbled roadway. Two-tone strips so the surface is not a dead plane. */

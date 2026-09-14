@@ -94,6 +94,9 @@ function helpers(rng) {
 export function buildBuilding({
   width = 9, depth = 11, floors = 4, style = 'plaster',
   shopfront = false, rng = Math.random, awningColor = null,
+  /** Vertical offset applied to the whole building, in metres. Breaks the
+   *  cornice line between neighbours; see buildBuildingRows. */
+  corniceJog = 0,
 } = {}) {
   const group = new THREE.Group();
   const anchors = [];

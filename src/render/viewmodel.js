@@ -112,8 +112,19 @@ const COVER_ROTATION = new THREE.Euler(-0.62, 0.16, 0.30);
  * Barrel vertical, held up beside the head — the same shape the player's own
  * hand is making.
  */
-const RELOAD_OFFSET = new THREE.Vector3(-0.02, 0.06, 0.10);
+const RELOAD_OFFSET = new THREE.Vector3(-0.055, 0.175, 0.085);
 const RELOAD_ROTATION = new THREE.Euler(1.24, 0.10, -0.16);
+
+/**
+ * Global size of every weapon on screen.
+ *
+ * Measured with tools/verify/bench.mjs, which reports the model's bounding box
+ * as a percentage of the frame. At 1.0 the handgun filled 68% of the screen
+ * height and the shotgun 152% — enormous, and covering exactly the middle
+ * third where the enemies are. A viewmodel wants roughly a third of the frame
+ * height: present enough to feel held, small enough to shoot past.
+ */
+const VIEWMODEL_SCALE = 0.55;
 
 /** Per-weapon scale and muzzle position, in model space (barrel along -Z). */
 const WEAPON_RIG = {
@@ -159,17 +170,21 @@ export class ViewModel {
       color: 0xfff0c0, toneMapped: false, transparent: true, opacity: 0.95,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.22, 6), flashMat);
+    // The flash is sized against VIEWMODEL_SCALE too. It is a child of the
+    // root but the root is not scaled, so without this the flash stayed at its
+    // original size while the weapons shrank and it swamped the whole frame.
+    const F = VIEWMODEL_SCALE;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.055 * F, 0.22 * F, 6), flashMat);
     cone.rotation.x = -Math.PI / 2;
-    cone.position.z = -0.10;
+    cone.position.z = -0.10 * F;
     this.flash.add(cone);
     for (let i = 0; i < 3; i++) {
-      const star = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.055), flashMat);
+      const star = new THREE.Mesh(new THREE.PlaneGeometry(0.26 * F, 0.055 * F), flashMat);
       star.rotation.z = (i / 3) * Math.PI;
-      star.position.z = -0.06;
+      star.position.z = -0.06 * F;
       this.flash.add(star);
     }
-    this.flashLight = new THREE.PointLight(0xffe9b0, 0, 2.2, 2);
+    this.flashLight = new THREE.PointLight(0xffe9b0, 0, 2.2 * F, 2);
     this.flash.add(this.flashLight);
     this.root.add(this.flash);
 
@@ -202,7 +217,7 @@ export class ViewModel {
       try {
         const gltf = await this.loader.loadAsync(this.assetBase + rig.file);
         const model = gltf.scene;
-        model.scale.setScalar(rig.scale);
+        model.scale.setScalar(rig.scale * VIEWMODEL_SCALE);
         model.traverse((o) => {
           if (!o.isMesh) return;
           o.castShadow = false;
@@ -238,7 +253,7 @@ export class ViewModel {
     this.currentKey = key;
     model.visible = true;
     const rig = WEAPON_RIG[key];
-    this.flash.position.copy(rig.muzzle).multiplyScalar(rig.scale);
+    this.flash.position.copy(rig.muzzle).multiplyScalar(rig.scale * VIEWMODEL_SCALE);
     // A weapon swap gets a small kick of its own, so a pickup is felt.
     this.recoil = Math.min(1, this.recoil + 0.45);
   }
@@ -324,12 +339,24 @@ export class ViewModel {
     // Ducking pulls the gun down out of frame. Raising the hand to reload
     // rotates it to vertical. Both are blended rather than switched, so the
     // weapon travels through the same transition the player's hand does.
-    pos.lerp(pos.clone().add(COVER_OFFSET), cover);
-    rot.x += COVER_ROTATION.x * cover;
-    rot.y += COVER_ROTATION.y * cover;
-    rot.z += COVER_ROTATION.z * cover;
+    // These two poses are mutually exclusive, and getting that wrong was a
+    // real bug: in this game raising the gun IS how you take cover, so both
+    // were being applied at once. The cover pose drops the weapon 34 cm and
+    // the reload pose lifts it 6 cm, so the sum put the gun 140% of the way
+    // down the frame — completely off the bottom of the screen at exactly the
+    // moment it is supposed to be held up beside your head.
+    //
+    // So the reload pose takes precedence and the tuck-down only applies to
+    // whatever cover is NOT accounted for by a raised gun. That residue is
+    // real: being knocked into cover by a hit ducks you without your hand
+    // going up.
+    const tuck = cover * (1 - this.gunUp);
+    pos.addScaledVector(COVER_OFFSET, tuck);
+    rot.x += COVER_ROTATION.x * tuck;
+    rot.y += COVER_ROTATION.y * tuck;
+    rot.z += COVER_ROTATION.z * tuck;
 
-    pos.lerp(pos.clone().add(RELOAD_OFFSET), this.gunUp);
+    pos.addScaledVector(RELOAD_OFFSET, this.gunUp);
     rot.x += RELOAD_ROTATION.x * this.gunUp;
     rot.y += RELOAD_ROTATION.y * this.gunUp;
     rot.z += RELOAD_ROTATION.z * this.gunUp;
@@ -340,7 +367,10 @@ export class ViewModel {
     if (this.recoil > 0.0001) {
       pos.z += this.recoil * 0.055;
       pos.y += this.recoil * 0.012;
-      rot.x -= this.recoil * 0.26;
+      // Positive pitch raises the muzzle (see the note on REST). Recoil kicks
+      // UP; subtracting here drove the muzzle into the floor, which read as
+      // the gun being yanked downward every time it fired.
+      rot.x += this.recoil * 0.30;
       rot.y += this.recoilYaw * this.recoil * 0.10;
       rot.z += this.recoilYaw * this.recoil * 0.16;
       // Critically damped-ish decay: fast off the peak, then settles.

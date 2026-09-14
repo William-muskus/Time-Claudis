@@ -3,6 +3,7 @@ import { buildStreet } from './street.js';
 import { buildBuilding } from './buildings.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildProps } from './props.js';
+import { buildCover } from './cover.js';
 import { makeRng } from '../core/rng.js';
 import { batchStatic } from './optimize.js';
 import { buildSky } from '../render/sky.js';
@@ -44,6 +45,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */) {
   root.add(buildEndCaps(rail, rng, anchors));
 
   root.add(buildProps(rail, rng));
+  root.add(buildCover(rail));
   root.add(buildGroundPlane(rail));
 
   const sky = buildSky();
@@ -133,6 +135,9 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
   const group = new THREE.Group();
   group.name = 'facades';
 
+  /** Last storey count placed on each side, so neighbours cannot agree. */
+  const lastFloors = { '-1': null, 1: null };
+
   for (const side of [-1, 1]) {
     let d = 4;
     let guard = 0;
@@ -185,9 +190,33 @@ function buildBuildingRows(rail, rng, anchors, reserved = []) {
       }
 
       const depth = rng.range(9, 15);
+
+      /**
+       * Break the cornice line between neighbours.
+       *
+       * docs/ROUTE.md says, in as many words, that a level cornice reads as
+       * Boulevard Haussmann and stops being Montmartre instantly — and then
+       * the first version of this generator produced exactly that, because
+       * `characterAt()` returns a storey count per DISTRICT and neighbouring
+       * plots kept drawing the same number.
+       *
+       * The Butte was a village annexed in 1860 and built up plot by plot over
+       * decades, so adjacent houses disagree about height by a storey or two
+       * and about cornice level by half a metre. Forcing a difference from the
+       * previous building, rather than merely randomising, guarantees the
+       * raggedness instead of hoping for it.
+       */
+      let floors = ch.floors;
+      if (lastFloors[side] !== null && floors === lastFloors[side]) {
+        floors += rng.chance(0.5) ? 1 : -1;
+      }
+      floors = Math.max(2, Math.min(6, floors));
+      lastFloors[side] = floors;
+      const corniceJog = rng.range(-0.55, 0.55);
+
       const { group: b, anchors: ba } = buildBuilding({
-        width: w, depth, floors: ch.floors, style: ch.style,
-        shopfront: ch.shopfront, rng,
+        width: w, depth, floors, style: ch.style,
+        shopfront: ch.shopfront, rng, corniceJog,
       });
 
       b.position.copy(p).addScaledVector(right, side * (setback + depth / 2));
