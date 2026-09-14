@@ -18,6 +18,9 @@ import { AREAS } from '../data/route.js';
  *   FAILED      timer hit zero or lives exhausted.
  */
 
+/** Openings a person can walk out of, used as the last-resort spawn pool. */
+const GROUND_LEVEL_ANCHORS = ['door', 'alley', 'metro'];
+
 export const DirectorState = {
   TRAVELLING: 'TRAVELLING',
   FIGHTING: 'FIGHTING',
@@ -115,24 +118,57 @@ export class Director {
    * credibility problem.
    */
   #pickAnchor(spawn, cameraPos, cameraFwd) {
-    const NEAR = 8, FAR = 34;
-    const types = new Set(spawn.anchorTypes);
+    /**
+     * Selection cascades, and it must.
+     *
+     * Measured at the five combat nodes, only 0-9 anchors of any given type
+     * satisfy the strict constraints, out of 83-224 that exist. With anchors
+     * also marked occupied while in use, the pool ran dry within a couple of
+     * waves and roughly three quarters of all scheduled spawns silently
+     * produced nothing. The stage was unwinnable past area one: the gating RED
+     * never appeared, so the area never cleared.
+     *
+     * A wave that does not spawn is not a minor shortfall, it is a broken
+     * area, so the search relaxes rather than failing. It gives up the SIDE
+     * first (a pacing preference), then the distance band, then the facing
+     * cone, and only then the anchor type — because an enemy on the wrong side
+     * of the street is a pacing problem while an enemy materialising out of a
+     * blank wall is a credibility one, and both are better than an area that
+     * cannot be finished.
+     */
+    const passes = [
+      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: true },
+      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: false },
+      { near: 4, far: 58, facing: -0.1, types: spawn.anchorTypes, respectSide: false },
+      // Last resort: any opening a person could plausibly come out of.
+      { near: 4, far: 58, facing: -0.1, types: GROUND_LEVEL_ANCHORS, respectSide: false },
+    ];
 
+    for (const pass of passes) {
+      const pick = this.#searchAnchors(spawn, cameraPos, cameraFwd, pass);
+      if (pick) return pick;
+    }
+    return null;
+  }
+
+  #searchAnchors(spawn, cameraPos, cameraFwd, { near, far, facing: minFacing, types, respectSide }) {
+    const wanted = new Set(types);
     const scored = [];
     for (const a of this.anchors) {
-      if (!types.has(a.type)) continue;
-      if (!a.worldPos) continue;
+      if (!wanted.has(a.type) || !a.worldPos) continue;
+      if (this.occupied?.has(a.id)) continue;
       const to = a.worldPos.clone().sub(cameraPos);
       const dist = to.length();
-      if (dist < NEAR || dist > FAR) continue;
+      if (dist < near || dist > far) continue;
       to.normalize();
       const facing = to.dot(cameraFwd);
-      if (facing < 0.25) continue;                  // behind or hard side-on
-      if (this.occupied?.has(a.id)) continue;
+      if (facing < minFacing) continue;
 
-      let score = facing * 2.0 - Math.abs(dist - 19) * 0.04;
-      if (spawn.side && a.side === spawn.side) score += 1.2;
-      else if (spawn.side && a.side === -spawn.side) score -= 0.8;
+      let score = facing * 2.0 - Math.abs(dist - 18) * 0.04;
+      if (respectSide && spawn.side) {
+        if (a.side === spawn.side) score += 1.2;
+        else if (a.side === -spawn.side) score -= 0.8;
+      }
       // Snipers want height; everyone else wants to not be on a roof.
       const high = a.worldPos.y - cameraPos.y;
       if (spawn.type === 'SNIPER') score += Math.min(high, 12) * 0.22;
@@ -147,7 +183,13 @@ export class Director {
 
   #spawn(spawn, cameraPos, cameraFwd) {
     const anchor = this.#pickAnchor(spawn, cameraPos, cameraFwd);
-    if (!anchor) return null;
+    if (!anchor) {
+      // Loud on purpose. A silent spawn failure is how an area becomes
+      // unclearable without anything appearing to go wrong.
+      this.failedSpawns = (this.failedSpawns ?? 0) + 1;
+      this.bus.emit('spawn.failed', { type: spawn.type, anchorTypes: spawn.anchorTypes });
+      return null;
+    }
     this.occupied ??= new Set();
     this.occupied.add(anchor.id);
 
@@ -247,6 +289,9 @@ export class Director {
         onFire: (en) => ctx.onEnemyFire(en),
         onStage: (en, stage) => this.bus.emit('enemy.telegraph', { id: en.id, stage }),
       });
+      // Release the doorway as soon as the enemy has stepped out of it. Holding
+      // it until death starves later waves of the few anchors that qualify.
+      if (e.state !== EnemyState.SPAWNING) this.occupied?.delete(e.anchor.id);
     }
     // Reap.
     for (let i = this.enemies.length - 1; i >= 0; i--) {

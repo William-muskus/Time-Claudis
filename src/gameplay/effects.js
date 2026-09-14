@@ -214,14 +214,48 @@ export class Effects {
 export class BulletPool {
   constructor(scene, max = 40) {
     this.scene = scene;
-    const geo = new THREE.SphereGeometry(0.07, 6, 5);
+
+    /**
+     * Incoming fire has to be impossible to miss.
+     *
+     * A round travels for six or seven hundred milliseconds at typical combat
+     * range, and that flight time is the entire reason the game is fair — you
+     * can duck under a shot already in the air. But the player can only use
+     * that window if they can SEE the round, and at 7 cm across from twenty
+     * metres away it was a couple of pixels. In a headless playthrough an
+     * oracle that ducked correctly on every telegraph still took a hit every
+     * time it popped back out, because nothing on screen said a round was
+     * still coming.
+     *
+     * So the projectile is a bright head with a long tail stretched along its
+     * own velocity. The tail is what does the work: a streak reads as motion
+     * and as DIRECTION, so a glance tells you not just that something is in
+     * the air but that it is coming at you rather than across you. Unlit and
+     * untonemapped so it punches through the bloom threshold at any exposure.
+     */
+    const geo = new THREE.SphereGeometry(0.14, 8, 6);
     const mat = new THREE.MeshBasicMaterial({ color: PALETTE.enemyTracer, toneMapped: false });
+    const tailGeo = new THREE.CylinderGeometry(0.055, 0.11, 1, 6, 1, true);
+    // Point the cylinder down -Z so it can be aimed with lookAt.
+    tailGeo.rotateX(Math.PI / 2);
+    tailGeo.translate(0, 0, 0.5);
+    const tailMat = new THREE.MeshBasicMaterial({
+      color: PALETTE.enemyTracer, toneMapped: false, transparent: true,
+      opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+
     this.bullets = [];
     for (let i = 0; i < max; i++) {
       const m = new THREE.Mesh(geo, mat);
+      const tail = new THREE.Mesh(tailGeo, tailMat);
+      tail.scale.z = 2.6;
+      m.add(tail);
       m.visible = false;
       scene.add(m);
-      this.bullets.push({ mesh: m, active: false, vel: new THREE.Vector3(), ttl: 0, from: null });
+      this.bullets.push({
+        mesh: m, tail, active: false, vel: new THREE.Vector3(), ttl: 0, from: null,
+      });
     }
   }
 
@@ -234,6 +268,8 @@ export class BulletPool {
     b.active = true;
     b.from = ownerId;
     b.mesh.visible = true;
+    // Aim the tail backwards along the flight path.
+    b.mesh.lookAt(from.clone().sub(b.vel));
   }
 
   /**
@@ -258,6 +294,13 @@ export class BulletPool {
         if (isVulnerable()) onHit(b.from);
         continue;
       }
+      // Swell the head as it closes, so an approaching round grows in the
+      // frame rather than merely getting nearer. Cheap, and it is what makes
+      // "this one is for me" legible at a glance.
+      const near = b.mesh.position.distanceTo(playerPos);
+      const swell = 1 + Math.max(0, (14 - near) / 14) * 1.1;
+      b.mesh.scale.setScalar(swell);
+
       if (b.ttl <= 0) { b.active = false; b.mesh.visible = false; }
     }
   }
