@@ -23,6 +23,7 @@ export class Effects {
     this.scene = scene;
     this.group = new THREE.Group();
     this.group.name = 'effects';
+    this.group.userData.isEffect = true;
     scene.add(this.group);
 
     this.#initTracers();
@@ -252,6 +253,13 @@ export class BulletPool {
       tail.scale.z = 2.6;
       m.add(tail);
       m.visible = false;
+      // Marked transient so the verification harness does not treat a round in
+      // flight as a wall. A bullet travelling from an enemy toward the camera
+      // sits exactly on the line of sight to that enemy, so the occlusion
+      // check reported every enemy in the incoming-fire shot as hidden behind
+      // its own bullet.
+      m.userData.isEffect = true;
+      tail.userData.isEffect = true;
       scene.add(m);
       this.bullets.push({
         mesh: m, tail, active: false, vel: new THREE.Vector3(), ttl: 0, from: null,

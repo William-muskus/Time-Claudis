@@ -1,3 +1,17 @@
+/**
+ * How much of each combat node can the player actually see, and is the coarse
+ * occluder model telling the truth about it?
+ *
+ * Prints visible/in-range anchor counts per type at every combat node, then the
+ * agreement between src/world/occluders.js and a real scene raycast. The second
+ * number is the one that matters: the model is allowed to under-report (it only
+ * knows about buildings) but must never refuse an anchor the player can see,
+ * because over-reporting starves the director and an area that cannot be
+ * finished is the worst outcome available. The figures quoted in occluders.js
+ * come from here.
+ *
+ *   node tools/verify/los-probe.mjs
+ */
 import * as THREE from 'three';
 import { Rail } from '../../src/core/spline.js';
 import { railPoints } from '../../src/data/route.js';

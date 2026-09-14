@@ -12,7 +12,7 @@ half that. Every design decision below follows from that number.
 
 ## `npm test` — does the simulation obey the contract?
 
-88 tests, no browser, milliseconds. Three.js builds and updates a scene
+114 tests, no browser, seconds. Three.js builds and updates a scene
 perfectly well without WebGL; only *drawing* needs a GPU, so the entire
 simulation is testable headlessly.
 
@@ -118,3 +118,49 @@ to go faster would be misrepresenting the game to its own reviewer.
 were captured before anyone noticed not one of them contained an enemy. The
 harness was shooting at timestamps, and an arcade fight's readable moments are
 events.
+
+**Reporting state is not reporting the picture.** After staging was added the
+manifest happily recorded five enemies alive and telegraphing on a frame that
+contained none of them. Listing enemy states proves the *simulation* ran and
+says nothing about what was drawn. The tour now projects each enemy and tests
+occlusion, and prints the answer as `TYPE:stage@x,y dist` with `BLOCKED` or
+`OFFSCREEN` — because on-screen-behind-a-wall and off-screen-entirely look
+identical in a screenshot and have completely different causes. It warns loudly
+when a combat shot ends with nothing visible. That one line found the missing
+line-of-sight check in the director, the Dalida bust standing on the rail, and
+enemies spawning above the top of the frame.
+
+**Occlusion needs more than one ray, in both directions.** A single ray at chest
+height called a handrail a wall — and the Girardon climb has 376 pieces of
+handrail. It also called an enemy hidden behind its own bullet, because a round
+in flight sits exactly on the line of sight to the thing that fired it. Sample
+three points up the body, take one clear ray as visible, and exclude transient
+effects.
+
+**The build can fail silently and the tour will not notice.** A single backtick
+inside a GLSL comment closed the template literal and broke `vite build`. The
+old bundle stayed on disk, three verification renders screenshotted it, and the
+review was of code that no longer existed. `tests/modules.test.js` now imports
+every source module and compares the newest source mtime against the newest
+bundle.
+
+**A flaky test is worse than no test**, because it trains you to re-run rather
+than to look. The forward-arc test failed four times in ten on identical code.
+The cause was `Math.random` scattering ivy, wall fragments and cover foliage —
+so the world was not deterministic for a fixed seed, and every reproducibility
+guarantee above rested on nothing.
+
+**Some things are invisible to the test you would naturally write.** It took
+three attempts to catch a four-metre statue standing on the rail. A fan at plus
+and minus 20 degrees threaded past both sides of it; once the sampling was fine
+enough to hit, the camera turned out to be *inside* the plinth, where
+front-face raycasting reports nothing at all. An object big enough to fill the
+frame is the object a visibility test is worst at seeing. Restated as clearance
+— walk the rail, is the landmark in the way — it cannot be threaded.
+
+**Measure the fix, not the intention.** Highlight desaturation was added to stop
+sunlit limestone reading as neon yellow. It did, and clipping went from 0.6% of
+a frame to 28%: pulling the weak channels up turns `(1.0, 1.0, 0.45)` into a
+nicer colour that is exactly as blown out. Redistribution is not reduction. The
+shoulder that actually fixed it brings peaks *down*, and the number that proved
+it is the same one that exposed the first attempt.

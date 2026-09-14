@@ -224,8 +224,24 @@ export class Director {
         if (a.side === spawn.side) score += 1.2;
         else if (a.side === -spawn.side) score -= 0.8;
       }
-      // Snipers want height; everyone else wants to not be on a roof.
+      // HEIGHT IS AN ANGLE, NOT A DISTANCE.
+      //
+      // This used to score on metres above the camera, which says nothing
+      // about whether the enemy is in shot. The camera's vertical field is
+      // 58 degrees, so anything past about 29 degrees of elevation is off the
+      // top of the frame — and once the ideal engagement range came in to
+      // 13 m, a balcony six metres up crossed that line and enemies started
+      // spawning above the picture. Same anchor, same six metres, in frame at
+      // twenty-five metres and invisible at eleven.
+      //
+      // Snipers get a wider allowance because being up high is the whole point
+      // of a sniper, and they are placed far enough back that the angle stays
+      // manageable.
       const high = a.worldPos.y - cameraPos.y;
+      const elevationDeg = Math.atan2(high, Math.max(0.001, Math.hypot(
+        a.worldPos.x - cameraPos.x, a.worldPos.z - cameraPos.z))) * 180 / Math.PI;
+      const maxDeg = spawn.type === 'SNIPER' ? 24 : 19;
+      if (elevationDeg > maxDeg) continue;
       if (spawn.type === 'SNIPER') score += Math.min(high, 12) * 0.22;
       else score -= Math.max(0, high - 4) * 0.3;
       // Big enough that no combination of angle and distance can outweigh it.

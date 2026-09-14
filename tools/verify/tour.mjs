@@ -86,12 +86,18 @@ const SHOTS = [
   // and the amber glass read. This shot exists to judge the object.
   { name: '11b_guimard_close',   at: 'place_abbesses', back: 15, lateral: 3, yaw: 186, pitch: 2,
     why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
-  // Backed off to where 07 stands. Parked on the mill's own waypoint the
-  // sightline east runs straight into the building next door, and the shot
-  // came back as a wall filling the frame — 93% warm, 4% cool, no basilica.
-  { name: '12_sacre_coeur',      at: 'moulin_galette', back: 20,
-    look: 'sacre_coeur', lookHeight: 40,
-    why: 'The basilica on the skyline. A silhouette, nothing more.' },
+  // Shot from Place Emile-Goudeau, and aimed at the dome rather than the body.
+  //
+  // Both earlier framings came back as a wall filling the frame. That is not a
+  // framing accident, it is the truth about this place: sweeping the whole
+  // rail against the real geometry, the basilica is visible from exactly three
+  // stretches of the route and only ever above 46 m — which is the dome and
+  // the cross, not the building. From inside Montmartre's streets you do not
+  // see Sacre-Coeur, you catch the top of it over a roofline, and that is what
+  // this shot should show.
+  { name: '12_sacre_coeur',      at: 'emile_goudeau',
+    look: 'sacre_coeur', lookHeight: 46,
+    why: 'The dome over the rooftops. A glimpse, which is all the streets give you.' },
 
   // --- the first-person weapon, in each of its states --------------------
   { name: '13_weapon_ready',     at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN',

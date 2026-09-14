@@ -300,7 +300,8 @@ window.__tour = {
     const ray = new THREE.Raycaster();
     const walls = [];
     renderer.scene.traverse((o) => {
-      if (o.isMesh && o.visible && !o.userData.isEnemy) walls.push(o);
+      if (o.isMesh && o.visible && !o.userData.isEnemy && !o.userData.isEffect
+          && !o.parent?.userData?.isEffect) walls.push(o);
     });
     return game.director.enemies.filter((e) => e.isAlive).map((e) => {
       const p = e.group.position.clone();
