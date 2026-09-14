@@ -39,7 +39,11 @@ export class Renderer {
     // sky separated only by value. The whole point of the amber/violet split
     // is that HUE carries the shading information, because flat-shaded
     // low-poly geometry has no detail to carry it.
-    this.renderer.toneMappingExposure = 1.26;
+        // Measured, not guessed: at 1.26 the sunlit limestone on rue Ravignan was
+    // clipping across 10.6% of the frame (tools/verify/palette-check.mjs).
+    // A blown highlight in a flat-shaded scene is worse than in a textured one
+    // because there is no surface detail left to read once the value pins.
+    this.renderer.toneMappingExposure = 1.04;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -132,7 +136,13 @@ export class Renderer {
         // Raised again after the first golden-hour pass: looking into the sun
     // means every camera-facing wall is a shadow face, and the rim is the only
     // thing keeping those walls from merging into one black mass.
-    this.rim = new THREE.DirectionalLight(PALETTE.skyZenith, 1.7);
+    // The rim is the ONLY pure-cool light in the rig, and it is what puts the
+    // violet into the shadow side. Measured across the tour, most frames were
+    // coming back under 12% cool against 80% warm — which is not the
+    // amber/violet split the palette promises, it is a monochrome wash with a
+    // few blue shutters in it. Raised hard, and it is cheap: a directional
+    // light with no shadow map.
+    this.rim = new THREE.DirectionalLight(PALETTE.skyZenith, 2.9);
     this.rim.position.set(dir.x * -140, 60, dir.z * -140);
     this.scene.add(this.rim);
   }
@@ -298,15 +308,37 @@ const GRADE_SHADER = {
       // washed the limestone mid-tones toward pink, and warm stone that reads
       // pink is a different building material. Enough haze to keep black off
       // the floor, not enough to tint what is already lit.
-      const vec3 HAZE = vec3(0.034, 0.029, 0.056);
-      col = HAZE + col * (1.0 - HAZE);
+      // Weighted to the shadows rather than applied flat.
+      //
+      // `HAZE + col * (1 - HAZE)` is a linear remap: it lifts the floor AND
+      // everything above it, which is why an earlier, stronger version of this
+      // washed the limestone toward pink and had to be pulled back — at which
+      // point a completely unlit surface landed at 7/255, which is black by
+      // any reasonable measure. Half of one tour frame measured as near-black
+      // for exactly that reason.
+      //
+      // Squaring the complement puts the whole lift into the bottom end and
+      // almost none into the midtones, so the floor can be raised properly
+      // without tinting anything that is already lit. Haze behaves this way in
+      // reality too: it is most of what you see in a shadow and almost
+      // invisible against a sunlit wall.
+      const vec3 HAZE = vec3(0.085, 0.076, 0.125);
+      vec3 shadowWeight = pow(1.0 - clamp(col, 0.0, 1.0), vec3(2.0));
+      col += HAZE * shadowWeight;
 
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
 
       // Split tone: violet into the shadows, gold into the highlights.
-      vec3 shadowTint = vec3(0.95, 0.96, 1.13);   // hue shift, not a level drop
+      // Pushed harder after measuring the tour: the shadows were tinting
+      // toward violet in principle and nowhere near enough of it survived to
+      // register as a second hue. This is the last chance to state the split,
+      // because tone mapping has already compressed everything above it.
+      vec3 shadowTint = vec3(0.88, 0.93, 1.30);
       vec3 highTint   = vec3(1.07, 1.02, 0.90);
-      col *= mix(shadowTint, highTint, smoothstep(0.12, 0.72, l));
+      // Widened the crossover so more of the midtones pick a side. A narrow
+      // band leaves most of a flat-shaded scene sitting in the neutral middle,
+      // which is exactly the "nothing in between" the palette forbids.
+      col *= mix(shadowTint, highTint, smoothstep(0.06, 0.80, l));
 
       // Gentle S-curve for arcade punch. The weight is deliberately low: a
       // stronger curve looks punchier on a bright test image and then eats the

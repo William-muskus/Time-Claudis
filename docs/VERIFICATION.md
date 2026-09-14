@@ -67,6 +67,35 @@ are placed by the real anchor-selection rules: out of a real doorway, at a real
 engagement distance, on a real side of the street. A harness that placed
 enemies by hand would be photographing something the game never does.
 
+## `npm run palette <png...>` — is the colour contract actually being met?
+
+`src/render/palette.js` promises one thing above all: everything is either
+warm or cool, nothing in between, because flat-shaded geometry has no surface
+detail and so the SHADING has to carry hue information rather than only
+brightness.
+
+That promise is easy to state and impossible to eyeball, especially at golden
+hour where every honest frame is warm-dominated. So it gets measured. The tool
+decodes a PNG, skips the HUD bands, and reports four numbers per frame:
+
+```
+file                                clip%  dark%  warm%  cool%   mid%
+tune1/10_ravignan_drop.png           12.2      0   77.9   21.1      1   <-- clipping
+tune1/05_dalida_bust.png              0.5      0   83.6   14.1    2.3   <-- no cool side
+```
+
+| Measure | Target | Why |
+|---|---|---|
+| `clip%` | under 4 | A blown highlight in a flat-shaded scene is worse than in a textured one, because there is no surface detail left to read once the value pins |
+| `dark%` | under 3 | Shadows should be violet, not holes |
+| `cool%` | over 16 | Below this there is no split, only a wash with some blue shutters in it |
+
+This found what eyeballing had missed for hours: the tour was averaging **80%
+warm against 11% cool**, which is not the amber/violet contract at all. Raising
+the rim light and widening the grade's crossover took it to 21-40% cool. It
+also caught rue Ravignan clipping across a tenth of the frame, and one shot
+where half the picture measured as near-black.
+
 ---
 
 ## Things learned the hard way

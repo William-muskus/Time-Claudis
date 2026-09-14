@@ -39,7 +39,11 @@ export const PALETTE = {
                                 //  was a dusk blue and it dragged the whole sky,
                                 //  and the hemisphere fill that samples it, toward night.
   skyHorizon:   c('#F2B86B'),   // molten gold at the rooftops
-  skyGround:    c('#A57F5E'),   // warm bounce off the cobbles
+  // The hemisphere's lower half. Desaturated from #A57F5E: a vertical wall
+  // receives roughly a 50/50 mix of sky and ground from a hemisphere light, so
+  // a strongly warm ground colour cancels the blue and leaves shadowed façades
+  // neutral — which is precisely where the violet was going.
+  skyGround:    c('#8F7867'),
   sunColor:     c('#FFD9A0'),
   sunDiscColor: c('#FFF0CC'),
   // Desaturated from #E0A868. Fog tints EVERYTHING beyond its near plane, so

@@ -12,7 +12,8 @@
     "test": "node --test tests/*.test.js",
     "tour": "node tools/verify/tour.mjs",
     "bench": "node tools/verify/bench.mjs",
-    "action": "node tools/verify/action.mjs"
+    "action": "node tools/verify/action.mjs",
+    "palette": "node tools/verify/palette-check.mjs"
   },
   "dependencies": {
     "three": "^0.169.0",

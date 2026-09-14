@@ -54,10 +54,13 @@ const SHOTS = [
     why: 'THE landmark. Polished chest, swept hair, facing east.' },
   { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
     why: 'The sightline down rue de l Abreuvoir. Most photographed view here.' },
-  { name: '07_moulin',           at: 'moulin_galette', back: 26, yaw: 214, pitch: 6,
-    why: 'The Blute-fin on its mound. Crest of the level.' },
-  { name: '07b_moulin_close',    at: 'moulin_galette', back: 12, yaw: 250, pitch: 10,
-    why: 'The mill itself: tower, cap, and the four sails on their hub.' },
+  // Both aimed AT the mill. The earlier yaws pointed across it into a distant
+  // unlit terrace, so the shot that exists to show the crest of the level was
+  // half a black wall and no windmill.
+  { name: '07_moulin',           at: 'moulin_galette', back: 22, look: 'moulin_radet', lookHeight: 8,
+    why: 'Approaching the crest. Both mills on the skyline.' },
+  { name: '07b_moulin_close',    at: 'moulin_galette', back: 6, lateral: 2, yaw: 285, pitch: 12,
+    why: 'The Blute-fin itself: tower, cap, and the four sails on their hub.' },
   // Backed off down the lane: parked on the waypoint in a six-metre street we
   // were within touching distance of a wall and it filled the whole frame.
   { name: '08_orchampt_gate',    at: 'maison_dalida', back: 16, look: 'maison_dalida', lookHeight: 2.0,
