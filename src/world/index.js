@@ -144,6 +144,12 @@ function landmarkFootprints(rail) {
   };
 
   add('lamarck_station', 16);     // the metro mouth and its twin staircases
+  // The allée des Brouillards is a PEDESTRIAN alley, not a street. Reserving
+  // it keeps the procedural terrace off both sides so the authored château
+  // wall and pavilions can stand there instead — see buildChateauBrouillards.
+  // Without this the most distinctive stretch of the climb was six storeys of
+  // generated Haussmann on both flanks, which is the one thing it is not.
+  add('brouillards', 22);
   add('place_dalida', 15);        // the bust, and the square it needs
   // The Blute-fin's mound is nine metres across before the tower starts, and
   // it now sits at its own coordinate rather than a rail offset, so the

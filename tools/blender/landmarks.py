@@ -55,8 +55,18 @@ def dalida_bust():
     # the same value, and two dark masses stacked on each other read as one
     # dark mass. Her hair is the most recognisable thing about her and it has
     # to be a separate shape in the silhouette, not a bump on top of a drum.
-    bronze_lit = material("bronze_lit", PALETTE["bronzePolish"],
-                          roughness=0.5, metallic=0.4, emission=0.2)
+    # A THIRD bronze, between the weathered body and the rubbed chest — not the
+    # same gold as the rub.
+    #
+    # The hair was given bronzePolish outright, to separate it from the torso.
+    # It separated it and wrecked the read: the rubbed chest is bright gold too,
+    # so the silhouette became light-dark-light-dark up its whole height and the
+    # bust came back looking like a striped marker post. Exactly ONE thing on
+    # this object is polished gold, because exactly one thing on the real one is
+    # — thirty years of hands on the chest. The hair just needs to be a step
+    # lighter than the body, which is what the sun does to the top of a bronze.
+    bronze_lit = material("bronze_lit", "#A8814E",
+                          roughness=0.52, metallic=0.4, emission=0.14)
 
     parts = [
         box("base", (1.05, 0.95, 0.20), (0, 0, 0.10), mat=stone_dark),
@@ -68,10 +78,28 @@ def dalida_bust():
         # under the subject, and from six metres the whole thing read as a
         # chimney with a lump on it. The plinth is furniture; it should be the
         # narrowest thing here, not the widest.
-        box("plinth", (0.60, 0.54, 1.34), (0, 0, 0.87), mat=stone),
+        # FIVE BLOCKS OF CUT GRANITE, which is what she actually stands on.
+        #
+        # It was one smooth 1.34 m shaft. The real plinth is five separate
+        # blocks stacked and stepping inward, and the joints between them are
+        # the thing that reads: five hard horizontal shadow lines up a pale
+        # stone column, at the one height where nothing else in the frame has
+        # any horizontal detail at all. A smooth shaft of the same size is a
+        # bollard.
+        # ONE STONE, five blocks. The first version alternated two materials
+        # to make the courses read and produced a barber's pole: the level's
+        # title landmark came back looking like a striped marker post with a
+        # knob on top. Real granite courses are the same stone and it is the
+        # JOINT that reads — so the blocks step inward instead, and the shadow
+        # each step casts on the one below is the line that carries it.
+        *[
+            box(f"granite_{i}", (0.78 - i * 0.052, 0.70 - i * 0.046, 0.262),
+                (0, 0, 0.20 + 0.270 * i), mat=stone)
+            for i in range(5)
+        ],
         # The cornice. A plinth ends in an overhanging cap, and the shadow line
         # under it is what separates stone from bronze at a glance.
-        box("cornice", (0.76, 0.68, 0.13), (0, 0, 1.60), mat=stone),
+        box("cornice", (0.76, 0.68, 0.13), (0, 0, 1.63), mat=stone),
 
         # --- the bust itself, built as three distinct masses ----------------
         # Shoulders first, and wide. A bust reads as a person because the

@@ -85,6 +85,80 @@ top; faking it with a slope would be felt even if not consciously noticed.
 From the rail you read three domes and a campanile and nothing else, so that is
 all that is modelled.
 
+## Provenance: where each number came from
+
+`src/data/route.js` tags every waypoint and landmark with `src`:
+
+| tag | meaning |
+|---|---|
+| `cited` | taken from a figure found in a source, recorded below |
+| `derived` | interpolated along the real street between two cited anchors, using the street's own cited length where one exists |
+| `est` | placed from knowledge of the quartier alone — correct these freely |
+
+**No vector source was reachable.** This machine cannot open OpenStreetMap,
+Overpass, the IGN (`data.geopf.fr`), the Paris open data portal, Wikipedia, any
+Wikipedia mirror, Wikidata, or any tile server: the egress proxy answers `403`
+to `CONNECT` for every one of them, and `WebFetch` is refused for the same
+hosts. Only the package registries, `raw.githubusercontent.com` and web SEARCH
+get out. There is therefore no import to write, and no `.geojson` in this repo
+is a missing feature — it is a blocked one. See `docs/CONSTRAINTS.md`.
+
+What search returns is figures from those sources as text, and that is where
+these came from:
+
+| what | figure | stated by |
+|---|---|---|
+| Lamarck–Caulaincourt station | 48.889139, 2.338159 | station coordinates, 48°53′21″N 2°20′17″E |
+| Place Dalida (the bust) | 48.888570, 2.338040 | square coordinates; named by decree 5 Dec 1996 for the crossroads of the allée des Brouillards, rue de l'Abreuvoir and rue Girardon |
+| La Maison Rose | 48.887987, 2.339667 | 48°53′16.753″N 2°20′22.801″E, at 2 rue de l'Abreuvoir |
+| Moulin Blute-fin | 48.887397, 2.337044 | 48°53′14.63″N 2°20′13.36″E, at 75–77 rue Lepic |
+| Bateau-Lavoir | 48.886040, 2.337850 | 13 rue Ravignan, place Émile-Goudeau |
+| Abbesses station | 48.884848, 2.338687 | 48°53′05″N 2°20′19″E |
+| rue de l'Abreuvoir | 133 m, from 9 rue des Saules to place Dalida | Paris street nomenclature |
+| place Émile-Goudeau | 43 m long, 7 m wide | square dimensions |
+| place Dalida | about 19 × 13 m | square dimensions |
+| rue Girardon | begins rue Lepic, runs past place Marcel-Aymé, ends place Dalida | street description |
+| Moulin Radet | 83 rue Lepic / 1 rue Girardon, re-erected on the corner roof in 1924, hollow | mill history |
+| the bust | five blocks of cut granite, three trees around it, unveiled 24 April 1997 | monument description |
+| Abbesses métro | 36 m deep, deepest in the network until 2025 | station description |
+| Saint-Jean-de-Montmartre | 19 rue des Abbesses, de Baudot 1894–1904 | church record |
+
+**Elevations are the weakest numbers in the file.** No elevation source was
+reachable at all, so the whole vertical profile is `est`: it is scaled so the
+grades between cited horizontal positions are ones a street or a staircase
+actually achieves, and pinned at the top by the Butte's 130 m summit. That
+constraint is not decorative — correcting the horizontal put Place Dalida only
+64 m from the métro, which made the previous 31 m climb a 48 % average, and
+fixing *that* by raising the station then put Abbesses below
+Lamarck–Caulaincourt, which is wrong for a reason you can check: Abbesses has
+the deepest shaft in the network because its surface is higher.
+
+### How wrong the previous survey was
+
+It was hand-placed and claimed ±15 m. Measured against the cited anchors:
+
+| point | was | is | out by |
+|---|---|---|---|
+| La Maison Rose, from the bust | 58 m | 136 m | **−75 m** |
+| Abbesses, from Lamarck | 553 m | 479 m | +74 m |
+| the bust itself | — | — | 34 m south of its own coordinate |
+| Blute-fin, from the bust | 126 m | 150 m | −24 m |
+| place Émile-Goudeau width | 18 m | 7 m | +11 m |
+
+The Abreuvoir error is the one that changes what the place *is*: that sightline
+is the most photographed view in Montmartre, and at 58 m a street falling away
+east toward a pink corner house becomes a courtyard with a house at the end.
+
+### Two checks that close
+
+Neither was used to place the other:
+
+- Place Dalida to La Maison Rose measures **136 m** against a street cited at
+  **133 m** along its curve.
+- Station to station measures **479 m** against **479 m** cited.
+
+`tests/route.test.js` asserts both, plus the presence of `src` on every entry.
+
 ## The coordinate frame
 
 Right-handed, metres, origin at the Dalida bust.

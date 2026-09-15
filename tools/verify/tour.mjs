@@ -39,7 +39,12 @@ const ONLY = arg('only', null);
  * on — see docs/ROUTE.md, "The things that must be right".
  */
 const SHOTS = [
-  { name: '01_station_arrival',  at: 'lamarck_station', lateral: -2, yaw: 250,
+  // Shot from the top of the stairs looking BACK at the metro mouth, rather
+  // than from the mouth on a fixed yaw. A hard yaw only frames what it framed
+  // on the day it was written: after the re-survey corrected the bearings this
+  // one pointed at a wall, and the frame came back 89% warm with no station in
+  // it. Aiming at a named place survives the next correction too.
+  { name: '01_station_arrival',  at: 'escalier_top', look: 'lamarck_station', lookHeight: 3.0,
     why: 'The opening frame. Twin staircases flanking the metro mouth.' },
   { name: '02_stairs_climb',     at: 'escalier_foot',   yaw: 235,
     why: 'Looking up the Lamarck flight. Tread rhythm must read.' },
@@ -49,14 +54,17 @@ const SHOTS = [
     why: 'Allee des Brouillards. Green shade on one side, sun on the other.' },
   // Backed off and raised: parked ON the bust's own waypoint we were four
   // metres from it and it filled the frame as an unreadable dark block.
-  { name: '05_dalida_bust',      at: 'place_dalida', back: 13, lateral: -2.5,
+  // Lateral matches the bust's own offset from the rail (5.2 m, left hand), so
+  // the camera stands on her line instead of looking across it. `look` aims at
+  // the waypoint, which is the middle of the road, not at the statue beside it.
+  { name: '05_dalida_bust',      at: 'place_dalida', back: 13, lateral: -5.2,
     look: 'place_dalida', lookHeight: 2.4,
     why: 'THE landmark. Polished chest, swept hair, facing east.' },
   // Close on the bust, for the same reason 07b and 11b exist: the level shot
   // shows whether she is placed right, and this one shows whether she is
   // MODELLED right. At thirteen metres a 0.6 m head is thirty pixels and any
   // answer to "does the bust read" is really an answer about the framing.
-  { name: '05b_dalida_close',    at: 'place_dalida', back: 6, lateral: -1.5,
+  { name: '05b_dalida_close',    at: 'place_dalida', back: 6, lateral: -5.2,
     look: 'place_dalida', lookHeight: 2.5,
     why: 'The bust itself: swept hair, the rubbed-gold chest, weathered bronze elsewhere.' },
   { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
@@ -95,7 +103,11 @@ const SHOTS = [
   // the cross, not the building. From inside Montmartre's streets you do not
   // see Sacre-Coeur, you catch the top of it over a roofline, and that is what
   // this shot should show.
-  { name: '12_sacre_coeur',      at: 'emile_goudeau',
+  // Backed off fourteen metres. Sweeping the rail against the real geometry,
+  // the basilica clears the rooflines from four short stretches of the route
+  // and Place Emile-Goudeau itself is not one of them — it is clear fourteen
+  // metres back up rue Ravignan. tools/verify/skyline-probe.mjs finds them.
+  { name: '12_sacre_coeur',      at: 'emile_goudeau', back: 14,
     look: 'sacre_coeur', lookHeight: 46,
     why: 'The dome over the rooftops. A glimpse, which is all the streets give you.' },
 
