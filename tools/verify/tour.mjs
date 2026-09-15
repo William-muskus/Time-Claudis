@@ -44,8 +44,13 @@ const SHOTS = [
   // on the day it was written: after the re-survey corrected the bearings this
   // one pointed at a wall, and the frame came back 89% warm with no station in
   // it. Aiming at a named place survives the next correction too.
-  { name: '01_station_arrival',  at: 'escalier_top', look: 'lamarck_station', lookHeight: 3.0,
-    why: 'The opening frame. Twin staircases flanking the metro mouth.' },
+  // From the metro mouth looking UP the climb, which is what the player
+  // actually sees when the game starts. Shot back down at the station from
+  // the top of the stairs it was an incoherent frame: awnings seen from above
+  // with their buildings lost in shadow under them, and a blank end-cap wall
+  // filling the right half.
+  { name: '01_station_arrival',  at: 'lamarck_station', ahead: 16,
+    why: 'The opening frame. The stairs rising out of the dip, straight ahead.' },
   { name: '02_stairs_climb',     at: 'escalier_foot',   yaw: 235,
     why: 'Looking up the Lamarck flight. Tread rhythm must read.' },
   { name: '03_girardon_climb',   at: 'lamarck_girardon', yaw: 200,

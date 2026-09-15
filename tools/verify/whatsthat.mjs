@@ -14,7 +14,7 @@ import { railPoints } from '../../src/data/route.js';
 import { buildWorld } from '../../src/world/index.js';
 import { RailCamera } from '../../src/rail/camera.js';
 
-const [wp = 'place_abbesses', aheadM = '18', back = '0'] = process.argv.slice(2);
+const [wp = 'place_abbesses', aheadM = '18', back = '0', yawDeg = ''] = process.argv.slice(2);
 const rail = new Rail(railPoints());
 const { root } = buildWorld(rail);
 const meshes = [];
@@ -24,8 +24,13 @@ const cam = new THREE.PerspectiveCamera(58, 16 / 9, 0.1, 900);
 const rc = new RailCamera(cam, rail);
 const d0 = Math.max(0, rail.distanceToWaypoint(wp) - Number(back));
 rc.snapTo(d0); rc.update(1 / 60, 1);
-const ahead = rail.positionAt(Math.min(rail.length, d0 + Number(aheadM)));
-cam.lookAt(ahead.x, ahead.y + 1.4, ahead.z);
+if (yawDeg !== '') {
+  const y = (Number(yawDeg) * Math.PI) / 180;
+  cam.lookAt(cam.position.clone().add(new THREE.Vector3(Math.sin(y), 0, -Math.cos(y))));
+} else {
+  const ahead = rail.positionAt(Math.min(rail.length, d0 + Number(aheadM)));
+  cam.lookAt(ahead.x, ahead.y + 1.4, ahead.z);
+}
 cam.updateMatrixWorld(true);
 
 const ray = new THREE.Raycaster();

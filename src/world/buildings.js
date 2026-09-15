@@ -361,6 +361,26 @@ export function buildBuilding({
     width, depth, frontZ, topY: roofTopY, rr, ch,
   });
 
+  // AND THE OTHER FLANK.
+  //
+  // addPartyWall only ever treated the left one. On a street where buildings
+  // abut that is correct — you never see the right flank — but this level is
+  // full of corners, alley mouths, squares and end caps, and at every one of
+  // them the right flank is what fills the frame. Measured at Place des
+  // Abbesses, a single unarticulated face 17-24 m away occupied the whole
+  // right third of the finishing shot as one flat tone.
+  //
+  // It gets the relief without the blade: flues, render patches and a faded
+  // mur peint, which is what actually breaks up a big Montmartre firewall.
+  // The blade itself stays on one side only, because a building has one
+  // exposed gable, not two.
+  addFlankRelief(group, {
+    x: width / 2, thick: 0, height: roofTopY,
+    zFar: -depth / 2, zNear: depth / 2, rr, ch, dir: +1,
+    renderMat: flat(ch(0.5) ? PALETTE.plasterGrey : PALETTE.limestoneDeep,
+      { roughness: 0.92 }),
+  });
+
   group.userData.height = roofTopY;
   return { group, anchors };
 }
@@ -747,12 +767,14 @@ function addPartyWall(group, { width, depth, frontZ, topY, rr, ch }) {
  * THE DOWNPIPE. A cast-iron rainwater pipe down one edge, with its hopper
  * head. Thin, dark, vertical, and it catches the low sun on one side.
  */
-function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMat }) {
+function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMat, dir = -1 }) {
   const depth = Math.abs(zNear - zFar);
   if (depth < 2 || height < 4) return;
   const midZ = (zNear + zFar) / 2;
-  // Face outward, away from the building this wall belongs to.
-  const faceX = x - thick / 2 - 0.03;
+  // Face outward, away from the building this wall belongs to. `dir` picks
+  // which flank: -1 for the party-wall blade on the left, +1 for the right
+  // face of the building itself.
+  const faceX = x + dir * (thick / 2 + 0.03);
 
   // --- flue lines ---------------------------------------------------------
   const flues = Math.max(1, Math.round(depth / 4.5));
@@ -783,7 +805,7 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
       new THREE.BoxGeometry(0.06, ph, pw),
       flat(patchTones[Math.floor(rr(0, patchTones.length)) % patchTones.length],
         { roughness: 0.95 }));
-    patch.position.set(faceX - 0.02,
+    patch.position.set(faceX + dir * 0.02,
       rr(1.0, Math.max(1.2, height - ph)),
       zNear - rr(pw / 2, Math.max(pw / 2 + 0.1, depth - pw / 2)));
     group.add(patch);
@@ -796,7 +818,7 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
     const panel = new THREE.Mesh(
       new THREE.BoxGeometry(0.05, sh, sw),
       flat(ch(0.5) ? PALETTE.limestoneLit : PALETTE.plasterCream, { roughness: 0.98 }));
-    panel.position.set(faceX - 0.04, height * rr(0.5, 0.68), midZ);
+    panel.position.set(faceX + dir * 0.04, height * rr(0.5, 0.68), midZ);
     group.add(panel);
 
     // Lettering, reduced to bars of varying length and weight.
@@ -832,7 +854,7 @@ function addFlankRelief(group, { x, thick, height, zFar, zNear, rr, ch, renderMa
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(0.04, lh, lw),
         flat(lineColor, { roughness: 0.98 }));
-      bar.position.set(faceX - 0.06, cursor, midZ + rr(-sw * 0.04, sw * 0.04));
+      bar.position.set(faceX + dir * 0.06, cursor, midZ + rr(-sw * 0.04, sw * 0.04));
       group.add(bar);
       cursor -= lh * 1.8;
       if (cursor < panel.position.y - sh * 0.45) break;

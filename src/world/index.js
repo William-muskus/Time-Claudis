@@ -520,12 +520,20 @@ function buildEndCaps(rail, rng, anchors, occluders = []) {
     // A short continuation of the street wall, so the road reads as going
     // somewhere rather than ending.
     for (const side of [-1, 1]) {
-      let along = 3;
+      // START WELL PAST THE END, AND KEEP THEM LOW.
+      //
+      // At `along = 3` the first end-cap building stood three metres past the
+      // last waypoint, fifteen metres to the side, and six storeys tall — so
+      // the game's finishing shot at Place des Abbesses had a twenty-metre
+      // blank flank filling its right third. The caps exist to stop the street
+      // running out into bare terrain, which the terrace across the far end
+      // already does; they do not need to crowd the square to do it.
+      let along = 14;
       for (let i = 0; i < 5; i++) {
         const w = rng.range(7, 12);
         const depth = rng.range(9, 14);
         const { group: b, anchors: ba } = buildBuilding({
-          width: w, depth, floors: rng.int(4, 6),
+          width: w, depth, floors: rng.int(3, 5),
           style: rng.pick(['plaster', 'ochre', 'grey', 'stone']),
           shopfront: rng.chance(0.45), rng,
         });
