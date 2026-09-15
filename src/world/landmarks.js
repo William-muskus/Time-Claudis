@@ -354,15 +354,18 @@ function buildBrouillardsAlley(rail, rnd = Math.random) {
   const setback = (d) => Math.max(3.0, rail.widthAt(d) * 0.5);
 
   // --- west flank: the château's garden wall, railings and trees -----------
+  // Panels overlap by 20% (2.4 m of wall every 2.0 m). A curving run of
+  // straight segments opens a wedge at every joint on the outside of the bend,
+  // and a garden wall with daylight through its joints reads as a fence.
   for (let d = FROM; d < TO; d += 2.0) {
     const off = setback(d) + 0.4;
-    const w = place(new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.3, 2.1), stone), d, 1, off, 1.15);
+    const w = place(new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.3, 2.4), stone), d, 1, off, 1.15);
     w.castShadow = w.receiveShadow = true;
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 2.1), stone), d, 1, off, 2.37);
+    place(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 2.4), stone), d, 1, off, 2.37);
     for (let k = 0; k < 2; k++) {
       place(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), iron), d + k, 1, off, 2.9);
     }
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.1), iron), d, 1, off, 3.33);
+    place(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.4), iron), d, 1, off, 3.33);
   }
   // Trees behind the wall. Deep green shade on this flank against sun on the
   // other is the whole character of the alley.

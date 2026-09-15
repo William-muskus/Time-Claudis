@@ -49,44 +49,65 @@ width or orientation as the map being wrong.
 
 ---
 
-## 2. Google Street View and Google Maps cross-referencing
+## 2. Map data, Street View, and the geometry of the route
 
-**Asked for:** cross-reference Street View and Maps for street layout, building
-placement, stairways and terrain elevation.
+**Asked for:** an exact replica of Montmartre, geometry-wise — cross-referenced
+against Street View, Google Earth and photographs.
 
-**Not done:** the egress policy denies it. The same policy also denies the
-OpenStreetMap Overpass API, which was the obvious open-data substitute —
-`overpass-api.de:443` returns a 403 at CONNECT, confirmed in the proxy's own
-failure log. There is no imagery and no map data reachable from this container.
+**Not possible from this container, and re-verified.** The egress policy is an
+allowlist, not a filter, and everything that carries map geometry is outside
+it. Probed directly, each answering `403` at `CONNECT` or being refused by
+`WebFetch`:
 
-**What shipped instead.** The survey in `src/data/route.js` is hand-authored
-from knowledge of the quartier. It is honest about its own accuracy, and the
-distinction it draws matters:
+| Host | What it would have given |
+|---|---|
+| `overpass-api.de`, `overpass.kumi.systems` | OSM ways: street centrelines and building footprints |
+| `nominatim.openstreetmap.org`, `tile.openstreetmap.org` | geocoding, raster tiles |
+| `data.geopf.fr`, `wxs.ign.fr` | IGN BD TOPO — the authoritative French building footprints |
+| `opendata.paris.fr`, `data.gouv.fr`, `api-adresse.data.gouv.fr` | the City of Paris's own building and street datasets |
+| `fr.wikipedia.org` and every mirror tried, `wikidata.org`, `dbpedia.org` | the street nomenclature infoboxes |
+| `api.maptiler.com`, `basemaps.cartocdn.com`, `demo.f4map.com` | tiles, 3-D building views |
 
-| Property | Confidence | Why |
+What IS reachable: the package registries, `raw.githubusercontent.com` (any
+public repo, by exact path), a repo-scoped `api.github.com`, and **web search**.
+A search of GitHub for mirrored Paris building data found only administrative
+boundary outlines — arrondissement polygons, nothing at building level.
+
+So there is no vector source to import and no importer to write. The absence of
+a `.geojson` in this repo is a blocked feature, not a missing one.
+
+**What shipped instead: a cited traverse.** Search returns figures *from* those
+blocked sources as text, and five coordinates were recoverable that way. They
+now anchor the survey; everything between them is interpolated along the real
+street. `src/data/route.js` tags every entry `cited` / `derived` / `est`, and
+`docs/ROUTE.md` records what stated each cited figure.
+
+This replaced a survey that was hand-placed throughout and claimed ±15 m.
+Measured against the anchors it was out by 20–75 m, and two of those errors
+changed what the place is: La Maison Rose sat 58 m from the bust when rue de
+l'Abreuvoir is 133 m long, and Place Émile-Goudeau was 18 m wide when it is 7.
+
+| Property | Confidence now | Why |
 |---|---|---|
-| Which street meets which, and in what order | **High** | Route topology is memorable and was cross-checked against the landmarks along it |
-| Which way you turn at each junction | **High** | Same |
-| Which side of the street a landmark sits on | **High** | Same |
-| Whether you are climbing or descending, and roughly how steeply | **High** | The Butte's profile is 89 m at the station, ~128 m at the crest, 101 m at Abbesses |
-| Absolute latitude/longitude of any single waypoint | **± ~15 m** | Recalled, not measured |
-| Street widths | **± ~2 m** | Estimated from typical section |
-| Individual building storey counts and façade detail | **Characterised, not surveyed** | Generated procedurally per district character |
+| Street topology, turn directions, which side a landmark is on | **High** | Memorable, cross-checked, and pinned in `tests/route.test.js` |
+| The five cited anchors | **A few metres** | Published coordinates, quoted to 6 dp |
+| Waypoints between anchors | **±10–15 m** | Interpolated along the real street, closing on cited street lengths |
+| Street widths | **Cited where a figure exists**, else ±2 m | l'Abreuvoir and Émile-Goudeau are cited |
+| Elevations | **Weakest in the file** | No elevation source was reachable at all; the profile is scaled so grades between cited horizontals are ones a street or stair achieves, and capped at the Butte's 130 m summit |
+| Building footprints | **Characterised, not surveyed** | Generated per district character; the distinctive stretches (allée des Brouillards, rue de l'Abreuvoir) are authored by hand |
 
-The game trades on the high-confidence column. A player who lives on rue
-d'Orchampt will recognise that the lane is narrow and walled, that Dalida's gate
-is shut and you only see the roofline, that the Moulin sits above you on the
-left as you come off Girardon, and that the Ravignan steps open out over the
-rooftops of the 9th. None of that depends on a coordinate being right to the
-metre. `tests/route.test.js` pins the topology so a future coordinate correction
-cannot silently reverse a turn.
+Two checks close on the result, neither used to place the other: Place Dalida
+to La Maison Rose measures 136 m against a street cited at 133 m along its
+curve, and station to station measures 479 m against 479 m cited.
 
-**To finish it properly:** with network access, query Overpass for
-`way[highway]` and `way[building]` inside the route's bounding box, and replace
-the hand-authored coordinates with the OSM geometry. `geoToLocal()` already
-takes WGS84, so the swap is a data change and not a code change. Then walk the
-route in Street View and correct the per-waypoint `note` fields, which are what
-the world builder keys its district character off.
+**To finish it properly:** with egress to Overpass, one query for
+`way[highway]` and `way[building]` in the route's bounding box replaces the
+interpolated waypoints and the procedural street wall with real geometry.
+`geoToLocal()` already takes WGS84 and the world builder already accepts an
+arbitrary polyline (`buildAbreuvoirSpur` is the pattern), so it is a data
+change, not a rewrite. Until then the honest claim is **the topology is exact,
+the anchors are cited, and the fabric between them is characterised** — not
+that the map is a replica.
 
 ---
 

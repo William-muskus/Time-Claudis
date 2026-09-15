@@ -50,7 +50,11 @@ const SHOTS = [
     why: 'Looking up the Lamarck flight. Tread rhythm must read.' },
   { name: '03_girardon_climb',   at: 'lamarck_girardon', yaw: 200,
     why: 'The turn south into rue Girardon. Gradient must be visible.' },
-  { name: '04_brouillards',      at: 'brouillards',     yaw: 195,
+  // Aimed ALONG the alley, not across it. On the old bearings yaw 195 pointed
+  // down it; after the re-survey the same number pointed broadside into the
+  // château's garden wall, and the frame came back as two blank panels. An
+  // alley is a thing you look down.
+  { name: '04_brouillards',      at: 'brouillards', ahead: 18,
     why: 'Allee des Brouillards. Green shade on one side, sun on the other.' },
   // Backed off and raised: parked ON the bust's own waypoint we were four
   // metres from it and it filled the frame as an unreadable dark block.
