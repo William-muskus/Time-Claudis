@@ -66,7 +66,12 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   group.add(placeOffRail(rail, 'lamarck_station', buildMetroEntrance(), 1, 5.5));
   // Placed at its own surveyed coordinate rather than offset from the rail.
   group.add(atGeo('moulin_blutefin', authored('moulin_galette', () => buildMoulin())));
-  group.add(placeOffRail(rail, 'maison_dalida', buildDalidaHouseGate(scatter), -1, 6.0));
+  // Aligned as well as offset: the gate and its wall run ALONG rue d'Orchampt,
+  // and an unaligned wall in a six-metre lane lies across it. 8.5 m because
+  // the wall is long and the lane bends — at 6 m its far end swung to within
+  // half a metre of the centreline, which in a lane this narrow is the middle
+  // of the road.
+  group.add(placeOffRail(rail, 'maison_dalida', buildDalidaHouseGate(scatter), -1, 8.5, 0, true));
   group.add(placeOffRail(rail, 'emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 1, 4.2));
   // Eleven metres, not nine: the square is only 7 m wide and the building is
   // 10 m deep, so its facade has to clear a 3.5 m half-width plus its own
@@ -87,8 +92,16 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   group.add(atGeo('sacre_coeur', buildSacreCoeur()));
   group.add(atGeo('st_jean', buildSaintJean()));
   group.add(atGeo('mur_des_je', buildMurDesJeTaime(scatter)));
-  group.add(atGeo('le_refuge', buildCafeTerrace()));
-  group.add(atGeo('marcel_ayme', buildPasseMuraille()));
+  // Against the building line, aligned to the street — not dropped at its own
+  // coordinate. A café TERRACE is a spreading thing: tables, chairs, an awning,
+  // all modelled outward from one point, so placing it by that point alone put
+  // its furniture 0.9 m from the player's face at the opening combat node.
+  group.add(placeOffRail(rail, 'lamarck_station', buildCafeTerrace(), 1, 9.5, 0, true));
+  // Off the rail, against the street wall, aligned to it. Placed at its own
+  // estimated coordinate it stood squarely in the carriageway — measured, 0.00
+  // m from the centreline. The Passe-Muraille is set INTO a wall, so it has to
+  // be positioned like a wall, not like a monument in a space.
+  group.add(placeOffRail(rail, 'girardon_climb', buildPasseMuraille(scatter), 1, 6.4, 0, true));
   // Both flanks of the allée, authored, because the procedural street wall is
   // reserved out of this stretch.
   group.add(buildBrouillardsAlley(rail, scatter));

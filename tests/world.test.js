@@ -235,102 +235,69 @@ test('every combat node has an open forward arc', () => {
  * object big enough to fill the view is exactly the object a visibility test
  * is worst at seeing.
  *
- * Stated as clearance it is unambiguous and cannot be threaded: walk the rail
- * and see whether the landmark is in the way.
+ * Stated as clearance it is unambiguous and cannot be threaded: measure the
+ * distance from every landmark's geometry to the rail centreline and require a
+ * floor.
  *
- * Two stages, because neither alone is right. A bounding box is a cheap way to
- * ask "could this possibly be near the rail", and a terrible way to answer it:
- * the métro entrance is a U of two staircases with the rail running up the
- * middle, and the Orchampt garden wall is long and set at an angle, so the
- * axis-aligned box of each swallows street the object does not occupy. Both
- * came back as offenders on the first run. So the box only shortlists, and the
- * answer comes from casting along the rail itself against the real geometry —
- * double-sided, because the entire point is to catch the case where the camera
- * ends up INSIDE something and front-face raycasting sees nothing at all.
+ * TWO EARLIER VERSIONS OF THIS TEST WERE TOO WEAK, in instructive ways. The
+ * first cast rays down the centreline, which proves a thing is not standing ON
+ * the rail and says nothing about how close it comes — the Café Le Refuge
+ * terrace passed it with its tables 0.9 m from the player's face. The second
+ * swept a corridor of rays, which caught the café but still depended on a ray
+ * happening to hit. Measuring the minimum distance needs no rays at all, names
+ * the offender, and gives a number you can argue about.
  *
- * Landmarks are built here rather than read back from the world because
- * batching disposes the source meshes and takes the hierarchy with them.
+ * It immediately found four more: the Passe-Muraille and the Blute-fin's mound
+ * standing in the carriageway, the Orchampt gate 15 cm off the centreline, and
+ * the allée's own garden wall at half a metre.
  */
-test('no landmark stands on the rail', () => {
+test('no landmark stands in the road', () => {
   const { group } = buildLandmarks(rail, undefined, makeRng(7));
+  group.updateMatrixWorld(true);
 
-  // Half the narrowest street on the route, near enough. The player's shoulder
-  // needs this much room and so does the camera.
-  const CLEARANCE = 1.8;
-  const ray = new THREE.Raycaster();
+  // The player's own width plus a margin. Generous enough for rue d'Orchampt,
+  // which is six metres wall to wall, and strict enough that nothing can sit
+  // in the carriageway of even the narrowest lane on the route.
+  const FLOOR = 1.2;
+
+  const centreline = [];
+  for (let d = 0; d <= rail.length; d += 1) centreline.push(rail.positionAt(d));
 
   const offenders = [];
   for (const obj of group.children) {
-    obj.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(obj);
-    if (box.isEmpty()) continue;
-
-    // Stage one: could it be near the rail at all?
-    const near = [];
-    const expanded = box.clone().expandByScalar(CLEARANCE);
-    for (let d = 0; d <= rail.length; d += 1) {
-      const p = rail.positionAt(d).clone();
-      p.y += RIG.eyeHeight * 0.5;
-      if (expanded.containsPoint(p)) near.push(d);
-    }
-    if (!near.length) continue;
-
-    // Stage two: is it actually in the way?
-    const meshes = [];
+    let min = Infinity, at = 0;
     obj.traverse((o) => {
       if (!o.isMesh) return;
-      if (o.material) o.material.side = THREE.DoubleSide;
-      meshes.push(o);
-    });
-
-    let worst = null;
-    for (const d of near) {
-      const a = rail.positionAt(d).clone();
-      const b = rail.positionAt(Math.min(rail.length, d + 1)).clone();
-      const dir = b.clone().sub(a);
-      const len = dir.length();
-      if (len < 1e-4) continue;
-      dir.normalize();
-      // At the shoulder, level and overhead: a plinth blocks all three, an
-      // archway over the street blocks none of them.
-      for (const dy of [0.4, RIG.eyeHeight, RIG.eyeHeight + 0.5]) {
-        ray.set(new THREE.Vector3(a.x, a.y + dy, a.z), dir);
-        ray.near = 0;
-        ray.far = len;
-        if (ray.intersectObjects(meshes, false).length) { worst = d; break; }
+      // EXACT VERTICES, not a bounding box.
+      //
+      // Box3.setFromObject gives axis-aligned bounds, and almost everything
+      // beside a street is rotated to the street's yaw — a 2.4 m wall panel at
+      // 45 degrees has an AABB reaching 1.7 m past its real extent. Measured
+      // that way the allée's garden wall reported as standing in the road when
+      // it is three metres clear of it, which is the kind of false positive
+      // that gets a test disbelieved and then ignored.
+      const pos = o.geometry?.getAttribute('position');
+      if (!pos) return;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        for (let j = 0; j < centreline.length; j++) {
+          const p = centreline[j];
+          if (Math.abs(p.y - v.y) > 2.5) continue;
+          const dd = Math.hypot(p.x - v.x, p.z - v.z);
+          if (dd < min) { min = dd; at = j; }
+        }
       }
-      if (worst !== null) break;
-    }
-    if (worst !== null) {
-      offenders.push(`${obj.name || '(unnamed)'} stands on the rail at ${worst.toFixed(0)} m`);
+    });
+    if (Number.isFinite(min) && min < FLOOR) {
+      offenders.push(`${obj.name || '(unnamed)'} comes within ${min.toFixed(2)} m of the rail at ${at} m`);
     }
   }
 
   assert.deepEqual(offenders, [],
-    `landmarks standing in the player's way:\n  ${offenders.join('\n  ')}`);
+    `landmarks in the player's way (floor is ${FLOOR} m):\n  ${offenders.join('\n  ')}`);
 });
 
-/**
- * The ground must face the sky.
- *
- * This is the test for the worst bug in the project, and the reason it went
- * unfound for so long is the interesting part: NOTHING LOOKED BROKEN. The
- * carriageway, both pavements and the apron were all wound so their normals
- * pointed into the ground — 2506 of the road's, all of both pavements', and
- * 2860 of the apron's 3024. The materials are double-sided, so every surface
- * still drew exactly where it should. It was only ever SHADED wrong: lit by a
- * sun that was permanently on the far side of it.
- *
- * What that looked like was a flat, dead, violet bottom third in almost every
- * frame of the tour. It was read — for a very long time, by me — as "the
- * foreground is in shadow", which is a plausible thing for a street at golden
- * hour to be, and a completely wrong diagnosis. Several rounds of grade tuning
- * went into lifting shadows that were not shadows.
- *
- * `right` is (-t.z, 0, t.x), so for a tangent of +Z it points at -X, and the
- * obvious winding gives you exactly the wrong sign. A one-line mistake that
- * cost the game its entire lower half.
- */
 test('every ground surface is wound to face upward', () => {
   const street = buildStreet(rail);
   const offenders = [];

@@ -24,7 +24,8 @@ import { PALETTE, flat } from '../render/palette.js';
  *
  * Returns the scene group plus the anchor list gameplay draws spawns from.
  */
-export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_REGISTRY) {
+export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_REGISTRY,
+                           { batch = true } = {}) {
   const rng = makeRng(seed);
   const root = new THREE.Group();
   root.name = 'montmartre';
@@ -65,8 +66,17 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   // transform hierarchy. Order matters here: batching disposes the source
   // meshes, so anything that needs their world position must have taken it
   // already.
-  const stats = batchStatic(root);
-  if (typeof console !== 'undefined') {
+  // `batch: false` is for diagnosis only. Batching flattens the hierarchy and
+  // disposes the source meshes, so afterwards every hit reports as an anonymous
+  // merged blob and you cannot ask the scene WHICH builder put a wall a metre
+  // in front of the player. Three separate investigations stalled on exactly
+  // that before this option existed.
+  // Matrices are brought up to date either way. batchStatic does it as a
+  // matter of course; without it an unbatched world hands back stale identity
+  // matrices, every raycast misses, and the option reads as "the geometry is
+  // not there" — which is exactly the wrong conclusion to hand a diagnostic.
+  const stats = batch ? batchStatic(root) : (root.updateMatrixWorld(true), { before: 0, after: 0 });
+  if (batch && typeof console !== 'undefined') {
     console.info(`[world] batched ${stats.before} meshes into ${stats.after} draw calls`);
   }
 
