@@ -50,6 +50,9 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   root.add(buildBuildingRows(rail, rng, anchors, reserved, occluders));
   root.add(buildEndCaps(rail, rng, anchors, occluders));
 
+  // Rue de l'Abreuvoir, which the player never walks but always looks down.
+  root.add(buildAbreuvoirSpur(rail, rng, occluders));
+
   root.add(buildProps(rail, rng, assets));
   root.add(buildCover(rail, rng));
   root.add(buildGroundPlane(rail));
@@ -159,6 +162,135 @@ function landmarkFootprints(rail) {
   add('emile_goudeau', 17);       // the square, fountain and Bateau-Lavoir
   add('place_abbesses', 18);      // the edicule, carousel and Saint-Jean
   return zones;
+}
+
+/**
+ * Rue de l'Abreuvoir: a street the rail never touches.
+ *
+ * WHY IT HAS TO EXIST. The world is built by walking the rail, so only streets
+ * the player walks get buildings. That was invisible while the Maison Rose sat
+ * 58 m from the bust, because the main street wall around Place Dalida reached
+ * most of the way to it. Correcting the survey moved the house out to its real
+ * 136 m and left the most photographed view in Montmartre as a lone pink box
+ * across open ground — the error had been hiding behind another error.
+ *
+ * The survey note for Place Dalida is explicit that this sightline "must be
+ * preserved exactly", so the street gets built even though nobody walks it.
+ *
+ * It is deliberately NOT the Haussmann terrace the generator makes elsewhere.
+ * L'Abreuvoir is a village street: two and three storeys, cream and ochre
+ * render, shutters, low roofs, and a bend in the middle that is the reason
+ * every photograph of it works — you cannot see the far end from the near one,
+ * so La Maison Rose arrives as a reveal.
+ */
+function buildAbreuvoirSpur(rail, rng, occluders = []) {
+  const group = new THREE.Group();
+  group.name = 'abreuvoir';
+  void rail;
+
+  // Both ends are cited coordinates; the middle carries the bend.
+  const spine = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(42, -1.5, 20),
+    new THREE.Vector3(82, -2.5, 41),
+    new THREE.Vector3(119, -3.0, 65),
+  ];
+  const HALF = 3.6;   // a seven-metre street
+
+  const slate = flat(PALETTE.slateDark, { roughness: 0.7 });
+  const cobble = flat(PALETTE.cobbleWarm, { roughness: 0.96 });
+  const kerb = flat(PALETTE.kerbStone, { roughness: 0.9 });
+
+  // Roadway: one quad per span, so it follows the bend.
+  for (let i = 0; i < spine.length - 1; i++) {
+    const a = spine[i], b = spine[i + 1];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    const yaw = Math.atan2(b.x - a.x, b.z - a.z);
+    const road = new THREE.Mesh(new THREE.BoxGeometry(HALF * 2, 0.12, len + 0.6), cobble);
+    road.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 - 0.06, (a.z + b.z) / 2);
+    road.rotation.y = yaw;
+    road.receiveShadow = true;
+    group.add(road);
+    for (const side of [-1, 1]) {
+      const k = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, len + 0.6), kerb);
+      k.position.set(
+        (a.x + b.x) / 2 + Math.cos(yaw) * side * HALF, (a.y + b.y) / 2 + 0.04,
+        (a.z + b.z) / 2 - Math.sin(yaw) * side * HALF);
+      k.rotation.y = yaw;
+      k.receiveShadow = true;
+      group.add(k);
+    }
+  }
+
+  /** Point and heading a fraction of the way along the spine. */
+  const at = (t) => {
+    const f = Math.min(0.999, Math.max(0, t)) * (spine.length - 1);
+    const i = Math.floor(f), u = f - i;
+    const a = spine[i], b = spine[i + 1];
+    return {
+      p: new THREE.Vector3(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u),
+      yaw: Math.atan2(b.x - a.x, b.z - a.z),
+    };
+  };
+  const total = spine.reduce((acc, p, i) =>
+    i ? acc + Math.hypot(p.x - spine[i - 1].x, p.z - spine[i - 1].z) : 0, 0);
+
+  const RENDERS = [PALETTE.plasterCream, PALETTE.plasterOchre, PALETTE.limestoneMid,
+                   PALETTE.limestoneLit];
+  for (const side of [-1, 1]) {
+    // Start clear of Place Dalida's own reserved circle, stop short of the
+    // Maison Rose so the corner house is the thing you see at the end.
+    let d = 14;
+    for (let n = 0; n < 14 && d < total - 16; n++) {
+      const w = rng.range(7, 12);
+      const floors = rng.int(2, 3);
+      const h = floors * 3.0 + 0.6;
+      const depth = rng.range(8, 12);
+      const f = at((d + w / 2) / total);
+      const off = HALF + 0.9 + depth / 2;
+      const cx = f.p.x + Math.cos(f.yaw) * side * off;
+      const cz = f.p.z - Math.sin(f.yaw) * side * off;
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(depth, h, w),
+        flat(RENDERS[rng.int(0, RENDERS.length - 1)], { roughness: 0.92 }));
+      body.position.set(cx, f.p.y + h / 2, cz);
+      body.rotation.y = f.yaw;
+      body.castShadow = body.receiveShadow = true;
+      group.add(body);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(depth + 0.6, 0.5, w + 0.5), slate);
+      roof.position.set(cx, f.p.y + h + 0.25, cz);
+      roof.rotation.y = f.yaw;
+      roof.castShadow = true;
+      group.add(roof);
+
+      // Shutters on the street face — the only detail that reads at 130 m, and
+      // the thing that makes a row of boxes a row of houses.
+      const shutter = flat(rng.chance(0.5) ? PALETTE.shutterBlue : PALETTE.shutterGreen,
+        { roughness: 0.8 });
+      const cols = Math.max(2, Math.round(w / 3));
+      for (let fl = 0; fl < floors; fl++) {
+        for (let c = 0; c < cols; c++) {
+          const alongOff = -w / 2 + (w / cols) * (c + 0.5);
+          const faceOff = off - depth / 2 - 0.07;
+          const sx = f.p.x + Math.cos(f.yaw) * side * faceOff - Math.sin(f.yaw) * alongOff;
+          const sz = f.p.z - Math.sin(f.yaw) * side * faceOff - Math.cos(f.yaw) * alongOff;
+          const sh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.45, 0.95), shutter);
+          sh.position.set(sx, f.p.y + 1.9 + fl * 3.0, sz);
+          sh.rotation.y = f.yaw;
+          group.add(sh);
+        }
+      }
+
+      occluders.push(occluder(
+        { x: cx, z: cz },
+        { x: Math.cos(f.yaw) * side, z: -Math.sin(f.yaw) * side },
+        w / 2, depth / 2, f.p.y, h));
+
+      d += w + rng.range(0.3, 1.4);
+    }
+  }
+  return group;
 }
 
 function buildBuildingRows(rail, rng, anchors, reserved = [], occluders = []) {

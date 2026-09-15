@@ -396,25 +396,46 @@ function buildBrouillardsAlley(rail, rnd = Math.random) {
   }
 
   // --- east flank: low pavilions, two and three storeys -------------------
+  //
+  // SHALLOWER AND WITH FACES ON THEM. The first pass made these nine metres
+  // deep with a single shutter each, and at the width of this alley that is
+  // not a house, it is a blank slab filling half the frame. What makes a small
+  // Montmartre pavilion read is that it is SMALL — a narrow frontage, a low
+  // roof with an overhang that casts a line, a door, and shutters in pairs.
+  const door = flat(PALETTE.shutterBlue, { roughness: 0.75 });
   let d = FROM + 1;
-  for (let i = 0; i < 4 && d < TO; i++) {
-    const len = 5.5 + rnd() * 2.5;
+  for (let i = 0; i < 5 && d < TO; i++) {
+    const len = 4.4 + rnd() * 2.2;
     const floors = rnd() < 0.5 ? 2 : 3;
-    const h = floors * 2.9;
-    const off = setback(d + len / 2) + 4.6;
+    const h = floors * 2.85;
+    const depth = 5.5 + rnd() * 1.5;
+    const off = setback(d + len / 2) + 0.7 + depth / 2;
+    const face = off - depth / 2 - 0.08;
+    const mid = d + len / 2;
     const wallMat = flat(
-      [PALETTE.plasterCream, PALETTE.plasterOchre, PALETTE.limestoneMid][i % 3],
+      [PALETTE.plasterCream, PALETTE.plasterOchre, PALETTE.limestoneMid,
+       PALETTE.limestoneLit][i % 4],
       { roughness: 0.92 });
-    const b = place(new THREE.Mesh(new THREE.BoxGeometry(9, h, len), wallMat),
-      d + len / 2, -1, off, h / 2);
+    const b = place(new THREE.Mesh(new THREE.BoxGeometry(depth, h, len), wallMat),
+      mid, -1, off, h / 2);
     b.castShadow = b.receiveShadow = true;
-    place(new THREE.Mesh(new THREE.BoxGeometry(9.5, 0.45, len + 0.5), slate),
-      d + len / 2, -1, off, h + 0.22).castShadow = true;
-    for (let f = 0; f < floors; f++) {
-      place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.35, 0.85), shutter),
-        d + len / 2, -1, off - 4.55, 1.7 + f * 2.9);
+    // Roof with a real overhang, so the top of each house draws a hard line.
+    place(new THREE.Mesh(new THREE.BoxGeometry(depth + 0.7, 0.42, len + 0.6), slate),
+      mid, -1, off, h + 0.21).castShadow = true;
+    // A door at ground level and shutters in pairs above it.
+    place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.05, 0.95), door),
+      mid - len * 0.22, -1, face, 1.03);
+    for (let f = 1; f < floors; f++) {
+      for (const k of [-0.26, 0.26]) {
+        place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.8), shutter),
+          mid + len * k, -1, face, 1.6 + f * 2.85);
+      }
     }
-    d += len + 0.6 + rnd() * 1.0;
+    // A chimney, because every one of these has one and it breaks the roofline.
+    place(new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.1, 0.6),
+      flat(PALETTE.chimneyTerra, { roughness: 0.9 })),
+      mid + len * 0.3, -1, off + 1.2, h + 0.85).castShadow = true;
+    d += len + 0.5 + rnd() * 0.8;
   }
   return g;
 }

@@ -224,6 +224,28 @@ window.__tour = {
     for (let i = 0; i < 40; i++) viewModel.update(1 / 60, snap, recognizer.last.aim, false);
   },
   /** Free look, in degrees. */
+  /**
+   * Aim the way the GAME aims: at a point along the rail ahead.
+   *
+   * A hard yaw frames what it framed on the day it was written. After the
+   * re-survey corrected the street bearings, the combat shots were still
+   * aiming at the old ones and every enemy in the six-metre lane spawned off
+   * the left edge of the frame — the director places a wave relative to where
+   * the camera is looking, so a stale yaw does not merely miscompose the shot,
+   * it puts the fight somewhere else.
+   *
+   * RailCamera aims RIG.lookAhead metres up the rail. Doing the same here
+   * frames what the player would actually see standing at that node, and it
+   * follows any future correction to the survey for free.
+   */
+  lookAhead(metres = 14, pitchDeg = 0) {
+    const d = railCamera.distance ?? rail.distanceToWaypoint('lamarck_station');
+    const ahead = rail.positionAt(Math.min(rail.length, d + metres));
+    const p = new THREE.Vector3(ahead.x, ahead.y + 1.4, ahead.z);
+    if (pitchDeg) p.y += Math.tan((pitchDeg * Math.PI) / 180) * metres;
+    renderer.camera.lookAt(p);
+    return { x: p.x, y: p.y, z: p.z };
+  },
   aim(yawDeg, pitchDeg = 0) {
     const y = (yawDeg * Math.PI) / 180, pch = (pitchDeg * Math.PI) / 180;
     const dir = new THREE.Vector3(Math.sin(y) * Math.cos(pch), Math.sin(pch), -Math.cos(y) * Math.cos(pch));
