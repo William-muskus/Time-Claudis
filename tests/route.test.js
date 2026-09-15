@@ -95,7 +95,17 @@ test('La Maison Rose is east of Place Dalida, down rue de l\'Abreuvoir', () => {
   const rose = LANDMARKS.find((l) => l.id === 'maison_rose');
   const p = geoToLocal(rose.lat, rose.lon, rose.elev);
   assert.ok(p.x > 20, `Maison Rose must be well east of the bust, got x=${p.x.toFixed(1)}`);
-  assert.ok(Math.abs(p.z) < 60, 'and roughly level with it along the street');
+  // East-SOUTH-east. The old assertion allowed 60 m of north-south drift and
+  // called that "roughly level along the street", which quietly permitted the
+  // error it was supposed to catch: the house was modelled 58 m from the bust
+  // when the street is 133 m long. Distance is the real constraint, and it is
+  // a cited figure, so assert that instead.
+  const along = Math.hypot(p.x, p.z);
+  assert.ok(along > 110 && along < 150,
+    `rue de l'Abreuvoir is cited at 133 m; the Maison Rose sits at its far ` +
+    `corner with rue des Saules, so it must be about that far from the bust. ` +
+    `Got ${along.toFixed(0)} m.`);
+  assert.ok(p.x > Math.abs(p.z), 'the street runs more east than south');
 });
 
 test('Sacre-Coeur is east of the route and at the summit', () => {
@@ -228,4 +238,83 @@ test('the stage ends on a boss', () => {
     const early = e.waves.some((w) => w.spawns.some((s) => ENEMY_TYPES[s.type]?.boss));
     assert.ok(!early, `${e.areaId} spawns a boss before the final area`);
   }
+});
+
+/**
+ * The cited figures, asserted.
+ *
+ * Every number here came from a source recorded in docs/ROUTE.md rather than
+ * from anyone's sense of the place, and each one replaced an estimate that was
+ * wrong by 20-75 m. Pinning them stops a future "tidy-up" quietly undoing the
+ * re-survey, which is exactly how the first version drifted: the old test for
+ * the Maison Rose allowed 60 m of slack and so permitted the 75 m error it
+ * existed to catch.
+ *
+ * Tolerances are wide on purpose. They are not precision claims — they are the
+ * width of the band outside which the model would be telling a different story
+ * about the place.
+ */
+test('the survey agrees with its cited sources', () => {
+  const at = (id) => {
+    const w = WAYPOINTS.find((x) => x.id === id) ?? LANDMARKS.find((x) => x.id === id);
+    if (!w) throw new Error(`no such place: ${id}`);
+    return geoToLocal(w.lat, w.lon, w.elev);
+  };
+  const apart = (a, b) => Math.hypot(at(a).x - at(b).x, at(a).z - at(b).z);
+
+  const checks = [
+    // Two metro stations, both cited to six decimal places.
+    ['lamarck_station', 'place_abbesses', 479, 15,
+      'metro to metro, the span of the whole level'],
+    // Rue de l'Abreuvoir is cited at 133 m along its curve; the straight line
+    // between its ends is necessarily a little less, and the bust and the
+    // house are both cited, so this is a genuine closure check on the survey.
+    ['place_dalida', 'maison_rose', 133, 18,
+      "rue de l'Abreuvoir, the most photographed sightline on the route"],
+    // Bust and mill are both cited. Was modelled at 126 m.
+    ['place_dalida', 'moulin_blutefin', 150, 15,
+      'the climb from the square to the crest'],
+    // Bust and Bateau-Lavoir both cited.
+    ['place_dalida', 'emile_goudeau', 282, 20,
+      'the length of the descent through Orchampt and Ravignan'],
+  ];
+
+  for (const [a, b, want, tol, why] of checks) {
+    const got = apart(a, b);
+    assert.ok(Math.abs(got - want) <= tol,
+      `${a} to ${b} is ${got.toFixed(0)} m; cited sources put it at ~${want} m ` +
+      `(+/- ${tol}). ${why}.`);
+  }
+});
+
+test('every place records where its coordinate came from', () => {
+  // A survey that cannot say which of its numbers are sourced is a survey
+  // nobody can improve: the next person has no way to tell a cited coordinate
+  // from a guess, so they either trust all of it or none of it.
+  const ALLOWED = new Set(['cited', 'derived', 'est']);
+  const bad = [...WAYPOINTS, ...LANDMARKS].filter((w) => !ALLOWED.has(w.src));
+  assert.deepEqual(bad.map((w) => w.id), [],
+    `every waypoint and landmark needs src: one of ${[...ALLOWED].join(', ')}`);
+
+  // And the traverse has to be carried by real anchors, not by one lucky point.
+  const cited = [...WAYPOINTS, ...LANDMARKS].filter((w) => w.src === 'cited');
+  assert.ok(cited.length >= 5,
+    `only ${cited.length} cited anchors; the interpolated points between them ` +
+    `have nothing to close against`);
+  for (const id of ['lamarck_station', 'place_dalida', 'place_abbesses']) {
+    assert.equal(WAYPOINTS.find((w) => w.id === id).src, 'cited',
+      `${id} anchors an end or the origin of the traverse and must be cited`);
+  }
+});
+
+test("Place Emile-Goudeau is a terrace, not a plaza", () => {
+  // Cited at 43 m long and 7 m wide. It was modelled at 18 m wide, which made
+  // the tightest space on the route more than twice as open as the street that
+  // feeds it — and it is the area the game builds its close-quarters fight in.
+  const sq = WAYPOINTS.find((w) => w.id === 'emile_goudeau');
+  assert.ok(sq.width <= 9,
+    `place Emile-Goudeau is cited at 7 m wide, got ${sq.width} m`);
+  const lane = WAYPOINTS.find((w) => w.id === 'orchampt_ravignan');
+  assert.ok(sq.width <= lane.width + 3,
+    'the square is barely wider than the lane that arrives at it');
 });

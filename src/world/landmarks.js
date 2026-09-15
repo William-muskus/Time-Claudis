@@ -46,12 +46,27 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   // Abreuvoir sightline the survey insists on is preserved.
   group.add(placeOffRail(
     rail, 'place_dalida', authored('dalida_bust', () => buildDalidaBust()), -1, 5.2, 1.2));
-  group.add(placeAt('lamarck_station', buildMetroEntrance(), 0, 0));
+  // EVERYTHING BESIDE THE RAIL IS PLACED OFF THE RAIL, NOT OFF WORLD X.
+  //
+  // placeAt's `lateral` shifts an object along world X, which only means "to
+  // the side of the street" when the street happens to run north-south. Nobody
+  // noticed while the survey was hand-placed, because the offsets had been
+  // eyeballed against those particular coordinates. The moment the re-survey
+  // corrected the bearings, three landmarks — the metro mouth, the Orchampt
+  // gate and a Wallace fountain — swung into the middle of the road, and the
+  // clearance test caught all three.
+  //
+  // placeOffRail takes the street's own perpendicular, so an offset means what
+  // it says at any bearing and survives the next coordinate correction too.
+  group.add(placeOffRail(rail, 'lamarck_station', buildMetroEntrance(), 1, 5.5));
   // Placed at its own surveyed coordinate rather than offset from the rail.
   group.add(atGeo('moulin_blutefin', authored('moulin_galette', () => buildMoulin())));
-  group.add(placeAt('maison_dalida', buildDalidaHouseGate(scatter), -7, 0));
-  group.add(placeAt('emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 7, 0));
-  group.add(placeAt('emile_goudeau', buildBateauLavoir(), -13, 0));
+  group.add(placeOffRail(rail, 'maison_dalida', buildDalidaHouseGate(scatter), -1, 6.0));
+  group.add(placeOffRail(rail, 'emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 1, 4.2));
+  // Eleven metres, not nine: the square is only 7 m wide and the building is
+  // 10 m deep, so its facade has to clear a 3.5 m half-width plus its own
+  // half-depth before it stops standing in the square it faces.
+  group.add(placeOffRail(rail, 'emile_goudeau', buildBateauLavoir(), -1, 11.0));
   // Beside the rail, not on it — the same mistake the bust made. The edicule
   // is the last thing the level shows you and it was built around the camera:
   // the player finished the stage standing inside the metro entrance. The real
@@ -59,8 +74,8 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   // north, which is the rail's left hand coming down off the Butte.
   group.add(placeOffRail(
     rail, 'place_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()), -1, 5.6));
-  group.add(placeAt('place_abbesses', buildCarousel(), 13, 0));
-  group.add(placeAt('trois_freres', authored('wallace_fountain', buildWallaceFountain), -8, 0));
+  group.add(placeOffRail(rail, 'place_abbesses', buildCarousel(), 1, 11.0));
+  group.add(placeOffRail(rail, 'trois_freres', authored('wallace_fountain', buildWallaceFountain), -1, 6.5));
 
   // Off-rail but on the sightlines.
   group.add(atGeo('maison_rose', buildMaisonRose()));
@@ -68,7 +83,13 @@ export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   group.add(atGeo('st_jean', buildSaintJean()));
   group.add(atGeo('mur_des_je', buildMurDesJeTaime(scatter)));
   group.add(atGeo('le_refuge', buildCafeTerrace()));
-  group.add(atGeo('moulin_radet', buildMoulinRadet()));
+  // The Radet is the corner building at 83 rue Lepic / 1 rue Girardon with a
+  // mill on its roof — it was re-erected up there in 1924, hollow, and it is a
+  // restaurant underneath. So it is placed as a BUILDING beside the street,
+  // not as a monument at a point: its own derived coordinate put it five
+  // metres from the rail, and an eight-metre-wide base five metres from the
+  // centreline is a building in the middle of the road.
+  group.add(placeOffRail(rail, 'moulin_galette', buildMoulinRadet(), -1, 11.0));
 
   // The Moulin's mound and the Bateau-Lavoir frontage are both good elevated
   // positions, and the métro mouth is the single best "they came from
@@ -282,6 +303,7 @@ function buildMoulin() {
 /** The second mill on the rue Lepic corner, which everyone mistakes for the first. */
 function buildMoulinRadet() {
   const g = new THREE.Group();
+  g.name = 'moulin_radet';
   const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 4.2, 8),
     flat(PALETTE.plasterCream, { roughness: 0.9 }));
   tower.position.y = 8.1;   // it sits on top of the restaurant below it
