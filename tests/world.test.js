@@ -309,3 +309,52 @@ test('no landmark stands on the rail', () => {
   assert.deepEqual(offenders, [],
     `landmarks standing in the player's way:\n  ${offenders.join('\n  ')}`);
 });
+
+/**
+ * The ground must face the sky.
+ *
+ * This is the test for the worst bug in the project, and the reason it went
+ * unfound for so long is the interesting part: NOTHING LOOKED BROKEN. The
+ * carriageway, both pavements and the apron were all wound so their normals
+ * pointed into the ground — 2506 of the road's, all of both pavements', and
+ * 2860 of the apron's 3024. The materials are double-sided, so every surface
+ * still drew exactly where it should. It was only ever SHADED wrong: lit by a
+ * sun that was permanently on the far side of it.
+ *
+ * What that looked like was a flat, dead, violet bottom third in almost every
+ * frame of the tour. It was read — for a very long time, by me — as "the
+ * foreground is in shadow", which is a plausible thing for a street at golden
+ * hour to be, and a completely wrong diagnosis. Several rounds of grade tuning
+ * went into lifting shadows that were not shadows.
+ *
+ * `right` is (-t.z, 0, t.x), so for a tangent of +Z it points at -X, and the
+ * obvious winding gives you exactly the wrong sign. A one-line mistake that
+ * cost the game its entire lower half.
+ */
+test('every ground surface is wound to face upward', () => {
+  const street = buildStreet(rail);
+  const offenders = [];
+
+  street.traverse((o) => {
+    if (!o.isMesh) return;
+    const n = o.geometry.getAttribute('normal');
+    const p = o.geometry.getAttribute('position');
+    if (!n || !p) return;
+
+    // Only judge surfaces that are mostly horizontal — a kerb face or a
+    // handrail post is meant to point sideways.
+    let up = 0, down = 0;
+    for (let i = 0; i < n.count; i++) {
+      const y = n.getY(i);
+      if (y > 0.5) up++;
+      else if (y < -0.5) down++;
+    }
+    if (up + down < 50) return;   // too small to be a ground surface
+    if (down > up) {
+      offenders.push(`${o.name || '(unnamed)'}: ${down}/${up + down} normals point down`);
+    }
+  });
+
+  assert.deepEqual(offenders, [],
+    `ground surfaces lit from underneath:\n  ${offenders.join('\n  ')}`);
+});

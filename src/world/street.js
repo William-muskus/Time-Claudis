@@ -59,8 +59,21 @@ export function buildStreet(rail) {
     });
   }
 
-  // The apron goes down FIRST so everything else sits on it.
-  group.add(buildApron(frames));
+  // THE APRON RUNS PAST BOTH ENDS OF THE RAIL.
+  //
+  // It was generated from exactly the street's own frames, so it stopped dead
+  // where the rail stops — and the level's first and last frames are shot
+  // looking along the street from a node near that end. Measured at Place des
+  // Abbesses: the bottom 40% of the finishing frame was the distant terrain
+  // cone, one flat green plane SEVEN METRES below the square, at 20-45 m. The
+  // player finishes the game standing on a ledge.
+  //
+  // The end-cap buildings were added to close the street wall at both ends and
+  // they do; nothing was closing the GROUND. These extra frames extrapolate
+  // the rail's own tangent past each end at the street's own elevation, which
+  // is all the apron needs to keep going.
+  const apronFrames = [...extendFrames(frames, -1), ...frames, ...extendFrames(frames, +1)];
+  group.add(buildApron(apronFrames));
   group.add(buildCarriageway(frames));
   // Pavements first: they compute the stepped walking surface that the kerbs
   // and the handrails both read back from.
@@ -72,6 +85,34 @@ export function buildStreet(rail) {
   group.add(buildStairFlights(rail));
 
   return group;
+}
+
+/**
+ * Frames continuing straight on past one end of the rail, for the apron.
+ *
+ * Direction -1 prepends before the start, +1 appends after the end. Elevation
+ * is held level rather than extrapolated: the rail's tangent at its ends has a
+ * real vertical component, and continuing that for seventy metres would drive
+ * the ground either through the end-cap buildings or far below them.
+ */
+function extendFrames(frames, dir) {
+  const REACH = 80, STEP = 8;
+  const edge = dir < 0 ? frames[0] : frames[frames.length - 1];
+  const t = new THREE.Vector3(edge.t.x, 0, edge.t.z).normalize();
+  const out = [];
+  for (let k = 1; k <= REACH / STEP; k++) {
+    const off = dir * k * STEP;
+    out.push({
+      d: edge.d + off,
+      p: new THREE.Vector3(edge.p.x + t.x * off, edge.p.y, edge.p.z + t.z * off),
+      t: edge.t,
+      right: edge.right,
+      pavement: edge.pavement,
+      halfWidth: edge.halfWidth,
+    });
+  }
+  // Prepended frames must run toward the start, not away from it.
+  return dir < 0 ? out.reverse() : out;
 }
 
 /**
@@ -116,8 +157,9 @@ function buildApron(frames) {
       const next = base + perRow;
       for (let b = 0; b < BANDS.length - 1; b++) {
         const a = base + b, c = a + 1, d = next + b, e = d + 1;
-        if (side === 1) idx.push(a, d, c, c, d, e);
-        else idx.push(a, c, d, c, e, d);
+        // Same flip as the carriageway; see the note there.
+        if (side === 1) idx.push(a, c, d, c, e, d);
+        else idx.push(a, d, c, c, d, e);
       }
     }
   }
@@ -153,7 +195,21 @@ function buildCarriageway(frames) {
   for (let i = 0; i < frames.length - 1; i++) {
     for (let s = 0; s < STRIPS; s++) {
       const a = i * row + s, b = a + 1, c = a + row, d = c + 1;
-      idx.push(a, c, b, b, c, d);
+      // WINDING. Get this backwards and the road is lit from underneath.
+      //
+      // `right` is (-t.z, 0, t.x), so for a tangent of +Z it points at -X;
+      // the cross product of (a->c, forward) with (a->b, right) is then
+      // DOWN, not up. Every ground surface in this file had that winding:
+      // 2506 of the carriageway's normals, both pavements entirely, and 2860
+      // of the apron's 3024 pointed into the ground.
+      //
+      // Nothing looked obviously broken, which is why it survived so long —
+      // the materials are double-sided so the geometry still drew. It was
+      // just shaded by a sun that was always on the wrong side of it, so the
+      // bottom third of almost every frame came back a flat dead violet and
+      // read as "the foreground is in shadow". It is not in shadow. It is
+      // inside out.
+      idx.push(a, b, c, b, d, c);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -219,8 +275,9 @@ function buildPavement(frames, side) {
   }
   for (let i = 0; i < frames.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    if (side > 0) idx.push(a, c, b, b, c, d);
-    else idx.push(a, b, c, b, d, c);
+    // Same flip as the carriageway; see the note there.
+    if (side > 0) idx.push(a, b, c, b, d, c);
+    else idx.push(a, c, b, b, c, d);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));

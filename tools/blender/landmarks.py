@@ -93,35 +93,35 @@ def dalida_bust():
         # JOINT that reads — so the blocks step inward instead, and the shadow
         # each step casts on the one below is the line that carries it.
         *[
-            box(f"granite_{i}", (0.78 - i * 0.052, 0.70 - i * 0.046, 0.262),
-                (0, 0, 0.20 + 0.270 * i), mat=stone)
+            box(f"granite_{i}", (0.80 - i * 0.050, 0.72 - i * 0.045, 0.228),
+                (0, 0, 0.20 + 0.236 * i), mat=stone)
             for i in range(5)
         ],
         # The cornice. A plinth ends in an overhanging cap, and the shadow line
         # under it is what separates stone from bronze at a glance.
-        box("cornice", (0.76, 0.68, 0.13), (0, 0, 1.63), mat=stone),
+        box("cornice", (0.80, 0.72, 0.13), (0, 0, 1.46), mat=stone),
 
         # --- the bust itself, built as three distinct masses ----------------
         # Shoulders first, and wide. A bust reads as a person because the
         # shoulder line is the widest thing in it; without that it is a pillar.
         cylinder("shoulders", r1=0.52, r2=0.50, depth=0.26, verts=10,
-                 loc=(0, 0, 1.80), mat=bronze),
+                 loc=(0, 0, 1.63), mat=bronze),
         # Chest, tapering up and cut off the way a bust is.
         cylinder("chest", r1=0.49, r2=0.30, depth=0.52, verts=10,
-                 loc=(0, 0, 2.19), mat=bronze),
+                 loc=(0, 0, 2.02), mat=bronze),
         # A longer neck than is strictly anatomical. It exists to put a gap
         # between two dark masses so the head is its own shape.
         cylinder("neck", r1=0.145, r2=0.13, depth=0.24, verts=8,
-                 loc=(0, 0, 2.57), mat=bronze),
+                 loc=(0, 0, 2.40), mat=bronze),
     ]
 
     # The polished band across the chest. Thirty years of tourists have rubbed
     # it to bright gold while the rest went flat brown, and that two-tone is
     # the detail people photograph.
     parts.append(cylinder("rub", r1=0.44, r2=0.40, depth=0.26, verts=10,
-                          loc=(0, 0.02, 2.10), mat=polish))
+                          loc=(0, 0.02, 1.93), mat=polish))
 
-    head = sphere("head", r=0.215, segments=10, rings=8, loc=(0, 0, 2.86), mat=bronze)
+    head = sphere("head", r=0.215, segments=10, rings=8, loc=(0, 0, 2.69), mat=bronze)
     head.scale = (0.90, 0.94, 1.10)
     parts.append(head)
 
@@ -130,11 +130,11 @@ def dalida_bust():
     # back and to her left. The asymmetry is what makes it hair rather than a
     # helmet, and it is the thing a resident would actually recognise.
     crown = sphere("hair_crown", r=0.315, segments=10, rings=8,
-                   loc=(0, -0.03, 2.94), mat=bronze_lit)
+                   loc=(0, -0.03, 2.77), mat=bronze_lit)
     crown.scale = (1.12, 1.10, 0.96)
     parts.append(crown)
     fall = sphere("hair_fall", r=0.245, segments=8, rings=6,
-                  loc=(0.115, -0.145, 2.70), mat=bronze_lit)
+                  loc=(0.115, -0.145, 2.53), mat=bronze_lit)
     fall.scale = (0.95, 0.90, 1.25)
     parts.append(fall)
 
@@ -145,7 +145,13 @@ def dalida_bust():
     # Arcade games scale their hero objects and this one earns it. Smaller than
     # it was, because the rebuild above puts more of the height into the bust
     # and less into the plinth, so it needs less help.
-    bust.scale = (1.26, 1.26, 1.26)
+    # 1.08, down from 1.26. At 1.26 the whole object stood 4.2 m — close to
+    # double life size — and once the close shot moved in to six metres it
+    # stopped reading as a bust on a plinth and started reading as a column
+    # with a knob on it. The plinth lost 17 cm as well: five courses at 0.27 m
+    # made the stonework 51% of the total height, and on the real one the
+    # bronze is the bigger half of what you look at.
+    bust.scale = (1.08, 1.08, 1.08)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return export_glb("public/assets/models/dalida_bust.glb", "dalida_bust")
 

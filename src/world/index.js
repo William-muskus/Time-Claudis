@@ -201,6 +201,72 @@ function buildAbreuvoirSpur(rail, rng, occluders = []) {
   const cobble = flat(PALETTE.cobbleWarm, { roughness: 0.96 });
   const kerb = flat(PALETTE.kerbStone, { roughness: 0.9 });
 
+  /** Point and heading a fraction of the way along the spine. */
+  const atFrac = (t) => {
+    const f = Math.min(0.999, Math.max(0, t)) * (spine.length - 1);
+    const i = Math.floor(f), u = f - i;
+    const a = spine[i], b = spine[i + 1];
+    return {
+      p: new THREE.Vector3(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u),
+      yaw: Math.atan2(b.x - a.x, b.z - a.z),
+    };
+  };
+
+  // GROUND FIRST, or the street floats.
+  //
+  // buildApron() models the Butte falling away from the rail — 95 m of reach
+  // dropping 7 m as the square of the distance — because that is what the hill
+  // does. A real street 136 m out from the rail is therefore built over a
+  // surface that has already fallen several metres below it, and the roadway
+  // showed up as a pale slab hanging in mid-air with a hard edge. Measured, it
+  // sat 0.75 m proud at the square and had no ground at all under its far half.
+  //
+  // So the spur carries its own apron: a strip at the street's own elevation
+  // that blends outward, which is the truth about a street cut into a slope.
+  // polygonOffset because it necessarily overlaps the main apron at the
+  // junction, and the one carrying the road has to win.
+  {
+    const REACH = 46, DROP = 5.5;
+    const BANDS = [0, 0.18, 0.45, 1.0];
+    const pos = [], idx = [];
+    const STEPS = 24;
+    for (let i = 0; i <= STEPS; i++) {
+      const f = atFrac(i / STEPS);
+      for (const side of [-1, 1]) {
+        for (const b of BANDS) {
+          const off = side * (HALF + 0.9 + b * REACH);
+          pos.push(
+            f.p.x + Math.cos(f.yaw) * off,
+            f.p.y - 0.08 - DROP * b * b,
+            f.p.z - Math.sin(f.yaw) * off);
+        }
+      }
+    }
+    const perRow = BANDS.length * 2;
+    for (let i = 0; i < STEPS; i++) {
+      for (let side = 0; side < 2; side++) {
+        const base = i * perRow + side * BANDS.length;
+        const next = base + perRow;
+        for (let b = 0; b < BANDS.length - 1; b++) {
+          const a = base + b, c = a + 1, d = next + b, e = d + 1;
+          if (side === 1) idx.push(a, d, c, c, d, e);
+          else idx.push(a, c, d, c, e, d);
+        }
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const mat = flat(PALETTE.cobbleCool, { roughness: 0.98 });
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -2;
+    mat.polygonOffsetUnits = -2;
+    const apron = new THREE.Mesh(geo, mat);
+    apron.receiveShadow = true;
+    group.add(apron);
+  }
+
   // Roadway: one quad per span, so it follows the bend.
   for (let i = 0; i < spine.length - 1; i++) {
     const a = spine[i], b = spine[i + 1];
@@ -222,16 +288,6 @@ function buildAbreuvoirSpur(rail, rng, occluders = []) {
     }
   }
 
-  /** Point and heading a fraction of the way along the spine. */
-  const at = (t) => {
-    const f = Math.min(0.999, Math.max(0, t)) * (spine.length - 1);
-    const i = Math.floor(f), u = f - i;
-    const a = spine[i], b = spine[i + 1];
-    return {
-      p: new THREE.Vector3(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u),
-      yaw: Math.atan2(b.x - a.x, b.z - a.z),
-    };
-  };
   const total = spine.reduce((acc, p, i) =>
     i ? acc + Math.hypot(p.x - spine[i - 1].x, p.z - spine[i - 1].z) : 0, 0);
 
@@ -246,7 +302,7 @@ function buildAbreuvoirSpur(rail, rng, occluders = []) {
       const floors = rng.int(2, 3);
       const h = floors * 3.0 + 0.6;
       const depth = rng.range(8, 12);
-      const f = at((d + w / 2) / total);
+      const f = atFrac((d + w / 2) / total);
       const off = HALF + 0.9 + depth / 2;
       const cx = f.p.x + Math.cos(f.yaw) * side * off;
       const cz = f.p.z - Math.sin(f.yaw) * side * off;

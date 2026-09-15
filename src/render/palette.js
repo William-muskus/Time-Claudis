@@ -77,7 +77,11 @@ export const PALETTE = {
   shutterBlue:  c('#5E7A94'),
   shutterGreen: c('#5A6B4A'),
   shutterGrey:  c('#7D8595'),
-  ironwork:     c('#32334A'),
+  // Lifted from #32334A for the same reason, and one more: ironwork is used
+  // for lamp standards, downpipes and railings, which are one or two pixels
+  // wide at street distance. Anything that thin at that value stops being an
+  // object and becomes a hard black line ruled across the frame.
+  ironwork:     c('#3F4160'),
   guimardGreen: c('#2F5A48'),   // the Abbesses édicule
   guimardAmber: c('#E8B25C'),   // its glass
   bronzeDalida: c('#8C6A3F'),
@@ -93,7 +97,12 @@ export const PALETTE = {
   // --- planting -----------------------------------------------------------
   foliageSun:   c('#8F9B4A'),
   foliageMid:   c('#5F7038'),
-  foliageDeep:  c('#3D4A2A'),
+  // Lifted from #3D4A2A. At that value a shaded crown came through the grade
+  // at around 25/255 against a 200/255 sky and read as a hole punched in the
+  // frame rather than as a tree. Foliage is the only large organic mass in a
+  // world of flat stone, so when it goes to silhouette the picture loses the
+  // one thing that was not architecture.
+  foliageDeep:  c('#4E5F35'),
   trunkBark:    c('#5C4632'),
   ivyGreen:     c('#4A5C33'),
 
