@@ -184,6 +184,40 @@ front-face raycasting reports nothing at all. An object big enough to fill the
 frame is the object a visibility test is worst at seeing. Restated as clearance
 — walk the rail, is the landmark in the way — it cannot be threaded.
 
+**The worst bug in the project was invisible to every check, and was read for
+weeks as an art decision.** The carriageway, both pavements and the apron were
+all wound so their normals pointed into the ground. Nothing looked broken —
+the materials are double-sided, so every surface drew exactly where it should.
+It was only ever SHADED wrong, lit by a sun permanently on the far side of it,
+and what that looked like was a flat violet bottom third in nearly every frame.
+That got diagnosed as "the foreground is in shadow", which is a plausible thing
+for a street at golden hour to be, and several rounds of grade tuning went into
+lifting shadows that were not shadows. `tests/world.test.js` now asserts that
+any mostly-horizontal surface has more normals pointing up than down.
+
+Worth noting what this does to the numbers below: the cool-side target of 16%
+was calibrated while a third of every frame was wrongly unlit violet. With the
+ground correctly sunlit the whole tour is warmer, and several frames now sit
+under that target while looking *more* right, not less. A target set against
+buggy output is itself part of the bug.
+
+**Ask the scene, do not squint at the screenshot.** Three separate
+investigations into "what is that blank wall" stalled because batching
+flattens the hierarchy and disposes the source meshes, so every hit reports as
+an anonymous merged blob. `buildWorld(rail, seed, assets, { batch: false })`
+keeps the names, and `tools/verify/whatsthat.mjs` fires a grid of rays from a
+tour camera and reports what each cell hit, how far away, and what colour it
+is. That found the Café Le Refuge terrace sitting 0.9 m from the player's face
+in about a minute, after two rounds of guessing had failed.
+
+**A test with false positives is worse than no test.** The landmark-clearance
+check used `Box3.setFromObject`, and nearly everything beside a street is
+rotated to the street's yaw — a 2.4 m wall panel at 45 degrees has an
+axis-aligned box reaching 1.7 m past its real extent. Of the four offenders it
+reported, two were real and two were three metres clear. Measuring against
+actual transformed vertices costs more and is the only version worth
+believing.
+
 **Measure the fix, not the intention.** Highlight desaturation was added to stop
 sunlit limestone reading as neon yellow. It did, and clipping went from 0.6% of
 a frame to 28%: pulling the weak channels up turns `(1.0, 1.0, 0.45)` into a
