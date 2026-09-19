@@ -14,7 +14,8 @@
     "bench": "node tools/verify/bench.mjs",
     "action": "node tools/verify/action.mjs",
     "palette": "node tools/verify/palette-check.mjs",
-    "mix": "node tools/verify/mix.mjs"
+    "mix": "node tools/verify/mix.mjs",
+    "perf": "node tools/verify/perf.mjs"
   },
   "dependencies": {
     "three": "^0.169.0",

@@ -228,6 +228,7 @@ export class Renderer {
    */
   setAdaptiveEnabled(on) {
     this.adaptive.enabled = on;
+    this._lastFrameAt = undefined;
     if (!on && this.renderScale !== 1) {
       this.renderScale = 1;
       this.adaptive.reset();
@@ -250,18 +251,34 @@ export class Renderer {
   }
 
   render(timeSec) {
-    const t0 = performance.now();
+    // THE INTERVAL BETWEEN FRAMES, NOT THE COST OF SUBMITTING ONE.
+    //
+    // This used to wrap `composer.render()` in performance.now() and hand the
+    // difference to the scaler. WebGL commands are queued and return before
+    // the GPU has touched them, so that number is submit cost, and on a
+    // GPU-bound machine — the only kind that needs a resolution scaler — it
+    // reads near zero while the game runs at twenty frames a second. The
+    // scaler saw a comfortable eight milliseconds and held full resolution.
+    //
+    // The gap between one frame starting and the next is the thing the player
+    // experiences, and it includes the GPU: the browser will not schedule the
+    // next animation frame until the last one has been presented. It also
+    // includes hand tracking and the compositor, which are just as capable of
+    // costing the player their frame rate as the renderer is.
+    const now = performance.now();
+    const delta = this._lastFrameAt === undefined ? null : now - this._lastFrameAt;
+    this._lastFrameAt = now;
+
     if (this.skyGroup) this.skyGroup.position.copy(this.camera.position);
     this.grade.uniforms.uTime.value = timeSec;
     this.composer.render();
 
-    // Measure the frame we just drew and let the scaler decide. Sampling after
-    // the draw rather than before means we are measuring the cost of the
-    // resolution currently in force, which is the thing being regulated.
-    const next = this.adaptive.sample(performance.now() - t0);
-    if (next !== null && Math.abs(next - this.renderScale) > 0.001) {
-      this.renderScale = next;
-      this.resize();
+    if (delta !== null) {
+      const next = this.adaptive.sample(delta);
+      if (next !== null && Math.abs(next - this.renderScale) > 0.001) {
+        this.renderScale = next;
+        this.resize();
+      }
     }
   }
 }
