@@ -236,16 +236,27 @@ export const LANDMARKS = [
     note: '83 rue Lepic / 1 rue Girardon. Built 1717, moved here in 1924 and ' +
           'mounted ON THE ROOF of the corner building, hollow — the mechanism ' +
           'was left behind. It is a restaurant. People mistake it for the Galette.' },
-  { id: 'marcel_ayme', src: 'est', name: 'Place Marcel-Aymé — le Passe-Muraille',
-    lat: 48.887869, lon: 2.337494, elev: 117.0,
+  // Was estimated at 48.887869 / 2.337494, which is 55 m out — up the street
+  // and across it. The statue is on the east side of the little place where
+  // Girardon meets Norvins, not on its north-west corner.
+  { id: 'marcel_ayme', src: 'cited', name: 'Place Marcel-Aymé — le Passe-Muraille',
+    lat: 48.887497, lon: 2.337990, elev: 117.0,
     note: 'Off rue Girardon at rue Norvins, directly on the climb. Jean Marais ' +
           'made it in 1989: a bronze man caught mid-stride halfway out of a stone ' +
           'wall, one arm and one leg still inside it. A local walks past this ' +
           'every day and the level was missing it entirely.' },
-  { id: 'st_jean', src: 'est', name: 'Saint-Jean-de-Montmartre',
-    lat: 48.884752, lon: 2.338381, elev: 100.0,
+  // Was estimated at 48.884752 / 2.338381: 80 m north-east of the real church,
+  // which put a listed Art Nouveau facade most of a block up the wrong street.
+  // The biggest single positional error left in the survey.
+  { id: 'st_jean', src: 'cited', name: 'Saint-Jean-de-Montmartre',
+    lat: 48.884106, lon: 2.337883, elev: 100.0,
     note: '19 rue des Abbesses. Anatole de Baudot, 1894-1904. Red brick over ' +
           'reinforced concrete, Art Nouveau — the first of its kind.' },
+  // LEFT ALONE, DELIBERATELY. Three sources give three positions for this wall
+  // spread over about 25 m — further apart than the error being corrected —
+  // so there is nothing here to cite, only a choice of guesses. An estimate
+  // relabelled 'cited' because a website agreed with it is worse than an
+  // estimate that says what it is.
   { id: 'mur_des_je', src: 'est', name: "Le Mur des Je t'aime",
     lat: 48.884797, lon: 2.338887, elev: 100.0,
     note: 'Square Jehan-Rictus. Enamelled lava tiles, "I love you" in 311 ' +

@@ -277,6 +277,18 @@ test('the survey agrees with its cited sources', () => {
     // Bust and Bateau-Lavoir both cited.
     ['place_dalida', 'emile_goudeau', 282, 20,
       'the length of the descent through Orchampt and Ravignan'],
+    // Both newly cited, and both replaced estimates that were badly out.
+    // Saint-Jean was 80 m north-east of itself — most of a block up the wrong
+    // street — which is the largest single positional error the survey had
+    // left. The closure is against the Guimard edicule, which is cited, so
+    // this checks the correction rather than merely recording it.
+    ['place_abbesses', 'st_jean', 101, 18,
+      'the length of place des Abbesses, edicule to church door'],
+    // The Passe-Muraille was 55 m out, up the street and across it. Closed
+    // against the Blute-fin because both sit on the crest and the pair fixes
+    // where rue Girardon meets rue Norvins.
+    ['marcel_ayme', 'moulin_blutefin', 70, 15,
+      'the crest: Girardon at Norvins to the mill'],
   ];
 
   for (const [a, b, want, tol, why] of checks) {

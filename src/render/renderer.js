@@ -57,6 +57,15 @@ export class Renderer {
     // dissolved — the payoff of the Ravignan descent, which is meant to open
     // out over the rooftops of the 9th, arrived as a featureless cream smear.
     // Fog should be atmosphere, not a draw-distance excuse.
+    //
+    // WIDENING IT AGAIN WAS TRIED, AND REVERTED. The distant rooftops sit
+    // 430 m out, so at this far plane they are 70-100% dissolved, and pushing
+    // it to 760 to recover them made the frame worse rather than better: the
+    // fog was also the only thing backing Sacre-Coeur's white stone, and
+    // without it the basilica sat against the sun's own glare at the horizon
+    // and disappeared completely. Less haze is not more legibility when the
+    // subject and the sky are the same value. The rooftop hole was filled with
+    // geometry instead — see buildGroundPlane in world/index.js.
     this.scene.fog = new THREE.Fog(PALETTE.fogColor, 110, 560);
 
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);

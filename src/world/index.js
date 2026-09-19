@@ -663,5 +663,84 @@ function buildGroundPlane(rail) {
     box.rotation.y = rng.range(0, Math.PI);
     g.add(box);
   }
+
+  /**
+   * THE DONUT HOLE. Between the level's own buildings, which stop one block
+   * either side of the rail, and the rooftop ring above, which starts 430 m
+   * out, there was six hundred metres of absolutely nothing: a bare cone and a
+   * flat plane. Measured with a ray grid from place Emile-Goudeau looking at
+   * Sacre-Coeur — the middle of that frame hit geometry at 649 to 875 m, and
+   * the fog ends at 560, so every one of those pixels came back as pure fog
+   * colour. The shot whose entire purpose is "the dome over the rooftops" had
+   * no rooftops in it at all, just an empty grey field under a sunset.
+   *
+   * That hole is visible from every view that looks off the Butte, which is
+   * most of the second half of the level: the Ravignan descent, the crest by
+   * the mill, and the Abbesses finish all point outward at some stage.
+   *
+   * Montmartre does not stop a block from rue Ravignan. Filling the band with
+   * the same crude boxes costs a few hundred triangles inside one batch, and
+   * at 60-70% fog they are a roofline rather than a place — which is exactly
+   * what they should be.
+   *
+   */
+  const railSamples = [];
+  for (let i = 0; i <= 220; i++) railSamples.push(rail.positionAt((i / 220) * rail.length));
+  /** Distance to the nearest point of the rail, and that point's elevation. */
+  const nearestRail = (x, z) => {
+    let best = Infinity, y = lowest;
+    for (const p of railSamples) {
+      const d2 = (p.x - x) ** 2 + (p.z - z) ** 2;
+      if (d2 < best) { best = d2; y = p.y; }
+    }
+    return { dist: Math.sqrt(best), y };
+  };
+
+  /**
+   * ANCHORED TO THE NEAREST STREET, NOT TO THE BOTTOM OF THE HILL.
+   *
+   * The first version of this took its height from `lowest` — the lowest point
+   * anywhere on the route, which is the Lamarck end, 39 m below the crest. So
+   * around place Emile-Goudeau, which is most of the way up, every roof sat
+   * twenty-four metres below the street and the whole band passed underneath
+   * the sightline it was built to fill. The ray grid came back byte-identical
+   * to before the change, which is the only reason it was caught: three
+   * hundred boxes had been placed and not one of them was visible.
+   *
+   * The Butte is a hill. A roof two hundred metres from a street is lower than
+   * that street, and how much lower depends on which street.
+   */
+  const roofY = (d, streetY) => streetY - 3 - Math.min(26, d * 0.09);
+
+  let placed = 0, tries = 0;
+  while (placed < 300 && tries++ < 4000) {
+    const ang = rng.range(0, Math.PI * 2);
+    const rad = rng.range(70, INNER);
+    const x = centre.x + Math.sin(ang) * rad;
+    const z = centre.z + Math.cos(ang) * rad;
+    const near = nearestRail(x, z);
+    // 190 m, not 95. At 95 the nearest boxes landed on the skyline at full
+    // contrast, three untextured cubes standing in front of Sacre-Coeur and
+    // hiding it. Crude geometry needs the fog to do half the work, and the fog
+    // only starts earning its keep past about two hundred metres. Rejected by
+    // distance to the RAIL rather than to the route's centre, which on a 552 m
+    // route that is not remotely circular is the only measure that means
+    // anything.
+    if (near.dist < 190) continue;
+    // Six or seven storeys, as the Butte actually is, shrinking with distance
+    // so the far edge reads as depth rather than as a wall.
+    const closeness = 1 - Math.min(1, (near.dist - 190) / 200);
+    const h = rng.range(12, 15 + closeness * 12);
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(rng.range(14, 30), h, rng.range(14, 30)),
+      flat(rng.chance(0.5) ? PALETTE.limestoneDeep
+         : rng.chance(0.5) ? PALETTE.limestoneMid : PALETTE.zincShadow, { roughness: 1 }));
+    box.position.set(x, roofY(near.dist, near.y) + h / 2, z);
+    box.rotation.y = rng.range(0, Math.PI);
+    box.castShadow = false;
+    box.receiveShadow = false;
+    g.add(box);
+    placed++;
+  }
   return g;
 }
