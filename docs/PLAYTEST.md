@@ -148,9 +148,12 @@ Told up front so you do not spend your session finding them again.
 - **The view off the Butte is better than it was and still not right.** There
   used to be six hundred metres of nothing between the level's buildings and
   the distant rooftops, so the shot of Sacré-Cœur over the rooftops had neither.
-  That band is filled now and the basilica reads. What remains is the Butte's
-  own flank — a large, empty, violet-grey slope across the lower third of any
-  frame that looks outward.
+  That band is filled now and the basilica reads. The large empty violet-grey
+  slope underneath it turned out to be a bug rather than terrain — the Butte's
+  flank cone was closed at the top, so a 622 m disc lay flat at street level
+  under the whole lower half of the level — and that is gone. What is left is
+  the plain itself, forty-eight metres below the finish and a long way off.
+  Tell us whether it reads as a city below a hill or as an empty field.
 - **Le Mur des Je t'aime is placed by estimate.** Three published sources put it
   in three places 25 m apart; the rest of the route's landmarks are either
   cited or derived from cited anchors.

@@ -635,12 +635,41 @@ function buildGroundPlane(rail) {
   plane.receiveShadow = true;
   g.add(plane);
 
-  // The Butte's own flank: a broad cone falling away from the route so the
-  // hill has mass when you see it from the descent.
+  /**
+   * The Butte's own flank: a broad cone falling away from the route so the
+   * hill has mass when you see it from the descent.
+   *
+   * ITS LID WAS AT STREET LEVEL, AND CAPPED. A CylinderGeometry is closed by
+   * default, so this was not only a cone — it was a 622 m disc lying flat at
+   * exactly `lowest`, the elevation of the lowest point on the route, directly
+   * underneath the whole lower half of the level. Anywhere the street's own
+   * apron did not cover it, the player was standing ten metres above a
+   * featureless plate and looking straight along it.
+   *
+   * A ray from the finish camera at Abbesses hits it at TWELVE METRES, and it
+   * is most of the large empty violet-grey slope in every frame that looks off
+   * the Butte. I had written that slope up as "the Butte's flank, a known
+   * remaining gap" after looking at screenshots. It is not the flank. It is
+   * the flank's lid, and it is a bug.
+   *
+   * AND THE PART OF THAT I GOT WRONG, since the ray grid is the only reason
+   * any of this was found: I also blamed it for the dark mass on the right of
+   * the Abbesses finish frame. That mass is Saint-Jean-de-Montmartre, red
+   * brick with its two towers, which appears there because the survey
+   * correction moved it eighty metres to where it actually stands. The rays
+   * that hit the lid were aimed at a different part of the frame. What the
+   * lid was really costing that shot is narrower and duller: a grey band
+   * along the horizon behind the kerb, which is now sky.
+   *
+   * Open-ended, and dropped clear of the lowest street. The silhouette from
+   * outside is unchanged — that was only ever the cone's wall — and there is
+   * nothing left lying across the view.
+   */
   const flank = new THREE.Mesh(
-    new THREE.CylinderGeometry(routeRadius + 60, routeRadius + 210, 46, 10, 1),
+    new THREE.CylinderGeometry(routeRadius + 60, routeRadius + 210, 46, 10, 1, true),
     flat(PALETTE.foliageDeep, { roughness: 1.0 }));
-  flank.position.set(centre.x, lowest - 23, centre.z);
+  flank.position.set(centre.x, lowest - 35, centre.z);
+  flank.material.side = THREE.DoubleSide;
   flank.receiveShadow = true;
   g.add(flank);
 
