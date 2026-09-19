@@ -87,6 +87,11 @@ export class Announcer {
     b.on('enemy.telegraph', ({ stage }) => { if (stage === 'flash') this.tick(); });
     b.on('weapon.empty', () => this.callout('reload'));
     b.on('weapon.reloaded', () => this.reloadClack());
+    // The cover loop. See coverMove: this is the game's primary verb and the
+    // only feedback that a gesture registered.
+    b.on('cover.changed', ({ state }) => this.coverMove(state));
+    b.on('shot.miss', () => this.ricochet());
+    b.on('weapon.pickup', () => this.pickup());
     b.on('player.hit', () => this.playerHit());
     b.on('area.started', () => this.callout('action'));
     b.on('area.cleared', ({ noHit }) => {
@@ -154,6 +159,15 @@ export class Announcer {
     } else if (weapon === 'MACHINE_GUN') {
       this.#noise(0.09, { freq: 2600, gain: 0.5, decay: 0.07 });
       this.#tone(180, 0.05, { type: 'square', gain: 0.16, glide: 90 });
+    } else if (weapon === 'GRENADE') {
+      // THE GRENADE LAUNCHER HAD NO SOUND. It fell through to the handgun
+      // branch and fired with a pistol crack, which is the one weapon in the
+      // game whose report should not be a crack at all: it is a low-pressure
+      // tube lobbing a shell, and the bang belongs at the other end. A hollow
+      // thump with almost no high end, so the detonation that follows a moment
+      // later is unmistakably the louder of the two.
+      this.#tone(210, 0.1, { type: 'sine', gain: 0.46, glide: 78 });
+      this.#noise(0.1, { freq: 420, gain: 0.34, decay: 0.07 });
     } else {
       // The handgun. A hard click, a body, and a short tail.
       this.#noise(0.13, { freq: 2100, gain: 0.72, decay: 0.09 });
@@ -175,9 +189,25 @@ export class Announcer {
     this.#noise(0.11, { freq: 1500, gain: 0.42, decay: 0.08 });
   }
 
-  /** The flash beat. Small, dry, and the sound the player learns to fear. */
+  /**
+   * The flash beat — the sound the player learns to fear.
+   *
+   * MEASURED AND RAISED. tools/verify/mix.mjs put the original at -26.9 dBFS,
+   * the second-quietest cue in the game, above only the EXPOSED tick. That is
+   * backwards. The telegraph is the contract: the game promises that no shot
+   * arrives unannounced, and the flash stage is where the announcement becomes
+   * a commitment. A warning that is 17 dB below the gunfire it is warning
+   * about is not a warning, and the player who misses it is punished for a cue
+   * the mix swallowed rather than for anything they did.
+   *
+   * It stays short and dry rather than becoming loud and long, because up to
+   * two enemies can be in commit at once and this fires twice per telegraph.
+   * A click with a body under it cuts through gunfire at a level a pure tone
+   * cannot, without taking up any more room in time.
+   */
   tick() {
-    this.#tone(1650, 0.045, { type: 'square', gain: 0.1 });
+    this.#tone(1650, 0.05, { type: 'square', gain: 0.26 });
+    this.#noise(0.035, { freq: 2800, gain: 0.22, decay: 0.03, type: 'highpass' });
   }
 
   reloadClack() {
@@ -193,6 +223,105 @@ export class Announcer {
   explosion() {
     this.#noise(0.55, { freq: 520, gain: 1.0, decay: 0.45 });
     this.#tone(70, 0.4, { type: 'sine', gain: 0.5, glide: 28 });
+  }
+
+  /**
+   * The cover loop, all four beats of it.
+   *
+   * THE GAME'S PRIMARY VERB WAS SILENT. Everything else made a noise — every
+   * shot, every hit, every telegraph beat — and the one action the player
+   * performs most, the one the whole design is built on, made none. In Time
+   * Crisis the pedal is a hard mechanical thing you hear and feel go down;
+   * here it is a hand gesture, so the sound is the only feedback that the
+   * input registered at all. Without it the player cannot tell a duck that
+   * worked from a duck the tracker dropped.
+   *
+   * FOUR STATES, NOT TWO. core/cover.js derives its state from one continuous
+   * exposure scalar, so a duck emits HIDING at the moment the gesture takes
+   * and COVERED 200 ms later when exposure reaches zero. The first version of
+   * this played the same cue on both, which is a stutter, and worse, wastes
+   * the more useful of the two events. They answer different questions:
+   *
+   *   HIDING    the input registered — this is the latency the player feels
+   *   COVERED   you are actually safe now — the 200 ms transit is over
+   *   EMERGING  you are on your way up, and already shootable
+   *   EXPOSED   the weapon is live; canShoot() gates on exactly this state
+   *
+   * The pair is asymmetric on purpose and matched to the contract: hiding is
+   * 200 ms and emerging is 260 ms, so going down is the faster, harder, lower
+   * sound and coming up is slower, lighter and brighter. That asymmetry is
+   * doing real work — it is how the ear learns which direction it just went
+   * without having to look at the screen edge.
+   *
+   * All four are deliberately quiet and short, and the two arrival cues are
+   * quieter than the two departure cues so a full duck reads as one gesture
+   * with a tail rather than two events. This fires constantly, and a cue that
+   * is charming on the first duck is unbearable on the hundredth.
+   *
+   * @param {'HIDING'|'COVERED'|'EMERGING'|'EXPOSED'} state
+   */
+  coverMove(state) {
+    if (!this.enabled) return;
+    switch (state) {
+      case 'HIDING':
+        // Down: a scuff of cloth as the body drops. Starts the instant the
+        // gesture is recognised, which is the whole point of it.
+        this.#noise(0.14, { freq: 620, gain: 0.30, decay: 0.11 });
+        this.#tone(150, 0.09, { type: 'sine', gain: 0.16, glide: 74 });
+        break;
+      case 'COVERED':
+        // Landed: a soft body-thud against the parapet. Low and brief — this
+        // is the safe signal, and safety should not be loud.
+        this.#tone(96, 0.13, { type: 'sine', gain: 0.22, glide: 54 });
+        this.#noise(0.07, { freq: 300, gain: 0.16, decay: 0.06 });
+        break;
+      case 'EMERGING':
+        // Up: lighter, brighter, no thud — nothing is being landed against.
+        this.#noise(0.13, { freq: 1500, gain: 0.20, decay: 0.11, type: 'highpass' });
+        this.#tone(300, 0.09, { type: 'triangle', gain: 0.11, glide: 430 });
+        break;
+      case 'EXPOSED':
+        // Weapon live. A single dry tick, the quietest cue in the game, so
+        // that the moment shooting becomes possible has an edge on it.
+        this.#tone(1180, 0.035, { type: 'square', gain: 0.10 });
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * A round hitting stone instead of a person.
+   *
+   * A miss made no sound at all, which quietly made the game easier to read
+   * than it should be: silence meant "miss" and any noise meant "hit", so the
+   * player got a cleaner hit confirmation from the ABSENCE of a cue than the
+   * cue itself gives. Both outcomes have to be audible for either to mean
+   * anything. Bright, short and gone — a chip off a façade, not an event.
+   *
+   * No position is taken. The graph is mono into a single master gain with no
+   * PannerNode anywhere, so a world point would be an argument that could not
+   * change the output — and an unused argument in a sound function is an
+   * invitation to believe the sound is spatial when it is not.
+   */
+  ricochet() {
+    this.#noise(0.09, { freq: 3400, gain: 0.26, decay: 0.07, type: 'highpass' });
+    this.#tone(2400, 0.06, { type: 'square', gain: 0.07, glide: 1100, delay: 0.01 });
+  }
+
+  /**
+   * A weapon dropping from a carrier you just killed. Worth turning toward.
+   *
+   * MEASURED AND RAISED. At -22.3 dBFS this was quieter than the ricochet that
+   * marks a MISS, which inverts the only piece of good news the game ever
+   * gives you: the reward was harder to hear than the punishment. The rising
+   * three-note figure is the arcade convention and it survives a busy mix
+   * because it moves — but only if it is actually in the mix.
+   */
+  pickup() {
+    this.#tone(680, 0.08, { type: 'square', gain: 0.30 });
+    this.#tone(1020, 0.1, { type: 'square', gain: 0.32, delay: 0.07 });
+    this.#tone(1360, 0.18, { type: 'triangle', gain: 0.28, delay: 0.15 });
   }
 
   /**

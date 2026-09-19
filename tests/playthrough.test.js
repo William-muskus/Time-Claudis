@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as THREE from 'three';
 import { Game } from '../src/gameplay/game.js';
 import { RailCamera } from '../src/rail/camera.js';
@@ -158,5 +160,132 @@ test('the clock is generous enough to clear every area', () => {
   assert.ok(margins.length >= 4, `only ${margins.length} areas cleared`);
   for (const m of margins) {
     assert.ok(m.left >= 0, `${m.area} cleared with a negative clock`);
+  }
+});
+
+/**
+ * Does every event actually fire?
+ *
+ * tests/wiring.test.js checks the two source-level halves — that nothing
+ * listens for an event nobody sends, and that nothing is sent into an empty
+ * room. Neither of them can tell you whether the emit is ever REACHED. An
+ * `emit` behind a condition that is never true passes both of those tests and
+ * still means the player never hears the cue.
+ *
+ * So: play the stage, spy on the bus, and see what came out. This is the only
+ * check in the suite that the audio a player would hear is the audio the code
+ * describes. Events genuinely conditional on failure or on a specific weapon
+ * are excused by name; everything else has to appear in an ordinary win.
+ */
+test('every event the game claims to emit is reached in a real playthrough', () => {
+  const { game, bus, camera } = setup(0xC0FFEE);
+  const fired = new Map();
+  const origEmit = bus.emit.bind(bus);
+  bus.emit = (name, payload) => { fired.set(name, (fired.get(name) ?? 0) + 1); return origEmit(name, payload); };
+
+  let frames = 0;
+  while (!game.director.isFinished && frames++ < 60 * 600) {
+    game.update(DT, oracle(game, camera));
+    if (game.gameOver) game.useContinue();
+  }
+
+  // What an oracle run cannot be expected to produce, and why.
+  const NOT_IN_A_CLEAN_RUN = {
+    // The oracle ducks on every telegraph and every inbound round, so it can
+    // finish without ever being hit. That is the point of it.
+    'player.hit': 'the oracle is not supposed to get hit',
+    'player.died': 'follows player.hit',
+    'game.over': 'follows player.died three times',
+    'game.continued': 'follows game.over',
+    'continue.tick': 'follows game.over',
+    'continue.expired': 'follows game.over',
+    'area.retry': 'follows a death inside an area',
+    'area.timeout': 'the oracle beats par',
+    // The HUD emits this one, and the HUD is not instantiated here.
+    'ui.countFinished': 'HUD-only, no HUD in this harness',
+  };
+
+  // Events that MAY or may not appear depending on the seed, so they are
+  // excused in both directions. Kept separate from the list above on purpose:
+  // everything above is a claim that the event cannot happen in a clean win,
+  // and a claim that weak is not worth making.
+  const SEED_DEPENDENT = {
+    // The oracle aims at the centre of mass of whatever gates the area and
+    // the shotgun's first pellet goes dead centre, so it rarely misses.
+    // A human misses constantly; this says nothing about reachability.
+    'shot.miss': 'the oracle is a perfect aimer',
+    // I first excused this as "asserted absent elsewhere". It is not, and it
+    // is not absent: the director drops spawns it cannot place on some seeds.
+    // Bounded by its own test below rather than hidden here.
+    'spawn.failed': 'happens; budgeted by the spawn-placement test',
+    // Grenades are a pickup the seed may never hand out.
+    'enemy.detonated': 'needs the grenade launcher specifically',
+  };
+
+  const emitters = ['src/gameplay/game.js', 'src/gameplay/director.js',
+                    'src/gameplay/weapons.js', 'src/ui/hud.js'];
+  const declared = new Set();
+  for (const f of emitters) {
+    const text = readFileSync(join(process.cwd(), f), 'utf8');
+    for (const m of text.matchAll(/emit\('([\w.]+)'/g)) declared.add(m[1]);
+  }
+
+  const never = [...declared]
+    .filter((e) => !fired.has(e) && !(e in NOT_IN_A_CLEAN_RUN) && !(e in SEED_DEPENDENT))
+    .sort();
+  assert.deepEqual(never, [],
+    `these events are emitted in the source but never reached in a full ` +
+    `playthrough — the cue exists and the player never hears it: ${never.join(', ')}`);
+
+  // And keep the excuses honest: an event listed here that DOES fire in a
+  // clean run is an excuse that has outlived its reason.
+  const wrong = Object.keys(NOT_IN_A_CLEAN_RUN).filter((e) => fired.has(e)).sort();
+  assert.deepEqual(wrong, [],
+    `these are excused as unreachable in a clean run but fired anyway: ${wrong.join(', ')}`);
+});
+
+/**
+ * How many authored enemies never make it onto the street?
+ *
+ * FOUND BY ACCIDENT, and worth keeping. The event-reachability test above was
+ * written with `spawn.failed` excused on the grounds that it "never fires in a
+ * clean run". It fires. The excuse was wrong, the test caught the excuse, and
+ * the real behaviour is this: the director cannot always place every spawn a
+ * wave asks for, and when it cannot, it drops it.
+ *
+ * That is not a correctness bug — gating is computed from the enemies that are
+ * actually alive, so an area still clears — but it is a fidelity loss. A wave
+ * an author wrote as five enemies arrives as four, and the pacing they tuned
+ * is not the pacing the player gets.
+ *
+ * Measured across five seeds: 0, 0, 1, 2 and 6 dropped out of 38-44 spawned.
+ * The 6 is worse than it should be and is the honest known gap here. This test
+ * exists so it cannot quietly get worse while nobody is counting, and so the
+ * day someone widens the anchor set there is a number to compare against.
+ */
+test('the director places nearly every enemy a wave asks for', () => {
+  const RESULTS = [];
+  for (const seed of [0xC0FFEE, 0xBADA55, 0x5EED, 0xF00D, 0x1234]) {
+    const { game, bus, camera } = setup(seed);
+    let failed = 0, spawned = 0;
+    bus.on('spawn.failed', () => failed++);
+    bus.on('enemy.spawned', () => spawned++);
+    let frames = 0;
+    while (!game.director.isFinished && frames++ < 60 * 600) {
+      game.update(DT, oracle(game, camera));
+      if (game.gameOver) game.useContinue();
+    }
+    RESULTS.push({ seed: seed.toString(16), spawned, failed });
+  }
+  const show = RESULTS.map((r) => `${r.seed}: ${r.failed}/${r.spawned + r.failed}`).join(', ');
+
+  for (const r of RESULTS) {
+    assert.ok(r.spawned > 30,
+      `seed ${r.seed} only got ${r.spawned} enemies onto the street (${show})`);
+    // A stage that drops a fifth of its cast is not the stage that was
+    // authored. This is a ceiling on a known gap, not an endorsement of it.
+    const rate = r.failed / (r.spawned + r.failed);
+    assert.ok(rate < 0.2,
+      `seed ${r.seed} dropped ${(rate * 100).toFixed(0)}% of its spawns (${show})`);
   }
 });
