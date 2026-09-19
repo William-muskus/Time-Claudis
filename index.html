@@ -4,9 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>TIME CLAUDIS — Montmartre</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<!--
+  THE TYPOGRAPHY WAS COMING FROM A CDN, AND OFTEN WASN'T COMING AT ALL.
+
+  These three faces used to be fetched from fonts.googleapis.com at runtime.
+  That is a third-party network standing between the player and a readable HUD,
+  and it fails more often than you would think: the container this project is
+  developed in cannot reach it, so EVERY screenshot the art direction was ever
+  tuned against was rendered in Arial Black and system-ui rather than in
+  Archivo Black and Barlow Condensed. Nobody noticed, because the fallback
+  chain is good enough to look deliberate.
+
+  Latin subsets only, three files, 63 KB in total, served from this origin.
+  Both families are SIL Open Font License 1.1 — see public/fonts/OFL.txt.
+-->
+<style>
+  @font-face{font-family:'Archivo Black';font-style:normal;font-weight:400;
+    font-display:swap;src:url(/fonts/archivo-black-400.woff2) format('woff2')}
+  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;
+    font-display:swap;src:url(/fonts/barlow-condensed-600.woff2) format('woff2')}
+  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;
+    font-display:swap;src:url(/fonts/barlow-condensed-700.woff2) format('woff2')}
+</style>
 <style>
   :root{
     --amber:#FFC24A; --red:#FF4438; --white:#FFF6E4; --blue:#5EC8E5;

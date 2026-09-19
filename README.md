@@ -49,11 +49,20 @@ generating synthetic hand poses and feeding them through the *real* gesture
 recogniser, so it exercises the whole input stack rather than bypassing it.
 
 ```bash
-npm test           # 107 tests: cover timing, gestures, route topology, playthrough
+npm test           # 136 tests: cover timing, gestures, route topology, playthrough
 npm run tour       # drive the built game in headless Chromium and screenshot it
 npm run bench      # the first-person weapon, on its own, in seconds
 npm run palette    # measure a frame against the amber/violet contract
+npm run mix        # every sound's peak level, ranked against its importance
+npm run perf       # draw calls, triangles, and the cost of one simulated frame
+npm run degrade    # the failure paths, in a real browser: no camera, no WebGL2
 ```
+
+**If you are about to play it for the first time, read
+[docs/PLAYTEST.md](docs/PLAYTEST.md) first.** Nobody ever has. It says what to
+try and in what order, what we already know is wrong so you do not spend your
+session rediscovering it, and — more usefully — what could not be measured here
+at all and therefore needs a human with a real GPU and a real hand.
 
 The test that matters most is the last one added: `tests/playthrough.test.js`
 plays the whole stage against the real world with an oracle player and asserts

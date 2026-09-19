@@ -264,6 +264,27 @@ console.log('\nTRACKING LOST MID-WAVE (the real tracker, on a camera with no han
   await page.close();
 }
 
+console.log('\nNOTHING THIRD-PARTY IS NEEDED TO DRAW THE GAME');
+{
+  // The fonts and the MediaPipe WASM runtime both used to come from a CDN.
+  // A player on a network that blocks either got a fallback-font HUD or no
+  // hand tracking at all, and neither failure is obvious enough to report.
+  const page = await browser.newPage({ viewport: { width: 1000, height: 600 } });
+  const external = [];
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') external.push(r.url());
+  });
+  await page.goto(`${URL_BASE}?demo=1`, { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.__ready === true, { timeout: 120000 });
+  ok('the attract mode loads without touching another origin',
+     external.length === 0, external.slice(0, 3).join(', '));
+  ok('the HUD is drawn in the typeface it was designed in',
+     await page.evaluate(() => document.fonts.check("700 16px 'Barlow Condensed'")),
+     'Barlow Condensed did not load; the HUD is in a fallback face');
+  await page.close();
+}
+
 await browser.close();
 server.close();
 console.log(`\n${failures === 0 ? 'all degradation paths behave' : `${failures} FAILED`}`);

@@ -1,0 +1,11 @@
+Archivo Black and Barlow Condensed are licensed under the SIL Open Font
+License, Version 1.1.
+
+  Archivo Black — Copyright (c) Omnibus-Type
+  Barlow Condensed — Copyright (c) Jeremy Tribby
+
+The full licence text is at https://scripts.sil.org/OFL
+
+These files are the Latin subsets as served by Google Fonts, vendored here so
+the game does not need a third-party network to render its own interface. See
+the comment at the top of index.html for why.
