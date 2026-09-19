@@ -117,11 +117,21 @@ Five things, in order of how much they are worth to us:
 
 Told up front so you do not spend your session finding them again.
 
-- **The crowded lane (area 4) can stage enemies you cannot shoot.** In the
-  captured frame, one of four was behind geometry and one was off the top of
-  the screen. The occlusion model is deliberately permissive — it knows about
-  buildings and not about trees, kiosks or planters — and this is where that
-  costs the most.
+- **The crowded lane (area 4) is the worst frame in the game and we have
+  deliberately not guessed at the fix.** Three things go wrong at once there.
+  One of its four enemies stages behind geometry and one off the top of the
+  screen — the occlusion model knows about buildings and not about trees,
+  kiosks or planters, and this is where that costs most. The cover is a row of
+  planters whose tops sit 0.28 m below eye level on the flat, but that lane
+  *descends*, which pitches the camera down and lifts the whole row up into
+  the sightline, so it reads as a hedge across the fight rather than as
+  something you are standing behind. And the frame is 88% one hue: plaster on
+  both sides, almost no road showing, nothing to separate an enemy from a wall.
+
+  Every one of those is a feel problem, and tuning feel from screenshots taken
+  at 0.8 frames a second without ever having held the controller is precisely
+  the guessing this document exists to replace. **Play area 4 twice and tell
+  us what it is actually like.** If it plays fine, we will leave it.
 - **The director drops spawns it cannot place**, between none and six out of
   about forty-four depending on the random seed. The area still clears, because
   the gate counts live enemies, but a wave written as five can arrive as four.
@@ -132,7 +142,15 @@ Told up front so you do not spend your session finding them again.
   motion, say so.
 - **Two frames' shadows are not violet**: the Lamarck stairs and the Dalida bust
   read as darker salmon rather than as the amber/violet split the rest of the
-  game holds to.
+  game holds to. Both were passing until the measurement was corrected this
+  week; see the note on `npm run palette` below.
+
+- **The view off the Butte is better than it was and still not right.** There
+  used to be six hundred metres of nothing between the level's buildings and
+  the distant rooftops, so the shot of Sacré-Cœur over the rooftops had neither.
+  That band is filled now and the basilica reads. What remains is the Butte's
+  own flank — a large, empty, violet-grey slope across the lower third of any
+  frame that looks outward.
 - **Le Mur des Je t'aime is placed by estimate.** Three published sources put it
   in three places 25 m apart; the rest of the route's landmarks are either
   cited or derived from cited anchors.
@@ -193,7 +211,7 @@ behaves differently on your machine, that is worth knowing.
 |---|---|
 | `npm test` | 136 unit tests, ~13 s. Includes a full simulated playthrough. |
 | `npm run tour` | 27 screenshots of the route and the fights. Slow: SwiftShader. |
-| `npm run palette artifacts/tour` | Measures the amber/violet split per frame. |
+| `npm run palette artifacts/tour` | Measures the amber/violet split per frame. It reports `cool%` but no longer judges on it: that is a census of how much cool-albedo material is in shot, and it went *down* every time the Sacré-Cœur frame was improved, because what was added was warm rooftops. It judges on `shade` and `lit` — of the darkest third of the frame, how much is violet, and of the brightest third, how much is amber. |
 | `npm run mix` | Every sound's peak level, ranked. |
 | `npm run perf` | Draw calls, triangles, simulation cost. |
 | `npm run degrade` | The failure paths, in a real browser. |
