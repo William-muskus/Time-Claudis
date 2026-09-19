@@ -24,11 +24,41 @@ export class HandTracker {
     this.handedness = null;
   }
 
+  /**
+   * CAMERA FIRST, THEN THE MODEL. The order is not an implementation detail.
+   *
+   * This used to download the WASM runtime and the 8 MB landmark model and
+   * only then ask for the camera. Three things were wrong with that:
+   *
+   *   - the player who is going to say no waits through an 8 MB download to
+   *     be asked a question whose answer makes the download pointless;
+   *   - the permission prompt arrives tens of seconds after the click that
+   *     was supposed to have caused it, by which time the connection between
+   *     the two is not obvious to anybody;
+   *   - some browsers will only honour getUserMedia close to the user gesture
+   *     that prompted it, and an 8 MB download is not close to anything.
+   *
+   * Asking first means the common refusal is reported in a fraction of a
+   * second and costs nothing. The camera does run for the length of the
+   * download, which is the price, and it is a small one next to the above.
+   */
   async init(videoEl, { wasmBase, modelUrl } = {}) {
     this.video = videoEl;
     try {
-      const fileset = await FilesetResolver.forVisionTasks(
-        wasmBase ?? 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' }, audio: false,
+      });
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      // LOCAL FIRST, CDN SECOND. vite.config.js copies MediaPipe's WASM
+      // runtime out of node_modules and serves it from this origin, so the
+      // usual case needs no third-party network at all. The CDN stays as a
+      // fallback for a deployment that ships the bundle without those files
+      // beside it; it is tried second because it is the one that fails on a
+      // corporate network, and failing over to it is much better than
+      // starting with it.
+      const fileset = await this.#resolveFileset(wasmBase);
       this.landmarker = await HandLandmarker.createFromOptions(fileset, {
         baseOptions: {
           modelAssetPath: modelUrl ??
@@ -41,17 +71,28 @@ export class HandTracker {
         minHandPresenceConfidence: 0.55,
         minTrackingConfidence: 0.55,
       });
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' }, audio: false,
-      });
-      videoEl.srcObject = stream;
-      await videoEl.play();
       this.ready = true;
     } catch (e) {
       this.error = e;
       this.ready = false;
+      // Do not leave the camera light on after a failure the player is about
+      // to be told about. Nothing else will clean this up: init() threw, so
+      // the caller never got a tracker to call stop() on.
+      this.stop();
       throw e;
+    }
+  }
+
+  async #resolveFileset(wasmBase) {
+    if (wasmBase) return FilesetResolver.forVisionTasks(wasmBase);
+    const local = new URL('mediapipe/wasm', document.baseURI).href;
+    try {
+      return await FilesetResolver.forVisionTasks(local);
+    } catch (e) {
+      console.warn('[input] local MediaPipe runtime unavailable, trying the CDN:', e?.message);
+      this.usedCdn = true;
+      return FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm');
     }
   }
 

@@ -30,7 +30,31 @@ const SEED = Number(params.get('seed') ?? 0xA11CE);
 const FIXED_DT = params.has('fixed') ? Number(params.get('fixed')) || 1 / 60 : null;
 
 const canvas = document.getElementById('gl');
-const renderer = new Renderer(canvas);
+
+/**
+ * No WebGL2, no game — but say so rather than showing a blank page.
+ *
+ * new THREE.WebGLRenderer() throws when it cannot get a context, and a throw
+ * at module scope in an ES module leaves the page exactly as it was: the title
+ * card sitting there with a button that does nothing, no error anywhere the
+ * player can see. That is the worst failure in the file, because it is the one
+ * the player has no way to even describe. Software rasterisers and remote
+ * desktop sessions both land here.
+ */
+let renderer;
+try {
+  renderer = new Renderer(canvas);
+} catch (e) {
+  document.getElementById('title').innerHTML =
+    '<h1>TIME CLAUDIS</h1>' +
+    '<div id="fault" class="shown"><h3 id="fault-title">3D not available</h3>' +
+    '<p id="fault-body">' +
+    'This browser could not create a WebGL2 context, which the game needs to ' +
+    'draw anything at all. That usually means hardware acceleration is turned ' +
+    'off, or the page is running in a remote session without a GPU. ' +
+    `(${(e?.message ?? e ?? 'unknown error').toString().slice(0, 160)})</p></div>`;
+  throw e;
+}
 // Attract mode is what the verification harness screenshots, and it runs on a
 // software rasteriser where every frame is over budget. Letting the scaler
 // react there would mean every screenshot was reviewed at the resolution floor.
@@ -373,28 +397,98 @@ window.__anchors = anchors;
 window.__frames = 0;
 window.__ready = false;
 
+const startButton = document.getElementById('start');
+const fault = document.getElementById('fault');
+const faultTitle = document.getElementById('fault-title');
+const faultBody = document.getElementById('fault-body');
+
+/**
+ * Say what went wrong, in the terms the player can act on.
+ *
+ * The three failures are genuinely different problems with genuinely
+ * different answers, and lumping them into one "camera unavailable" would
+ * send a player with no webcam hunting through browser permissions they
+ * cannot change the outcome of.
+ */
+function describeFault(e) {
+  const name = e?.name ?? '';
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return ['Camera permission denied',
+      'The game is played by pointing your hand at the camera, so it cannot ' +
+      'run without one. Allow camera access for this page — in most browsers ' +
+      'that is the camera icon at the right-hand end of the address bar — ' +
+      'and try again.'];
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return ['No camera found',
+      'No webcam was offered by this device. Plug one in and try again, or ' +
+      'watch the attract mode, which plays itself and needs no camera.'];
+  }
+  if (name === 'NotReadableError' || name === 'AbortError') {
+    return ['Camera is busy',
+      'Something else on this machine is already using the webcam — a video ' +
+      'call, or another tab. Close it and try again.'];
+  }
+  // Anything else is almost always the hand-tracking model failing to
+  // download: it is fetched from a CDN on first run and is about 8 MB.
+  return ['Hand tracking could not start',
+    'The hand-tracking model is downloaded the first time you play, and that ' +
+    'download did not complete. Check your connection and try again. ' +
+    `(${e?.message ?? e ?? 'unknown error'})`];
+}
+
+function showFault(e) {
+  const [title, body] = describeFault(e);
+  faultTitle.textContent = title;
+  faultBody.textContent = body;
+  fault.classList.add('shown');
+  startButton.disabled = false;
+  startButton.textContent = 'Insert Coin';
+}
+
 async function start({ webcam }) {
   if (started) return;
-  started = true;
-  titleCard.classList.add('gone');
+
+  // AUDIO FIRST, AND INSIDE THE GESTURE.
+  //
+  // unlock() used to be the last thing in the webcam branch, which put it
+  // after an await that takes several seconds — downloading an 8 MB model and
+  // then waiting on a permission prompt. By then the user-gesture context is
+  // long gone, and a browser will not let an AudioContext created outside a
+  // gesture leave the suspended state. The game was very probably silent for
+  // everybody, in the one branch where audio was even attempted: the camera
+  // failure path never called unlock() at all, so a player who denied the
+  // camera got a game that neither listened nor spoke.
+  announcer.unlock();
 
   if (webcam) {
+    fault.classList.remove('shown');
+    startButton.disabled = true;
+    startButton.textContent = 'Starting camera\u2026';
     try {
       await tracker.init(camVideo);
-      useWebcam = true;
-      camWrap.classList.remove('hidden');
-      camOverlay.width = 240;
-      camOverlay.height = 180;
-      announcer.unlock();
     } catch (e) {
-      console.warn('[input] webcam unavailable, falling back to attract mode:', e?.message);
-      useWebcam = false;
+      // NOT started. The title card stays up and says what happened, rather
+      // than dropping the player into an attract demo they did not ask for
+      // with a console warning they will never see.
+      console.warn('[input] webcam unavailable:', e?.name, e?.message);
+      showFault(e);
+      return;
     }
+    useWebcam = true;
+    camWrap.classList.remove('hidden');
+    camOverlay.width = 240;
+    camOverlay.height = 180;
   }
+
+  started = true;
+  titleCard.classList.add('gone');
   window.__ready = true;
 }
 
-document.getElementById('start').addEventListener('click', () => start({ webcam: true }));
+startButton.addEventListener('click', () => start({ webcam: true }));
+document.getElementById('fault-retry').addEventListener('click', () => start({ webcam: true }));
+document.getElementById('fault-demo').addEventListener('click', () => start({ webcam: false }));
 
 // Attract mode boots straight in with no gesture required, so the harness can
 // screenshot without a camera or a click.
@@ -407,6 +501,9 @@ let elapsed = 0;
 
 /** Latched so a callout fires once per area, not once per frame. */
 let crisisCalled = false;
+/** Seconds the tracker has had no hand. Drives the HAND LOST banner. */
+let handLostFor = 0;
+const handLost = document.getElementById('handlost');
 let lastAreaIndex = -1;
 
 function updateAudioState(snap) {
@@ -442,6 +539,24 @@ function frame(now) {
     const ok = !!landmarks;
     camStatus.textContent = ok ? (recognizer.last.gunUp ? 'GUN UP' : 'TRACKING') : 'no hand';
     camStatus.classList.toggle('lost', !ok);
+
+    // TELL THEM WHY THEY ARE STUCK IN COVER.
+    //
+    // Losing the hand for more than the recogniser's grace window reports
+    // present:false, and game.js treats that as "do not want out", so the
+    // player is pushed into cover and held there. That failsafe is right —
+    // being dropped exposed by a tracking glitch would be the least fair
+    // death in the game — but it is completely opaque. From the player's
+    // side the gun simply stops working while the area clock runs down, and
+    // the only sign is a 240-pixel chip in the corner that nobody is looking
+    // at during a firefight.
+    //
+    // The delay matters as much as the message. The tracker drops a frame
+    // here and there constantly; a banner that flickered on every one would
+    // be worse than no banner. Nine tenths of a second is long past any
+    // ordinary dropout and well short of the time it takes to lose an area.
+    handLostFor = ok ? 0 : handLostFor + dt;
+    handLost.classList.toggle('shown', handLostFor > 0.9);
   } else {
     landmarks = pilot.update(dt, game);
   }

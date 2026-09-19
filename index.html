@@ -317,6 +317,42 @@
   #title .note{margin-top:20px;color:var(--white);opacity:.45;
     font-size:clamp(11px,1.15vw,14px);letter-spacing:.06em;
     text-transform:none;max-width:46ch;line-height:1.5}
+  #start[disabled]{opacity:.5;cursor:default;pointer-events:none}
+
+  /* ------------------------------------------------- when it goes wrong */
+  /* A denied camera used to drop the player straight into the attract demo
+     with a console warning they would never see: the title card vanished,
+     the game started playing itself, and nothing on screen said why. */
+  #fault{display:none;margin-top:26px;max-width:52ch;border:2px solid var(--red);
+    padding:18px 22px;background:rgba(255,68,56,.07)}
+  #fault.shown{display:block}
+  #fault h3{margin:0 0 8px;font-family:'Barlow Condensed',sans-serif;
+    font-size:clamp(15px,1.8vw,21px);letter-spacing:.18em;color:var(--red);
+    text-transform:uppercase}
+  #fault p{margin:0;color:var(--white);opacity:.72;line-height:1.55;
+    font-size:clamp(11px,1.15vw,14px);text-transform:none}
+  #fault .acts{margin-top:16px;display:flex;gap:12px;justify-content:center;
+    flex-wrap:wrap}
+  #fault button{pointer-events:auto;cursor:pointer;font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;font-size:clamp(12px,1.3vw,16px);padding:9px 20px;
+    border:2px solid var(--white);background:transparent;color:var(--white);
+    letter-spacing:.12em;text-transform:uppercase;opacity:.85;
+    transition:background .15s,color .15s}
+  #fault button:hover{background:var(--white);color:var(--ink)}
+
+  /* Losing the hand mid-wave puts the player into cover, which is the right
+     failsafe and completely opaque without being told. The corner chip is
+     240px wide and nobody is looking at it during a firefight. */
+  #handlost{position:fixed;left:50%;top:26%;transform:translateX(-50%);
+    z-index:14;pointer-events:none;text-align:center;opacity:0;
+    transition:opacity .28s}
+  #handlost.shown{opacity:1}
+  #handlost .big{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;
+    font-size:clamp(18px,2.6vw,34px);color:var(--red);letter-spacing:.08em;
+    text-shadow:0 3px 0 var(--ink)}
+  #handlost .small{margin-top:6px;font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;font-size:clamp(11px,1.3vw,16px);color:var(--white);
+    opacity:.8;letter-spacing:.16em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -381,6 +417,20 @@
       fire. Raise the gun to the sky to duck behind cover and reload.
       Needs a webcam.
     </div>
+
+    <div id="fault">
+      <h3 id="fault-title">Camera unavailable</h3>
+      <p id="fault-body"></p>
+      <div class="acts">
+        <button id="fault-retry">Try again</button>
+        <button id="fault-demo">Watch the attract mode</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="handlost">
+    <div class="big">HAND LOST</div>
+    <div class="small">Holding cover &mdash; show your hand to the camera</div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
