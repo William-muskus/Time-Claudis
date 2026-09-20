@@ -40,9 +40,24 @@ down takes 200 ms, and that asymmetry is deliberate.
 
 ```bash
 npm install
-npm run assets     # build the GLB models in Blender (headless, no install needed)
 npm run dev        # then open the URL it prints, and allow camera access
 ```
+
+Node 18 or newer, and **Chrome or Edge**. Firefox works but its WASM SIMD path
+for the hand tracker is slower; Safari's rules about how close `getUserMedia`
+has to sit to a user gesture differ and are untested here.
+
+Nothing else is needed. The Blender-authored models are committed under
+`public/assets/models/`, MediaPipe's WASM runtime is copied out of
+`node_modules` by the Vite config, and the two fonts are vendored — so the
+only thing fetched from anywhere else at runtime is the 8 MB hand-landmark
+model, on first run. `npm run degrade` asserts that the attract mode loads
+without touching another origin at all.
+
+`npm run assets` regenerates the GLB models from `tools/blender/`. You only
+need it if you change a model: it drives Blender through its `bpy` Python
+module, so it needs `pip install bpy` first, and running it on a fresh clone
+will fail for want of that and rebuild files that are already there.
 
 No webcam? Add `?demo=1` to the URL. The attract-mode pilot plays the game by
 generating synthetic hand poses and feeding them through the *real* gesture
