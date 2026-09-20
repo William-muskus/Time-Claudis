@@ -1,0 +1,141 @@
+# TIME CLAUDIS
+
+**A Time Crisis-style arcade rail shooter set in Montmartre, played with your bare hands through a webcam.**
+
+You come up out of the Lamarck–Caulaincourt métro at golden hour and walk the
+real route to Abbesses — up rue Girardon, across Place Dalida, past the shut
+green gate of 11 bis rue d'Orchampt where Dalida lived, down through the
+Bateau-Lavoir and out onto Place des Abbesses under Guimard's amber glass.
+
+People are shooting at you the whole way.
+
+---
+
+## The controls are your hand
+
+There is no mouse, no gun peripheral and no pedal. There are three gestures and
+nothing else.
+
+| Gesture | What it does |
+|---|---|
+| **POINT** — index finger extended at the screen | The index finger is the barrel. Your hand drives the crosshair. |
+| **SHOOT** — middle finger held perpendicular to the index, then curled into the palm | One curl, one shot. The reversed L is a finger on a *gâchette*. |
+| **RELOAD** — the whole finger gun raised vertical, perpendicular to the sky | Duck behind cover and reload. Bring it back down to pop out and shoot. |
+
+You can see the gun. It points where you point, kicks when the trigger gesture
+registers, drops out of frame when you duck, and raises to vertical when you
+raise your hand — so the picture always agrees with what your hand is doing.
+That is the fastest way to tell a player their gesture landed.
+
+That third one is the entire game. Time Crisis cabinets have one pedal: pressed,
+you are out of cover and can shoot and be shot; released, you are safe and
+reloading. This maps that pedal onto your hand. **Gun up means hide. Gun down
+means fight.** There is no separate reload button — you reload by hiding, which
+means the magazine decides when you have to duck, and that rhythm is the game.
+
+You are vulnerable during both transitions. Coming out takes 260 ms and going
+down takes 200 ms, and that asymmetry is deliberate.
+
+## Running it
+
+```bash
+npm install
+npm run dev        # then open the URL it prints, and allow camera access
+```
+
+Node 18 or newer, and **Chrome or Edge**. Firefox works but its WASM SIMD path
+for the hand tracker is slower; Safari's rules about how close `getUserMedia`
+has to sit to a user gesture differ and are untested here.
+
+Nothing else is needed. The Blender-authored models are committed under
+`public/assets/models/`, MediaPipe's WASM runtime is copied out of
+`node_modules` by the Vite config, and the two fonts are vendored — so the
+only thing fetched from anywhere else at runtime is the 8 MB hand-landmark
+model, on first run. `npm run degrade` asserts that the attract mode loads
+without touching another origin at all.
+
+`npm run assets` regenerates the GLB models from `tools/blender/`. You only
+need it if you change a model: it drives Blender through its `bpy` Python
+module, so it needs `pip install bpy` first, and running it on a fresh clone
+will fail for want of that and rebuild files that are already there.
+
+No webcam? Add `?demo=1` to the URL. The attract-mode pilot plays the game by
+generating synthetic hand poses and feeding them through the *real* gesture
+recogniser, so it exercises the whole input stack rather than bypassing it.
+
+```bash
+npm test           # 136 tests: cover timing, gestures, route topology, playthrough
+npm run tour       # drive the built game in headless Chromium and screenshot it
+npm run bench      # the first-person weapon, on its own, in seconds
+npm run palette    # measure a frame against the amber/violet contract
+npm run mix        # every sound's peak level, ranked against its importance
+npm run perf       # draw calls, triangles, and the cost of one simulated frame
+npm run degrade    # the failure paths, in a real browser: no camera, no WebGL2
+```
+
+**If you are about to play it for the first time, read
+[docs/PLAYTEST.md](docs/PLAYTEST.md) first.** Nobody ever has. It says what to
+try and in what order, what we already know is wrong so you do not spend your
+session rediscovering it, and — more usefully — what could not be measured here
+at all and therefore needs a human with a real GPU and a real hand.
+
+The test that matters most is the last one added: `tests/playthrough.test.js`
+plays the whole stage against the real world with an oracle player and asserts
+it can be finished. It found that the stage was unwinnable past area one —
+three quarters of scheduled enemy spawns were failing silently, so the gating
+enemy never appeared and the area never cleared.
+
+## What's in here
+
+```
+src/data/route.js      the survey — 15 real waypoints, WGS84, frozen contract
+src/core/cover.js      the pedal, as one continuous exposure scalar — frozen
+src/input/             MediaPipe Hands -> fingerpose -> game intent
+src/world/             Montmartre, generated from the survey
+src/gameplay/          enemies, the director, weapons, scoring
+src/render/            golden-hour lighting, post chain, adaptive resolution
+src/ui/  src/audio/    the arcade shell. All audio is synthesised; no files.
+tools/blender/         asset pipeline — Blender as a Python module, GLB out
+tools/verify/          headless screenshot harness
+```
+
+**Documentation worth reading before changing anything:**
+
+- [`docs/GAMEPLAY.md`](docs/GAMEPLAY.md) — the Time Crisis contract. Every timing
+  number and why. This is the arbiter: if the code and that document disagree,
+  one of them is a bug.
+- [`docs/ROUTE.md`](docs/ROUTE.md) — the walk, and the details a resident of the
+  18th would actually catch.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — module ownership and the frame
+  order, which is load-bearing.
+- [`docs/CONSTRAINTS.md`](docs/CONSTRAINTS.md) — **the three things in the brief
+  that could not be built, why, and what shipped instead.** Read this one.
+
+## Two claims this project makes, and how honest they are
+
+**"The geography is 1:1."** The topology is: which street meets which, which way
+you turn, which side each landmark sits on, and whether you are climbing. Those
+are pinned by tests. The absolute coordinates carry roughly ±15 m, because the
+build environment could reach neither Street View nor the OpenStreetMap Overpass
+API and the survey is therefore hand-authored. `docs/CONSTRAINTS.md` §2 has the
+full accounting and the exact steps to replace it with real OSM data.
+
+**"Blender-exported GLTF."** Every authored object loads from GLB at runtime:
+the Dalida bust, the Guimard édicule, the Moulin, the Wallace fountains, the
+lamp standards, the Morris column, the enemy figure and all four weapons. They
+are built by `tools/blender/`, which runs Blender as a Python module — no
+install, no GUI, no `.blend` files in the repo, so the models are reviewable in
+a diff and regenerable from scratch.
+
+Two things are deliberately *not* GLB. The street surface is procedural because
+it has to follow the rail spline exactly, and a static mesh cannot. The façades
+are procedural because they are generated from the same survey the rail reads,
+which is what keeps four hundred metres of terrace from needing to be
+hand-placed. Every authored object that *is* GLB keeps a procedural fallback,
+so a missing export degrades instead of leaving a hole where the bust should
+be — and `tests/assets.test.js` fails the build before it gets that far.
+
+The brief also asked for the MW3 *Resistance* map as a layout reference and for
+NVIDIA DLSS 5. Neither shipped. `docs/CONSTRAINTS.md` says exactly why, including
+the part where using a competitive multiplayer map as geographic ground truth
+would have made the geography *less* accurate, not more.
