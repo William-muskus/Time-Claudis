@@ -190,6 +190,15 @@ def wall_style(code, seed):
     return ["plaster", "plaster", "ochre", "pink", "grey", "plaster", "ochre"][seed % 7]
 
 
+# Saint-Jean-de-Montmartre (de Baudot, 1904) is red brick over concrete; BD TOPO
+# records its walls as "other". Every other church on the Butte is stone.
+ST_JEAN = L(2.3379083, 48.8841996)
+
+
+def church_style(poly):
+    return "brick" if poly.buffer(2).contains(Point(*ST_JEAN)) else "stone"
+
+
 def roof_kind(code, floors, area, short):
     first = (code or "0")[:1]
     if first == "4" or area > 900:
@@ -412,7 +421,7 @@ def main():
             g=round(ground - ORIGIN["elev"], 2),
             e=round(eaves - ORIGIN["elev"], 2),
             f=int(floors),
-            s=wall_style(p.get("materiaux_des_murs"), seed),
+            s=church_style(poly) if nature == "Eglise" else wall_style(p.get("materiaux_des_murs"), seed),
             r=kind,
             i=round(inset, 2),
             u={"Résidentiel": "res", "Commercial et services": "com", "Religieux": "rel",

@@ -95,13 +95,16 @@ all that is modelled.
 | `derived` | interpolated along the real street between two cited anchors, using the street's own cited length where one exists |
 | `est` | placed from knowledge of the quartier alone — correct these freely |
 
-**No vector source was reachable.** This machine cannot open OpenStreetMap,
-Overpass, the IGN (`data.geopf.fr`), the Paris open data portal, Wikipedia, any
-Wikipedia mirror, Wikidata, or any tile server: the egress proxy answers `403`
-to `CONNECT` for every one of them, and `WebFetch` is refused for the same
-hosts. Only the package registries, `raw.githubusercontent.com` and web SEARCH
-get out. There is therefore no import to write, and no `.geojson` in this repo
-is a missing feature — it is a blocked one. See `docs/CONSTRAINTS.md`.
+**Superseded (October 2026): the route is now surveyed.** IGN's Géoplateforme
+(BD TOPO buildings and streets, RGE ALTI terrain), the Ville de Paris tree
+inventory and the OpenStreetMap API became reachable. `tools/geo/fetch.py`
+downloads them and `tools/geo/build.py` writes `src/data/geo/montmartre.json`
+in the game's frame (origin: the Dalida bust). Every waypoint in
+`src/data/route.js` is now tagged `surveyed`, placed on real street
+centrelines and checked against independent sources by `tests/route.test.js`.
+
+The table below is the older search-derived survey, kept because the tests
+still cross-check against several of its figures.
 
 What search returns is figures from those sources as text, and that is where
 these came from:

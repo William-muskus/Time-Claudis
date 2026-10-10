@@ -12,7 +12,7 @@ half that. Every design decision below follows from that number.
 
 ## `npm test` — does the simulation obey the contract?
 
-114 tests, no browser, seconds. Three.js builds and updates a scene
+144 tests, no browser, seconds. Three.js builds and updates a scene
 perfectly well without WebGL; only *drawing* needs a GPU, so the entire
 simulation is testable headlessly.
 
