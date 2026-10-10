@@ -1,0 +1,188 @@
+#!/usr/bin/env node
+/**
+ * Measure a rendered frame against the palette contract.
+ *
+ * src/render/palette.js promises one thing above all: everything is either
+ * warm (hue 20-50) or cool (hue 230-280), and nothing in between, because
+ * flat-shaded low-poly geometry has no surface detail and so the SHADING has
+ * to carry hue information rather than only brightness.
+ *
+ * That promise is easy to state and impossible to eyeball, especially at
+ * golden hour where every honest frame is warm-dominated. So measure it. A
+ * frame that is 72% warm and 9% cool is not a split; it is a monochrome
+ * orange wash that happens to contain a few blue shutters.
+ *
+ *   node tools/verify/palette-check.mjs artifacts/foo/bar.png [...]
+ */
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { inflateSync } from 'node:zlib';
+
+/** Minimal PNG decoder: enough for what Playwright writes. */
+export function readPng(path) {
+  const d = readFileSync(path);
+  let pos = 8, w = 0, h = 0, colorType = 6, idat = [];
+  while (pos < d.length) {
+    const len = d.readUInt32BE(pos);
+    const type = d.toString('ascii', pos + 4, pos + 8);
+    const body = d.subarray(pos + 8, pos + 8 + len);
+    if (type === 'IHDR') { w = body.readUInt32BE(0); h = body.readUInt32BE(4); colorType = body[9]; }
+    else if (type === 'IDAT') idat.push(body);
+    pos += 12 + len;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const ch = colorType === 2 ? 3 : 4;
+  const stride = w * ch + 1;
+  const rows = [];
+  let prev = Buffer.alloc(stride - 1);
+  for (let y = 0, i = 0; y < h; y++, i += stride) {
+    const f = raw[i];
+    const line = Buffer.from(raw.subarray(i + 1, i + stride));
+    for (let x = 0; x < line.length; x++) {
+      const a = x >= ch ? line[x - ch] : 0;
+      const b = prev[x];
+      const c = x >= ch ? prev[x - ch] : 0;
+      if (f === 1) line[x] = (line[x] + a) & 255;
+      else if (f === 2) line[x] = (line[x] + b) & 255;
+      else if (f === 3) line[x] = (line[x] + ((a + b) >> 1)) & 255;
+      else if (f === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        line[x] = (line[x] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 255;
+      }
+    }
+    rows.push(line); prev = line;
+  }
+  return { w, h, ch, rows };
+}
+
+function hue(r, g, b) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (d === 0) return { h: 0, s: 0, v: mx / 255 };
+  let hh;
+  if (mx === r) hh = ((g - b) / d) % 6;
+  else if (mx === g) hh = (b - r) / d + 2;
+  else hh = (r - g) / d + 4;
+  return { h: ((hh * 60) + 360) % 360, s: d / mx, v: mx / 255 };
+}
+
+export function analyse(path) {
+  const { w, h, ch, rows } = readPng(path);
+  let clipped = 0, dark = 0, n = 0, warm = 0, cool = 0, mid = 0, sat = 0;
+  /** Every saturated pixel as {hue, value}, so the shadows can be isolated. */
+  const px = [];
+  // Skip the HUD bands top and bottom; we are judging the world.
+  for (let y = Math.floor(h * 0.12); y < Math.floor(h * 0.88); y += 2) {
+    const row = rows[y];
+    for (let x = 0; x < w; x += 2) {
+      const r = row[x * ch], g = row[x * ch + 1], b = row[x * ch + 2];
+      n++;
+      if (r > 250 && g > 245) clipped++;
+      if (r < 18 && g < 18 && b < 18) dark++;
+      const { h: hh, s, v } = hue(r, g, b);
+      if (s < 0.12 || v < 0.1) continue;
+      sat++;
+      px.push([hh, v]);
+      if (hh < 65 || hh >= 330) warm++;
+      else if (hh >= 180 && hh < 300) cool++;
+      else mid++;
+    }
+  }
+
+  /**
+   * THE SHADOW SPLIT: of the darkest third of the frame, how much is cool?
+   *
+   * WHY THIS REPLACED coolPct AS THE THING THAT PASSES OR FAILS. coolPct is a
+   * whole-frame census, and what it actually counts is how much cool-ALBEDO
+   * material happens to be in shot — the road, the shutters, the ironwork,
+   * the sky. Every surface in Montmartre is warm limestone and warm plaster,
+   * and a cool light on a warm albedo still reads warm. So a frame down a
+   * narrow lane with plaster on both sides and no visible road fails no matter
+   * how correct the lighting is, and a frame of empty grey fog passes.
+   *
+   * That is not a theory. Filling the six-hundred-metre hole in the middle
+   * distance made the Sacre-Coeur shot unarguably better — the basilica went
+   * from an unreadable blob to a legible dome, and a roofline appeared where
+   * there had been a bare slope — and its coolPct went DOWN every time, 11.5
+   * to 9.2 to 7.0, because the thing that was added was warm rooftops. A
+   * measurement that rewards deleting content is measuring the wrong thing.
+   *
+   * What the palette actually promises is a SPLIT: the sun is amber and the
+   * fill is violet, so the lit side of the frame should be warm and the
+   * shadow side should be cool. That is a claim about the darkest pixels
+   * specifically, and it survives whatever happens to be in frame.
+   */
+  px.sort((a, b) => a[1] - b[1]);
+  const shade = px.slice(0, Math.max(1, Math.floor(px.length / 3)));
+  const lit = px.slice(Math.max(0, px.length - Math.floor(px.length / 3)));
+  const coolOf = (arr) => arr.filter(([hh]) => hh >= 180 && hh < 300).length / (arr.length || 1);
+  const warmOf = (arr) => arr.filter(([hh]) => hh < 65 || hh >= 330).length / (arr.length || 1);
+
+  return {
+    file: path.split('/').slice(-2).join('/'),
+    clippedPct: +(clipped / n * 100).toFixed(1),
+    darkPct: +(dark / n * 100).toFixed(1),
+    warmPct: +(warm / sat * 100).toFixed(1),
+    coolPct: +(cool / sat * 100).toFixed(1),
+    midPct: +(mid / sat * 100).toFixed(1),
+    /** Of the darkest third of the frame, the share that is violet-blue. */
+    shadeCoolPct: +(coolOf(shade) * 100).toFixed(1),
+    /** Of the brightest third, the share that is amber. */
+    litWarmPct: +(warmOf(lit) * 100).toFixed(1),
+  };
+}
+
+/**
+ * The contract, as numbers.
+ *
+ * Golden hour is legitimately warm-dominated, so the target is not balance —
+ * it is that the cool side is PRESENT enough to read as a second hue rather
+ * than as an accident.
+ */
+export const TARGET = {
+  clippedPct: 4.0,      // above this the sunlit stone is blowing out
+  darkPct: 3.0,         // above this the shadows are holes
+  // The split, measured where it lives. See analyse(): coolPct is still
+  // reported because it is a useful thing to know about a frame, but it is a
+  // census of what is in shot rather than a test of the lighting, and holding
+  // frames to it punished them for containing warm architecture.
+  shadeCoolPct: 40.0,   // below this the shadows are not violet, only darker
+  litWarmPct: 55.0,     // below this the sun is not amber
+};
+
+if (process.argv[1]?.endsWith('palette-check.mjs')) {
+  // Accept directories as well as files. A tour writes a folder, so being
+  // handed one is the normal case, and passing it used to crash inside the
+  // PNG reader with EISDIR after the whole render had already been paid for.
+  const files = process.argv.slice(2).flatMap((p) => {
+    if (!statSync(p).isDirectory()) return [p];
+    return readdirSync(p).filter((f) => f.endsWith('.png')).sort().map((f) => join(p, f));
+  });
+  if (!files.length) { console.error('usage: palette-check.mjs <png|dir...>'); process.exit(2); }
+  let worst = 0;
+  console.log('file'.padEnd(34), 'clip%'.padStart(6), 'dark%'.padStart(6),
+    'warm%'.padStart(6), 'cool%'.padStart(6), 'shade'.padStart(6), 'lit'.padStart(6));
+  for (const f of files) {
+    const a = analyse(f);
+    const bad = (a.clippedPct > TARGET.clippedPct ? 1 : 0)
+              + (a.darkPct > TARGET.darkPct ? 1 : 0)
+              + (a.shadeCoolPct < TARGET.shadeCoolPct ? 1 : 0)
+              + (a.litWarmPct < TARGET.litWarmPct ? 1 : 0);
+    worst = Math.max(worst, bad);
+    console.log(
+      a.file.padEnd(34),
+      String(a.clippedPct).padStart(6),
+      String(a.darkPct).padStart(6),
+      String(a.warmPct).padStart(6),
+      String(a.coolPct).padStart(6),
+      String(a.shadeCoolPct).padStart(6),
+      String(a.litWarmPct).padStart(6),
+      bad ? '  <-- ' + [
+        a.clippedPct > TARGET.clippedPct && 'clipping',
+        a.darkPct > TARGET.darkPct && 'crushed',
+        a.shadeCoolPct < TARGET.shadeCoolPct && 'shadows not violet',
+        a.litWarmPct < TARGET.litWarmPct && 'sun not amber',
+      ].filter(Boolean).join(', ') : '');
+  }
+  process.exit(worst ? 1 : 0);
+}

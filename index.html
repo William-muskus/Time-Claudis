@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TIME CLAUDIS — Montmartre</title>
+<!--
+  THE TYPOGRAPHY WAS COMING FROM A CDN, AND OFTEN WASN'T COMING AT ALL.
+
+  These three faces used to be fetched from fonts.googleapis.com at runtime.
+  That is a third-party network standing between the player and a readable HUD,
+  and it fails more often than you would think: the container this project is
+  developed in cannot reach it, so EVERY screenshot the art direction was ever
+  tuned against was rendered in Arial Black and system-ui rather than in
+  Archivo Black and Barlow Condensed. Nobody noticed, because the fallback
+  chain is good enough to look deliberate.
+
+  Latin subsets only, three files, 63 KB in total, served from this origin.
+  Both families are SIL Open Font License 1.1 — see public/fonts/OFL.txt.
+-->
+<style>
+  @font-face{font-family:'Archivo Black';font-style:normal;font-weight:400;
+    font-display:swap;src:url(/fonts/archivo-black-400.woff2) format('woff2')}
+  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;
+    font-display:swap;src:url(/fonts/barlow-condensed-600.woff2) format('woff2')}
+  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;
+    font-display:swap;src:url(/fonts/barlow-condensed-700.woff2) format('woff2')}
+</style>
+<style>
+  :root{
+    --amber:#FFC24A; --red:#FF4438; --white:#FFF6E4; --blue:#5EC8E5;
+    --ink:#14101B; --ink-soft:rgba(20,16,27,.72);
+    --stroke:3px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#14101B;
+    font-family:'Barlow Condensed','Arial Narrow','Helvetica Neue',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;user-select:none;cursor:none}
+  canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+  /* ---------------------------------------------------------------- HUD */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10;
+    text-transform:uppercase;letter-spacing:.03em}
+
+  .hud-top{position:absolute;top:0;left:0;right:0;display:flex;
+    align-items:flex-start;justify-content:space-between;
+    padding:clamp(10px,2vw,22px) clamp(12px,2.5vw,30px)}
+
+  .panel .label,.timer-wrap .label{
+    font-size:clamp(11px,1.15vw,15px);font-weight:700;color:var(--amber);
+    opacity:.9;letter-spacing:.16em;margin-bottom:2px;
+    text-shadow:0 2px 0 rgba(0,0,0,.55)}
+
+  /* -webkit-text-stroke gives a real outline rather than four stacked
+     shadows, which matters because the webfont is often unavailable and the
+     fallback is lighter than Archivo Black. An arcade HUD has to be readable
+     across a lit room; a thin unoutlined numeral is not. */
+  .panel .value{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-weight:900;
+    font-size:clamp(26px,3.4vw,46px);line-height:.92;color:var(--white);
+    -webkit-text-stroke:2px var(--ink);paint-order:stroke fill;
+    text-shadow:0 var(--stroke) 0 var(--ink),0 0 22px rgba(255,194,74,.35)}
+
+  /* A solid plate behind the clock. Centre-top is where a landmark's skyline
+     silhouette lives — the timer was landing squarely on the Dalida bust's
+     head in the one shot that exists to show it. */
+  .timer-wrap{text-align:center;flex:0 0 auto;
+    background:linear-gradient(to bottom,rgba(20,16,27,.82),rgba(20,16,27,0));
+    padding:4px clamp(14px,2vw,26px) clamp(10px,1.6vw,18px);
+    border-radius:0 0 6px 6px}
+  .timer{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-weight:900;
+    font-size:clamp(44px,6.2vw,86px);line-height:.86;color:var(--white);
+    -webkit-text-stroke:3px var(--ink);paint-order:stroke fill;
+    text-shadow:0 4px 0 var(--ink),0 0 30px rgba(255,194,74,.45)}
+  .timer.critical{color:var(--red);animation:pulse .48s steps(2,end) infinite;
+    text-shadow:0 4px 0 var(--ink),0 0 34px rgba(255,68,56,.75)}
+  @keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+
+  .lives-panel{text-align:right}
+  /* Bars on a dark plate, not pentagons on open sky. The pips were vanishing
+     against the gold horizon, and a pentagon does not signify anything. */
+  .lives{display:flex;gap:5px;justify-content:flex-end;margin-top:3px;
+    padding:4px 6px;background:rgba(20,16,27,.72);border:2px solid var(--ink)}
+  .lives i{width:clamp(7px,.85vw,11px);height:clamp(17px,1.9vw,25px);
+    background:var(--red);display:block;border-radius:1px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55);transition:opacity .16s,transform .16s}
+  .lives i.lost{opacity:.16;transform:scale(.72)}
+
+  /* ------------------------------------------------------------- combo */
+  .combo{position:absolute;top:clamp(96px,12vh,150px);left:50%;
+    transform:translateX(-50%) scale(.8);opacity:0;
+    font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;color:var(--amber);
+    font-size:clamp(18px,2.3vw,32px);
+    text-shadow:0 3px 0 var(--ink);transition:opacity .12s,transform .12s}
+  .combo.show{opacity:1;transform:translateX(-50%) scale(1)}
+
+  /* ------------------------------------------------------------ bottom */
+  .hud-bottom{position:absolute;bottom:0;left:0;right:0;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:clamp(12px,2.2vw,26px) clamp(12px,2.5vw,30px)}
+
+  .cover-state{min-width:clamp(160px,20vw,260px)}
+  .cover-bar{height:clamp(9px,1.1vw,14px);background:rgba(20,16,27,.6);
+    border:2px solid var(--ink);overflow:hidden}
+  .cover-fill{height:100%;width:0%;background:var(--amber);
+    transition:width .04s linear}
+  .cover-state.exposed .cover-fill{background:var(--red)}
+  .cover-state.covered .cover-fill{background:var(--blue)}
+  .cover-label{font-weight:700;font-size:clamp(12px,1.3vw,17px);
+    color:var(--white);margin-top:4px;letter-spacing:.14em;
+    text-shadow:0 2px 0 var(--ink)}
+  .cover-state.covered .cover-label{color:var(--blue)}
+  .cover-state.exposed .cover-label{color:var(--red)}
+
+  .ammo-wrap{text-align:right;min-width:clamp(150px,18vw,240px)}
+  .weapon-name{font-weight:700;color:var(--amber);
+    font-size:clamp(12px,1.3vw,17px);letter-spacing:.16em;
+    text-shadow:0 2px 0 var(--ink)}
+  .ammo{display:flex;gap:5px;justify-content:flex-end;margin:5px 0 4px}
+  .ammo i{width:clamp(6px,.72vw,9px);height:clamp(18px,2.1vw,27px);
+    background:var(--amber);display:block;border-radius:2px 2px 0 0;
+    box-shadow:0 2px 0 var(--ink);transition:opacity .1s,transform .1s}
+  .ammo i.spent{opacity:.15;transform:scaleY(.55);transform-origin:bottom}
+  .ammo.numeric{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;color:var(--amber);
+    font-size:clamp(20px,2.4vw,32px);display:block;
+    text-shadow:0 3px 0 var(--ink)}
+  .ammo.empty{animation:pulse .38s steps(2,end) infinite}
+  .reload-bar{height:5px;background:rgba(20,16,27,.6);border:2px solid var(--ink)}
+  .reload-fill{height:100%;width:0;background:var(--blue);transition:width .04s linear}
+
+  /* --------------------------------------------------------- crosshair */
+  /* Sized as a fraction of the viewport, not a fixed pixel box: a 48px
+     reticle on a 1600px frame is 3% of the width and needs study to find.
+     Every stroke is doubled — a dark outline under a light fill — so it
+     survives both the blazing limestone and the violet shadow without
+     relying on either. */
+  .crosshair{position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    width:clamp(56px,5vw,92px);height:clamp(56px,5vw,92px);
+    will-change:left,top}
+  .crosshair svg{width:100%;height:100%;overflow:visible}
+  .ch-outline{fill:none;stroke:#14101B;stroke-width:7;stroke-linecap:round;opacity:.85}
+  .ch-ring{fill:none;stroke:var(--white);stroke-width:3;opacity:.96}
+  .ch-tick{stroke:var(--white);stroke-width:4;stroke-linecap:round}
+  .ch-dot{fill:var(--red);stroke:#14101B;stroke-width:1.6}
+  .crosshair svg{filter:drop-shadow(0 0 6px rgba(255,194,74,.45))
+                 drop-shadow(0 2px 2px rgba(0,0,0,.8))}
+  /* In cover the crosshair COLLAPSES rather than merely changing colour —
+     shape survives a busy amber frame where a hue shift does not. */
+  .crosshair.covered{transform:translate(-50%,-50%) scale(.55);opacity:.4}
+  .crosshair.covered .ch-dot{fill:var(--blue)}
+  .crosshair.empty .ch-ring{stroke:var(--red);stroke-dasharray:5 5}
+  .crosshair.empty .ch-dot{fill:none}
+
+  /* ------------------------------------------------------------ banner */
+  .banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.6);
+    font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-size:clamp(34px,6.4vw,92px);letter-spacing:.02em;
+    opacity:0;white-space:nowrap;color:var(--white);
+    text-shadow:0 6px 0 var(--ink),0 0 46px rgba(255,194,74,.55)}
+  .banner.show{opacity:1;transform:translate(-50%,-50%) scale(1);
+    animation:slam .2s cubic-bezier(.2,1.7,.4,1)}
+  @keyframes slam{0%{transform:translate(-50%,-50%) scale(1.9);opacity:0}
+                  60%{transform:translate(-50%,-50%) scale(.94);opacity:1}
+                  100%{transform:translate(-50%,-50%) scale(1)}}
+  .banner.action{color:var(--amber)}
+  .banner.clear{color:var(--blue)}
+  .banner.fail{color:var(--red)}
+  .banner.reload{color:var(--red);font-size:clamp(26px,4vw,56px)}
+
+  /* ------------------------------------------------------------ popups */
+  .popups{position:absolute;inset:0}
+  .popup{position:absolute;font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;
+    font-size:clamp(15px,1.7vw,24px);color:var(--amber);
+    text-shadow:0 3px 0 var(--ink);animation:rise 1.1s ease-out forwards;
+    white-space:nowrap}
+  .popup.head{color:var(--white);font-size:clamp(18px,2.1vw,30px)}
+  .popup.bonus{color:var(--blue)}
+  @keyframes rise{0%{opacity:0;transform:translateY(14px) scale(.7)}
+                  18%{opacity:1;transform:translateY(0) scale(1.12)}
+                  30%{transform:translateY(0) scale(1)}
+                  100%{opacity:0;transform:translateY(-52px) scale(.95)}}
+
+  .hit-flash{position:absolute;inset:0;opacity:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 34%,rgba(200,20,15,.82) 100%)}
+
+  /* ----------------------------------------------------------- visor */
+  #visor{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+
+  /* The frame: a soft inner shadow doing the work of a helmet aperture.
+     Deliberately elliptical and deliberately asymmetric top to bottom — a
+     symmetrical vignette reads as a camera effect, an aperture reads as
+     something you are looking THROUGH. */
+  .visor-frame{position:absolute;inset:0;
+    background:
+      radial-gradient(130% 106% at 50% 44%,
+        transparent 52%,
+        rgba(12,9,17,.30) 72%,
+        rgba(12,9,17,.72) 88%,
+        rgba(12,9,17,.94) 100%);
+    box-shadow:inset 0 0 0 3px rgba(255,194,74,.10),
+               inset 0 0 60px rgba(12,9,17,.55)}
+
+  /* Two dark wedges at the lower corners: the cheek pieces. They are what
+     make the aperture read as a helmet rather than as a lens. */
+  .visor-notch{position:absolute;bottom:-6%;width:34%;height:30%;
+    background:linear-gradient(to top,rgba(12,9,17,.96),transparent);
+    filter:blur(6px)}
+  .visor-notch-l{left:-4%;transform:skewX(13deg)}
+  .visor-notch-r{right:-4%;transform:skewX(-13deg)}
+
+  .visor-ticks{position:absolute;inset:0;width:100%;height:100%}
+
+  /* One slow sweep. Fast scanlines are a screen-effect cliché and they fight
+     the flat shading; a single travelling band reads as a visor refreshing. */
+  .visor-scan{position:absolute;left:0;right:0;height:22%;
+    background:linear-gradient(to bottom,transparent,rgba(94,200,229,.045),transparent);
+    animation:visorScan 7.5s linear infinite}
+  @keyframes visorScan{0%{top:-24%}100%{top:102%}}
+
+  /* A faint static grain, built from two repeating gradients so it costs
+     nothing and needs no image. */
+  .visor-grain{position:absolute;inset:0;opacity:.055;mix-blend-mode:overlay;
+    background-image:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.7) 0 1px,transparent 1px 3px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 1px,transparent 1px 4px)}
+
+  @media (prefers-reduced-motion:reduce){
+    .visor-scan{animation:none;display:none}
+  }
+
+  /* --------------------------------------------------------- boss bar */
+  .boss-bar{position:absolute;left:50%;top:clamp(120px,15vh,180px);
+    transform:translateX(-50%) translateY(-14px);width:min(56vw,720px);
+    opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+  .boss-bar.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .boss-name{font-family:'Archivo Black',system-ui,sans-serif;
+    font-size:clamp(13px,1.5vw,20px);color:var(--white);text-align:center;
+    letter-spacing:.2em;margin-bottom:4px;text-shadow:0 3px 0 var(--ink)}
+  .boss-track{height:clamp(11px,1.3vw,17px);background:rgba(20,16,27,.72);
+    border:3px solid var(--ink);overflow:hidden}
+  .boss-fill{height:100%;width:100%;background:var(--red);
+    transition:width .18s cubic-bezier(.2,1.4,.4,1)}
+  .boss-fill.low{animation:pulse .42s steps(2,end) infinite}
+
+  /* --------------------------------------------------------- overlays */
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;opacity:0;pointer-events:none;
+    background:rgba(12,9,17,0);transition:opacity .22s,background .22s}
+  .overlay.show{opacity:1;background:rgba(12,9,17,.72)}
+  .overlay-card{min-width:min(78vw,520px);padding:clamp(18px,3vw,34px);
+    border:3px solid var(--amber);background:rgba(20,16,27,.94);
+    box-shadow:0 10px 0 rgba(0,0,0,.45);text-align:center;
+    transform:scale(.88);transition:transform .22s cubic-bezier(.2,1.6,.4,1)}
+  .overlay.show .overlay-card{transform:scale(1)}
+  .overlay-card h3{font-family:'Archivo Black',system-ui,sans-serif;margin:0;
+    font-size:clamp(24px,3.6vw,50px);color:var(--blue);letter-spacing:.02em;
+    text-shadow:0 4px 0 var(--ink)}
+  .overlay-card h3.danger{color:var(--red)}
+  .overlay-card h3.win{color:var(--amber)}
+  .overlay-card .sub{color:var(--white);opacity:.6;letter-spacing:.22em;
+    font-size:clamp(10px,1.1vw,14px);margin-top:5px}
+  .overlay-card dl{margin:clamp(14px,2vw,24px) 0 0;padding:0}
+  .overlay-card dl>div{display:flex;justify-content:space-between;
+    align-items:baseline;gap:20px;padding:6px 0;
+    border-bottom:1px solid rgba(255,194,74,.16)}
+  .overlay-card dt{color:var(--amber);font-weight:700;letter-spacing:.14em;
+    font-size:clamp(11px,1.2vw,15px)}
+  .overlay-card dd{margin:0;font-family:'Archivo Black',system-ui,sans-serif;
+    color:var(--white);font-size:clamp(15px,1.9vw,26px)}
+  .overlay-card .hl dd{color:var(--blue)}
+  .overlay-card .total{border-bottom:none;border-top:3px solid var(--amber);
+    margin-top:8px;padding-top:12px}
+  .overlay-card .total dd{color:var(--amber);font-size:clamp(20px,2.6vw,36px)}
+  .overlay-card .rank{font-size:clamp(34px,4.6vw,64px)!important;
+    color:var(--amber)!important;line-height:1}
+
+  .continue{margin-top:clamp(16px,2.4vw,28px)}
+  .continue-label{color:var(--white);letter-spacing:.24em;font-weight:700;
+    font-size:clamp(12px,1.4vw,18px)}
+  .continue-count{font-family:'Archivo Black',system-ui,sans-serif;
+    font-size:clamp(48px,7vw,96px);color:var(--amber);line-height:1;
+    text-shadow:0 5px 0 var(--ink)}
+  .continue-count.critical{color:var(--red)}
+  .continue-count.slam{animation:slam .18s cubic-bezier(.2,1.7,.4,1)}
+  .continue-hint{color:var(--white);opacity:.45;letter-spacing:.1em;
+    font-size:clamp(10px,1.1vw,13px);text-transform:none;margin-top:3px}
+
+  .banner.pickup{color:var(--blue);font-size:clamp(24px,3.6vw,52px)}
+
+  /* ------------------------------------------------------------- hints */
+  .gesture-hint{position:absolute;left:50%;bottom:clamp(70px,11vh,120px);
+    transform:translateX(-50%);display:flex;gap:clamp(12px,2vw,30px);
+    padding:9px 16px;background:var(--ink-soft);border:2px solid rgba(255,194,74,.35);
+    transition:opacity .6s}
+  .gesture-hint.faded{opacity:0}
+  .gh-row{display:flex;flex-direction:column;align-items:center;gap:1px}
+  .gh-row b{color:var(--amber);font-size:clamp(12px,1.25vw,16px);letter-spacing:.13em}
+  .gh-row span{color:var(--white);opacity:.75;font-size:clamp(10px,1vw,13px);
+    letter-spacing:.05em;text-transform:none}
+
+  /* ------------------------------------------------------------ camera */
+  #cam-wrap{position:fixed;right:14px;top:50%;transform:translateY(-50%);
+    width:clamp(120px,13vw,190px);z-index:11;pointer-events:none;
+    border:2px solid rgba(255,194,74,.4);background:#0c0a11;
+    box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #cam-wrap.hidden{display:none}
+  #cam,#cam-overlay{display:block;width:100%;transform:scaleX(-1)}
+  #cam-overlay{position:absolute;inset:0}
+  #cam-status{position:absolute;bottom:0;left:0;right:0;
+    font-size:11px;font-weight:700;letter-spacing:.1em;text-align:center;
+    padding:3px;color:var(--ink);background:var(--amber);text-transform:uppercase}
+  #cam-status.lost{background:var(--red);color:var(--white)}
+
+  /* -------------------------------------------------------- title card */
+  #title{position:fixed;inset:0;z-index:20;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 40%,#2b2035 0%,#14101B 70%);
+    text-align:center;padding:24px;transition:opacity .5s}
+  #title.gone{opacity:0;pointer-events:none}
+  #title h1{font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;margin:0;
+    font-size:clamp(40px,8.5vw,120px);color:var(--amber);line-height:.9;
+    letter-spacing:.01em;text-shadow:0 7px 0 var(--ink),0 0 60px rgba(255,194,74,.4)}
+  #title h2{font-family:'Barlow Condensed',sans-serif;font-weight:700;
+    margin:10px 0 0;font-size:clamp(15px,2.1vw,28px);color:var(--white);
+    letter-spacing:.34em;text-transform:uppercase;opacity:.88}
+  #title .route{margin-top:6px;color:var(--blue);letter-spacing:.14em;
+    font-size:clamp(12px,1.4vw,17px);text-transform:uppercase;opacity:.8}
+  #start{margin-top:34px;pointer-events:auto;cursor:pointer;
+    font-family:'Archivo Black','Arial Black','Helvetica Neue',system-ui,sans-serif;font-size:clamp(16px,2vw,26px);
+    padding:15px 40px;border:3px solid var(--amber);background:transparent;
+    color:var(--amber);letter-spacing:.12em;text-transform:uppercase;
+    transition:background .15s,color .15s}
+  #start:hover{background:var(--amber);color:var(--ink)}
+  #title .note{margin-top:20px;color:var(--white);opacity:.45;
+    font-size:clamp(11px,1.15vw,14px);letter-spacing:.06em;
+    text-transform:none;max-width:46ch;line-height:1.5}
+  #start[disabled]{opacity:.5;cursor:default;pointer-events:none}
+
+  /* ------------------------------------------------- when it goes wrong */
+  /* A denied camera used to drop the player straight into the attract demo
+     with a console warning they would never see: the title card vanished,
+     the game started playing itself, and nothing on screen said why. */
+  #fault{display:none;margin-top:26px;max-width:52ch;border:2px solid var(--red);
+    padding:18px 22px;background:rgba(255,68,56,.07)}
+  #fault.shown{display:block}
+  #fault h3{margin:0 0 8px;font-family:'Barlow Condensed',sans-serif;
+    font-size:clamp(15px,1.8vw,21px);letter-spacing:.18em;color:var(--red);
+    text-transform:uppercase}
+  #fault p{margin:0;color:var(--white);opacity:.72;line-height:1.55;
+    font-size:clamp(11px,1.15vw,14px);text-transform:none}
+  #fault .acts{margin-top:16px;display:flex;gap:12px;justify-content:center;
+    flex-wrap:wrap}
+  #fault button{pointer-events:auto;cursor:pointer;font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;font-size:clamp(12px,1.3vw,16px);padding:9px 20px;
+    border:2px solid var(--white);background:transparent;color:var(--white);
+    letter-spacing:.12em;text-transform:uppercase;opacity:.85;
+    transition:background .15s,color .15s}
+  #fault button:hover{background:var(--white);color:var(--ink)}
+
+  /* Losing the hand mid-wave puts the player into cover, which is the right
+     failsafe and completely opaque without being told. The corner chip is
+     240px wide and nobody is looking at it during a firefight. */
+  #handlost{position:fixed;left:50%;top:26%;transform:translateX(-50%);
+    z-index:14;pointer-events:none;text-align:center;opacity:0;
+    transition:opacity .28s}
+  #handlost.shown{opacity:1}
+  #handlost .big{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;
+    font-size:clamp(18px,2.6vw,34px);color:var(--red);letter-spacing:.08em;
+    text-shadow:0 3px 0 var(--ink)}
+  #handlost .small{margin-top:6px;font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;font-size:clamp(11px,1.3vw,16px);color:var(--white);
+    opacity:.8;letter-spacing:.16em;text-transform:uppercase}
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="hud-root"></div>
+
+  <!--
+    THE VISOR.
+
+    A helmet frame drawn in screen space, over the world and under the HUD.
+    Three jobs, in order of how much they matter:
+
+      1. It gives the player a body. A rail shooter where the camera glides
+         through a street with no frame around it reads as a drone; a visor
+         edge reads as a person crouching behind a wall, which is what the
+         cover mechanic is asking you to imagine.
+      2. It darkens the corners, which is exactly where nothing important ever
+         happens, and pushes the eye toward the middle third where the enemies
+         are.
+      3. The scanline and the chromatic edge give the otherwise clean flat
+         shading a piece of grit to sit against.
+
+    All CSS, no geometry: it must never cost a draw call and must never be
+    affected by the scene's own lighting.
+  -->
+  <div id="visor" aria-hidden="true">
+    <div class="visor-frame"></div>
+    <div class="visor-notch visor-notch-l"></div>
+    <div class="visor-notch visor-notch-r"></div>
+    <div class="visor-scan"></div>
+    <div class="visor-grain"></div>
+    <svg class="visor-ticks" viewBox="0 0 1600 900" preserveAspectRatio="none">
+      <!-- Horizon ticks: a fixed reference the swaying world moves against. -->
+      <g stroke="#FFC24A" stroke-width="2" opacity=".22">
+        <line x1="150" y1="450" x2="205" y2="450"/>
+        <line x1="1395" y1="450" x2="1450" y2="450"/>
+        <line x1="800" y1="150" x2="800" y2="178"/>
+        <line x1="800" y1="722" x2="800" y2="750"/>
+      </g>
+      <g stroke="#FFC24A" stroke-width="3" fill="none" opacity=".34">
+        <path d="M150 300 L150 214 L236 214"/>
+        <path d="M1450 300 L1450 214 L1364 214"/>
+        <path d="M150 600 L150 686 L236 686"/>
+        <path d="M1450 600 L1450 686 L1364 686"/>
+      </g>
+    </svg>
+  </div>
+
+  <div id="cam-wrap" class="hidden">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="cam-overlay"></canvas>
+    <div id="cam-status">no hand</div>
+  </div>
+
+  <div id="title">
+    <h1>TIME CLAUDIS</h1>
+    <h2>Montmartre</h2>
+    <div class="route">Lamarck&ndash;Caulaincourt &rarr; Abbesses</div>
+    <button id="start">Insert Coin</button>
+    <div class="note">
+      Point your index finger at the screen to aim. Curl your middle finger to
+      fire. Raise the gun to the sky to duck behind cover and reload.
+      Needs a webcam.
+    </div>
+
+    <div id="fault">
+      <h3 id="fault-title">Camera unavailable</h3>
+      <p id="fault-body"></p>
+      <div class="acts">
+        <button id="fault-retry">Try again</button>
+        <button id="fault-demo">Watch the attract mode</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="handlost">
+    <div class="big">HAND LOST</div>
+    <div class="small">Holding cover &mdash; show your hand to the camera</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

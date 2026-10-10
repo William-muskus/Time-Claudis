@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Viewmodel bench</title>
+<style>
+  html,body{margin:0;height:100%;background:#1a1420;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%}
+  #grid{position:fixed;inset:0;pointer-events:none;
+    background:
+      linear-gradient(to right,rgba(255,255,255,.10) 1px,transparent 1px) 0 0/25% 100%,
+      linear-gradient(to bottom,rgba(255,255,255,.10) 1px,transparent 1px) 0 0/100% 25%}
+  #label{position:fixed;left:8px;top:8px;color:#FFC24A;font:600 13px system-ui;
+    letter-spacing:.08em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="grid"></div>
+<div id="label"></div>
+<script type="module">
+/**
+ * Viewmodel bench.
+ *
+ * Loads the weapon and NOTHING else. The full game takes minutes to reach a
+ * first frame under a software rasteriser — twenty-five thousand meshes to
+ * build and batch, an environment probe to bake, a shadow atlas to fill — and
+ * this container restarts often enough that long renders frequently never
+ * finish. Iterating on where a gun sits in frame does not need any of that.
+ *
+ * A quarter-grid is overlaid so pose changes can be judged numerically rather
+ * than by eye: the gun should sit in the lower-right cell without crossing
+ * into the middle third, which is where the enemies are.
+ */
+import * as THREE from 'three';
+import { ViewModel } from './src/render/viewmodel.js';
+import { buildSkyEnvironment } from './src/render/sky.js';
+import { PALETTE } from './src/render/palette.js';
+
+const params = new URLSearchParams(location.search);
+const WEAPON = (params.get('weapon') ?? 'HANDGUN').toUpperCase();
+const FIRING = params.has('fire');
+const GUNUP = params.has('gunup');
+const COVER = params.has('cover');
+
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.46;
+
+// A backdrop in the game's own sky colours, so the weapon is judged against
+// the values it will actually sit on rather than against black.
+const backdrop = new THREE.Scene();
+const grad = new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
+    depthWrite: false,
+    uniforms: { a: { value: PALETTE.skyHorizon }, b: { value: PALETTE.skyZenith } },
+    vertexShader: 'varying vec2 v; void main(){ v = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }',
+    fragmentShader: 'uniform vec3 a,b; varying vec2 v; void main(){ gl_FragColor = vec4(mix(a,b,pow(v.y,1.15)),1.0); }',
+  }));
+grad.frustumCulled = false;
+backdrop.add(grad);
+const backdropCam = new THREE.Camera();
+
+// Wrapped in an async function rather than using a top-level await: the
+// default build target predates top-level await and esbuild refuses it.
+async function main() {
+const vm = new ViewModel('assets/models/');
+vm.scene.environment = buildSkyEnvironment(renderer);
+await vm.load();
+vm.setWeapon(WEAPON);
+vm.resize(window.innerWidth / window.innerHeight);
+
+const snap = {
+  weapon: WEAPON.replace('_', ' '),
+  coverState: COVER ? 'COVERED' : 'EXPOSED',
+  exposure: COVER ? 0 : 1,
+  rounds: 6, gameOver: false,
+};
+if (GUNUP) { snap.coverState = 'COVERED'; snap.exposure = 0; }
+
+// Settle the springs.
+for (let i = 0; i < 90; i++) vm.update(1 / 60, snap, { x: 0.5, y: 0.5 }, false);
+if (FIRING) { vm.fire(WEAPON); vm.update(1 / 240, snap, { x: 0.5, y: 0.5 }, false); }
+
+renderer.autoClear = false;
+renderer.clear();
+renderer.render(backdrop, backdropCam);
+renderer.clearDepth();
+renderer.render(vm.scene, vm.camera);
+
+const box = new THREE.Box3().setFromObject(vm.current);
+const ndc = box.getCenter(new THREE.Vector3()).project(vm.camera);
+const size = box.getSize(new THREE.Vector3());
+const pos = {
+  xPct: +((ndc.x + 1) / 2 * 100).toFixed(1),
+  yPct: +((1 - ndc.y) / 2 * 100).toFixed(1),
+  widthPct: +(size.x / (2 * 0.44 * Math.tan(27.5 * Math.PI / 180) * (window.innerWidth / window.innerHeight)) * 100).toFixed(1),
+  heightPct: +(size.y / (2 * 0.44 * Math.tan(27.5 * Math.PI / 180)) * 100).toFixed(1),
+};
+document.getElementById('label').textContent =
+  `${WEAPON}${FIRING ? ' FIRING' : ''}${GUNUP ? ' GUN-UP' : ''} — centre ${pos.xPct}% , ${pos.yPct}%`;
+window.__pos = pos;
+window.__benchReady = true;
+}
+main().catch((e) => { console.error(e); document.getElementById('label').textContent = 'FAILED: ' + e.message; });
+</script>
+</body>
+</html>

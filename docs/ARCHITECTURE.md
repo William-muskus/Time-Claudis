@@ -72,18 +72,81 @@ player.died       {livesLeft}
 cover.changed     {state, previous}
 weapon.empty      {}
 weapon.reloaded   {weapon}
-area.started      {areaId, par}
-area.cleared      {areaId, timeLeft, noHit}
-game.over         {score}
+area.started      {areaId, name, par, index}
+area.cleared      {areaId, name, timeLeft, noHit, bonus, isLast}
+area.timeout      {areaId}
+area.retry        {areaId}
+weapon.granted    {weapon}
+weapon.expired    {}
+weapon.pickup     {weapon, worldPos}
+spawn.failed      {type, anchorTypes}
+player.died       {livesLeft, areaId}
+continue.tick     {secondsLeft}
+continue.expired  {score}
+game.continued    {continuesUsed}
+game.over         {score, bestCombo, accuracy, rank, continueSeconds}
+stage.complete    {}
 ```
+
+`tests/wiring.test.js` keeps this list honest. The bus decouples gameplay from
+audio and the HUD, which is what makes an arcade game retunable — but a
+publisher with no subscriber fails silently, and so does a subscriber waiting
+on an event nobody emits. Four synthesised announcer words sat fully
+implemented and unreachable for exactly that reason.
+
+## The render chain
+
+```
+RenderPass(world, mainCamera)      near 0.1,  far 900
+ViewModelPass(weapon, vmCamera)    near 0.01, far 12     <- depth cleared here
+UnrealBloomPass                                          <- muzzle flash blooms
+ShaderPass(grade)                  haze lift, split tone, vignette, damage
+ShaderPass(FXAA)
+```
+
+Two details in that chain cost real debugging time and are worth stating
+plainly:
+
+**The weapon needs its own depth clear, and three cannot do it.** The stock
+`RenderPass` calls `clearDepth()` *before* `setRenderTarget()`, so it clears
+whichever buffer happened to be bound previously. With two cameras whose near
+planes differ by a factor of ten, their depth values are not comparable at all
+— a weapon 44 cm from a 1 cm near plane sits at depth ~0.9998 while a building
+twenty metres from a 10 cm near plane sits at ~0.995, so the gun loses the
+depth test to a building it is nowhere near and vanishes with no error.
+`ViewModelPass` in `src/render/viewmodel.js` binds first and clears second, and
+also disables `autoClear` around the draw so the world underneath survives.
+
+**Every metal needs an environment probe.** A PBR metal has no diffuse term, so
+a high-metalness surface with nothing to reflect renders black regardless of
+lighting. `buildSkyEnvironment()` bakes a PMREM from the game's own sky dome —
+not an external HDRI — so metal reflects the same gold horizon and violet
+zenith that lights everything else. It is assigned to both the world scene and
+the viewmodel scene.
 
 ## Asset pipeline
 
 Blender runs headless as the `bpy` Python module (Blender 5.0.1). Scripts in
-`tools/blender/` build meshes procedurally from the survey data and export GLB
-into `public/assets/models/`. There is no hand-modelling step and no `.blend`
-files in the repo: the geometry is generated from the same coordinates the game
-reads, so the model and the rail can never drift apart.
+`tools/blender/` build meshes from code and export GLB into
+`public/assets/models/`. No hand-modelling step, no `.blend` files: the models
+are reviewable in a diff and regenerable from scratch.
+
+`src/world/assets.js` loads them at boot, before `buildWorld()` runs — the
+world builder is synchronous by design, since it is a pure function of the
+survey, so the assets have to be in hand first.
+
+**Every lookup falls back.** If a GLB is missing or fails to parse, the caller
+builds the procedural version instead and the failure is logged rather than
+swallowed. A blocked network or a pipeline that was not re-run must degrade,
+not punch a hole in Montmartre.
+
+What is GLB: the Dalida bust, the Guimard édicule, the Moulin, the Wallace
+fountains, the lamp standards, the Morris column, the enemy figure, and the
+four weapons.
+
+What is not, and why: the street surface has to follow the rail spline exactly,
+and the façades are generated from the same survey the rail reads so that four
+hundred metres of terrace does not have to be hand-placed.
 
 Run with `npm run assets`.
 

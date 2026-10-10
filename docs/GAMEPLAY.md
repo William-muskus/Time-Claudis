@@ -86,8 +86,22 @@ The telegraph has three stages and all three are required:
 3. **Commit** (final 15%): the flash goes solid. The shot *will* fire. Ducking
    still saves you — the projectile is travel-time, not hitscan.
 
+**The three stages escalate in size as well as in steadiness.** Commit used to
+reset the chest plate to its base scale while the flash beats ran it at 1.38, so
+the most urgent state in the game made the smallest mark an enemy ever made. It
+is now the largest — and sized so that at commit the plate lands at exactly
+torso width, no wider. An earlier attempt overshot and every enemy at commit
+became an identical pale rectangle; colour is information here, and losing which
+class is shooting at you costs more than a brighter flash gains.
+
+**The enemy has to be close enough for any of this to be visible.** The ideal
+engagement range is **13 m** (30 m for snipers). It was 18, where an enemy is
+about 25 px tall in a 675 px frame and the chest plate is about a dozen pixels:
+the fight read as small dolls on a far pavement. The duck still works at 13 m —
+380 ms of flight against 200 ms to hide.
+
 Enemy bullets travel at **34 m/s** and are drawn as a bright tracer. At typical
-combat range (14–22 m) that is 400–650 ms of flight. Ducking during flight
+combat range (11–20 m) that is 320–590 ms of flight. Ducking during flight
 saves you. This is why Time Crisis feels fair at speeds that should be unfair.
 
 ### Aggregate fire discipline
@@ -95,6 +109,72 @@ saves you. This is why Time Crisis feels fair at speeds that should be unfair.
 At most **2 enemies may be in the Commit stage simultaneously**. A third that
 would commit is held back and re-rolls its telegraph. Without this rule the game
 becomes a coin-flip; with it, every death is legible as the player's error.
+
+### Every threat must be presented
+
+An enemy the player cannot see is an enemy they cannot shoot. One that
+telegraphs and fires from behind a façade is the exact unfairness the telegraph
+system exists to prevent: told a shot is coming, and given no way to answer it.
+
+So the director tests line of sight before it picks a spawn anchor, against a
+coarse model of one oriented box per building (`src/world/occluders.js` — a
+scene raycast is far too slow inside a wave, and that file records how the two
+compare). Three further rules fall out of the same principle:
+
+- **Sight is the last constraint the cascade gives up.** It has to give it up
+  eventually — applied as a hard filter on every pass, the stage lost its boss,
+  because at the métro only one door of seven is visible from where the player
+  stands. An unfinishable area is worse than a half-hidden enemy, and it is the
+  only thing that is. Blocked anchors still take a penalty no angle or distance
+  can outweigh.
+- **Height is an angle, not a distance.** The camera's vertical field is 58°, so
+  an anchor past about 19° of elevation is off the top of the frame. The same
+  balcony six metres up is in shot at twenty-five metres and invisible at
+  eleven.
+- **Nothing large stands on the rail.** A waypoint is a point on the player's
+  own path, so a landmark placed at one is placed in the player's way. The
+  Dalida bust and the Guimard edicule both were, and the level's first and last
+  landmarks were built around the camera. `tests/world.test.js` enforces this.
+
+## 3b. The boss
+
+A Time Crisis stage does not end on a wave, it ends on a person with a name and
+a health bar. LE CORBEAU, 30 HP, three phases, on the Ravignan steps.
+
+The fight is a loop and HP is how many times round it the player goes:
+
+> **he volleys → he recovers → you punish**
+
+The recovery beat is the whole fight. He never ducks, so without an explicit
+window there is nothing between one volley landing and the next telegraph
+starting except the wind-up itself — and measured against what the player has
+to do in that gap (the last round still in the air at 34 m/s, 260 ms to emerge,
+an aimed shot, 200 ms to hide again) the window was **negative for two thirds
+of the fight**. Rounds from one volley were still travelling when the next
+flash began. An oracle player that merely respected incoming fire spent 93 % of
+the fight in cover.
+
+- `recoverMs` per phase: a beat after the volley where he is idle and fully
+  vulnerable, sized at the figure above plus margin.
+- It shrinks only slightly across phases. **Escalation belongs in the telegraph**
+  (which halves) **and the burst** (which triples) — those tighten how hard the
+  fight hits. Escalating the recovery instead tightens whether the player can
+  act at all, and a window that fits only an emerge and a hide is no window.
+- The heavy sweep opens the longest window in the fight, so it is worth baiting
+  rather than merely surviving.
+- Recovery reads as **posture, not colour**: arms down, weight forward, head
+  low, with a cool cast under it. Warm light on an enemy always means a shot is
+  coming, so the invitation must not borrow any part of that vocabulary — and a
+  silhouette that changes shape survives bloom and a bright façade.
+- The between-phase guard is separate and replaces the window rather than
+  queueing behind it. Two vulnerable-looking beats back to back read as the
+  fight stalling.
+
+30 HP is sized from both ends: roughly fifteen loops with the handgun that is
+never taken away, five with the grenade launcher. It was 12, which is two
+handgun magazines and also *exactly* one grenade magazine, so a player who
+brought the right weapon deleted the boss in four shots and five seconds
+without seeing phase three. The stage ended on a QTE.
 
 ## 4. Areas, the timer, and the gate
 
@@ -155,6 +235,37 @@ things a critic sub-agent must judge. None are optional.
   breathing sway. A locked camera reads as a screensaver.
 - **Enemies react before they die.** 120 ms of stagger, then the death animation.
   An enemy that vanishes on hit feels like a target, not a person.
+
+## 7b. The weapon you can see
+
+The player holds a visible first-person weapon, drawn in its own scene through
+a second render pass so it can never intersect Montmartre's narrow walls.
+
+It is not decoration. Because the player is aiming with a bare hand through a
+webcam, the hardest problem in the whole game is knowing what the machine
+currently thinks your hand is doing. The weapon answers that continuously,
+without any UI, and it is the fastest feedback channel available:
+
+| What your hand does | What the gun does | Why it matters |
+|---|---|---|
+| Moves | Barrel swings toward the crosshair, lagging it | Your aim becomes a physical thing, not a dot |
+| Middle finger curls | Hard recoil kick and a muzzle flash | Instant confirmation the trigger gesture registered |
+| Raises to vertical | Gun rotates to vertical beside your head | The picture agrees with your hand, so cover explains itself |
+| Stays down while covered | Gun drops out of frame | You can see you are behind something |
+| Runs dry | Gun hangs slightly lower | A free second hint that you are empty |
+
+The recoil is the important one. A gesture interface's worst failure mode is
+ambiguity about whether an input landed, and a 45 ms kick answers it before the
+player has finished the motion.
+
+Silhouettes are deliberately distinct so the current weapon is readable in
+peripheral vision: compact handgun, machine gun with a magazine hanging below,
+shotgun with a tube and pump, grenade launcher with a drum.
+
+The **visor** frames all of it. A rail shooter without one reads as a drone
+gliding down a street; an aperture edge reads as a person crouched behind a
+wall, which is precisely what the cover mechanic asks the player to imagine.
+It also darkens the corners, where nothing important ever happens.
 
 ## 8. Inversions we deliberately did NOT make
 
