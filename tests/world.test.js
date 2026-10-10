@@ -5,6 +5,7 @@ import { Rail } from '../src/core/spline.js';
 import { railPoints } from '../src/data/route.js';
 import { ENCOUNTERS } from '../src/gameplay/encounters.js';
 import { buildWorld } from '../src/world/index.js';
+import { insideBuilding, GEO } from '../src/world/geo.js';
 import { buildStreet } from '../src/world/street.js';
 import { buildLandmarks } from '../src/world/landmarks.js';
 import { makeRng } from '../src/core/rng.js';
@@ -23,8 +24,11 @@ const rail = new Rail(railPoints());
 const built = buildWorld(rail);
 
 test('the whole of Montmartre batches into a handful of draw calls', () => {
-  const { before, after } = built.stats;
-  assert.ok(before > 15000, `expected a substantial world, got ${before} meshes`);
+  const { after, city } = built.stats;
+  // The city is pre-merged by realbuildings.js rather than batched from
+  // thousands of meshes, so "substantial" is measured in real buildings.
+  assert.ok(city.buildings > 900, `expected the corridor's ~1,000 real buildings, got ${city.buildings}`);
+  assert.ok(city.triangles > 100000, `the city is suspiciously light: ${city.triangles} triangles`);
   assert.ok(after < 120,
     `${after} draw calls. Authoring wants one mesh per shutter; rendering does ` +
     'not, and something has stopped batching.');
@@ -103,14 +107,53 @@ test('the route really does climb, crest and descend in the built geometry', () 
   assert.ok(peak - ys.at(-1) > 15, 'the descent should lose more than 15 m');
 });
 
-test('landmarks are not built over by the procedural street wall', () => {
-  // The gate of 11 bis sits seven metres off the centreline of a six-metre
-  // lane, which is exactly where the terrace generator wants to put a house.
+test('the world has every layer it is assembled from', () => {
   const names = [];
   built.root.traverse((o) => { if (o.name) names.push(o.name); });
-  for (const required of ['landmarks', 'facades', 'cover', 'street']) {
+  for (const required of ['landmarks', 'city', 'terrain', 'trees', 'cover', 'street']) {
     assert.ok(names.includes(required), `the world is missing its "${required}" group`);
   }
+});
+
+/**
+ * The walk never passes through a real building.
+ *
+ * With procedural streets this could not fail: the street walls were placed
+ * by the rail, half a street-width either side of it. With the cadastre it
+ * can, and it is the worst thing a data import can do to a rail shooter —
+ * the camera driving through a wall. The rail was re-derived on real
+ * centrelines and centred between real facades wherever the street is
+ * narrow; this holds it there.
+ */
+/**
+ * The walk never deletes a real tree.
+ *
+ * The tree builder skips any trunk the camera would drive through, which is
+ * the right safety net and the wrong fix: routed carelessly, the rail
+ * quietly removed one of the three limes around the Dalida bust, two of
+ * Place Émile-Goudeau's chestnuts and two planes in Place des Abbesses. The
+ * walk was re-threaded between them; this keeps it that way.
+ */
+test('the walk never deletes a real tree', () => {
+  const close = [];
+  for (let d = 0; d <= rail.length; d += 0.5) {
+    const p = rail.positionAt(d);
+    for (const [x, , z, , sp] of GEO.trees) {
+      const k = Math.hypot(x - p.x, z - p.z);
+      if (k < 1.5) close.push(`${sp} at ${d.toFixed(0)} m (${k.toFixed(2)} m)`);
+    }
+  }
+  assert.deepEqual([...new Set(close)].slice(0, 6), [], 'trees the walk would remove');
+});
+
+test('the walk never passes through a real building', () => {
+  const offenders = [];
+  for (let d = 0; d <= rail.length; d += 0.5) {
+    const p = rail.positionAt(d);
+    if (insideBuilding(p.x, p.z, 0.9)) offenders.push(`${d.toFixed(1)} m (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`);
+  }
+  assert.deepEqual(offenders.slice(0, 8), [],
+    `the rail runs within 0.9 m of, or through, a building at: ${offenders.slice(0, 8).join('; ')}`);
 });
 
 test('the world builds fast enough to iterate on', () => {

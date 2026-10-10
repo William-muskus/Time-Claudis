@@ -80,6 +80,89 @@ export function occluder(centre, forward, halfWidth, halfDepth, baseY, height) {
 }
 
 /**
+ * One real building, by its footprint.
+ *
+ * The box model above was the right shape for a procedural plot, which WAS a
+ * box. A cadastral footprint is not: L-shapes, courtyards, the wedge at every
+ * acute street corner. Fitting a box to those either over-reports (the box
+ * covers street the building does not) or under-reports (it misses a wing),
+ * and the over-reporting direction is the one this whole module exists to
+ * avoid. So real buildings are tested against their own polygon.
+ *
+ * The same permissive INSET applies, for the same reason: the footprint is
+ * pulled in by half a metre so a grazing ray down a street wall does not clip
+ * every facade it runs along.
+ */
+export function polyOccluder(ring, baseY, topY) {
+  const INSET = 0.5;
+  const pts = shrink(ring, INSET) ?? ring;
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const [x, z] of pts) {
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+    z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+  }
+  return { poly: pts, x0, z0, x1, z1, y0: baseY, y1: topY };
+}
+
+/** Vertex-miter inset; null if the ring is too thin to survive it. */
+function shrink(ring, d) {
+  const n = ring.length;
+  if (n < 3) return null;
+  // Work out the winding so "inward" means inward whichever way it was given.
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % n];
+    area += ax * bz - bx * az;
+  }
+  const sgn = area < 0 ? 1 : -1;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [px, pz] = ring[(i - 1 + n) % n], [cx, cz] = ring[i], [nx, nz] = ring[(i + 1) % n];
+    const l1 = Math.hypot(cx - px, cz - pz) || 1e-9, l2 = Math.hypot(nx - cx, nz - cz) || 1e-9;
+    const n1x = sgn * (cz - pz) / l1, n1z = -sgn * (cx - px) / l1;
+    const n2x = sgn * (nz - cz) / l2, n2z = -sgn * (nx - cx) / l2;
+    let bx = n1x + n2x, bz = n1z + n2z;
+    const bl = Math.hypot(bx, bz);
+    if (bl < 1e-6) return null;
+    bx /= bl; bz /= bl;
+    const ch = bx * n1x + bz * n1z;
+    if (ch < 0.35) return null;
+    out.push([cx + bx * d / ch, cz + bz * d / ch]);
+  }
+  return out;
+}
+
+/** Entry parameter t in [0, 1] of segment a→b into polygon, or null. */
+function polyEntry(o, a, b) {
+  // Cheap reject on the bounding box first: almost every pair misses.
+  if (Math.max(a.x, b.x) < o.x0 || Math.min(a.x, b.x) > o.x1 ||
+      Math.max(a.z, b.z) < o.z0 || Math.min(a.z, b.z) > o.z1) return null;
+  if (inside(o.poly, a.x, a.z)) return 0;
+  const dx = b.x - a.x, dz = b.z - a.z;
+  let best = null;
+  const p = o.poly, n = p.length;
+  for (let i = 0; i < n; i++) {
+    const [cx, cz] = p[i], [ex, ez] = p[(i + 1) % n];
+    const sx = ex - cx, sz = ez - cz;
+    const den = dx * sz - dz * sx;
+    if (Math.abs(den) < 1e-12) continue;
+    const t = ((cx - a.x) * sz - (cz - a.z) * sx) / den;
+    const u = ((cx - a.x) * dz - (cz - a.z) * dx) / den;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+function inside(poly, x, z) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i], [xj, zj] = poly[j];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+}
+
+/**
  * Does the segment from `a` to `b` pass through this box?
  *
  * The segment is transformed into the box's own frame, where the box is an
@@ -89,6 +172,20 @@ export function occluder(centre, forward, halfWidth, halfDepth, baseY, height) {
  * correctly while shooting through a six-storey terrace does not.
  */
 function hits(o, a, b, skipNear, skipFar) {
+  if (o.poly) {
+    const t = polyEntry(o, a, b);
+    if (t === null) return false;
+    const total = Math.hypot(b.x - a.x, b.z - a.z);
+    if (total < 1e-6) return false;
+    const enter = t * total;
+    if (enter >= total - skipFar) return false;
+    // A segment that STARTS inside a footprint is the player standing against
+    // their own cover wall; the near skip exists for exactly that.
+    if (t === 0 && skipNear > 0) return false;
+    if (enter < skipNear) return false;
+    const y = a.y + (b.y - a.y) * t;
+    return y >= o.y0 && y <= o.y1;
+  }
   // Into box-local 2D. u runs across the frontage, v along the depth.
   const dx = a.x - o.cx, dz = a.z - o.cz;
   const au = dx * -o.fz + dz * o.fx;

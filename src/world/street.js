@@ -19,10 +19,20 @@ import { PALETTE, flat } from '../render/palette.js';
 
 const SAMPLE_M = 1.5;
 
-/** Segments of the route that are stairs rather than roadway. */
+/**
+ * Segments of the route that are stairs rather than roadway.
+ *
+ * All three are real flights, located from OpenStreetMap `highway=steps` ways
+ * and the IGN terrain model: the upper flight of rue Pierre-Dac from the
+ * Lamarck-Caulaincourt landing to rue Caulaincourt (OSM: 20 steps), the rue
+ * Girardon steps from Place Constantin-Pecqueur up to Place Dalida, and the
+ * steps at the foot of Place Émile-Goudeau down to the lower rue Ravignan.
+ * Step counts are still derived from the measured rise, not typed in.
+ */
 export const STAIR_SEGMENTS = [
-  { from: 'escalier_foot', to: 'escalier_top',  riser: 0.165, tread: 0.31, name: 'Escalier Lamarck' },
-  { from: 'ravignan_stairs', to: 'trois_freres', riser: 0.155, tread: 0.33, name: 'Escalier Ravignan' },
+  { from: 'lamarck_station', to: 'escalier_top', riser: 0.165, tread: 0.31, name: 'Escalier Pierre-Dac' },
+  { from: 'girardon_steps', to: 'place_dalida', riser: 0.16, tread: 0.34, name: 'Escalier Girardon' },
+  { from: 's_goudeau_2', to: 'ravignan_stairs', riser: 0.155, tread: 0.33, name: 'Escalier Émile-Goudeau' },
 ];
 
 /**
@@ -59,21 +69,10 @@ export function buildStreet(rail) {
     });
   }
 
-  // THE APRON RUNS PAST BOTH ENDS OF THE RAIL.
-  //
-  // It was generated from exactly the street's own frames, so it stopped dead
-  // where the rail stops — and the level's first and last frames are shot
-  // looking along the street from a node near that end. Measured at Place des
-  // Abbesses: the bottom 40% of the finishing frame was the distant terrain
-  // cone, one flat green plane SEVEN METRES below the square, at 20-45 m. The
-  // player finishes the game standing on a ledge.
-  //
-  // The end-cap buildings were added to close the street wall at both ends and
-  // they do; nothing was closing the GROUND. These extra frames extrapolate
-  // the rail's own tangent past each end at the street's own elevation, which
-  // is all the apron needs to keep going.
-  const apronFrames = [...extendFrames(frames, -1), ...frames, ...extendFrames(frames, +1)];
-  group.add(buildApron(apronFrames));
+  // There used to be an "apron" here: a flat sheet at street level running
+  // sideways and eighty metres past both ends of the rail, because without it
+  // the street was a ribbon hanging over nothing. The real terrain is under
+  // everything now (terrain.js), so the street only has to be the street.
   group.add(buildCarriageway(frames));
   // Pavements first: they compute the stepped walking surface that the kerbs
   // and the handrails both read back from.
@@ -85,92 +84,6 @@ export function buildStreet(rail) {
   group.add(buildStairFlights(rail));
 
   return group;
-}
-
-/**
- * Frames continuing straight on past one end of the rail, for the apron.
- *
- * Direction -1 prepends before the start, +1 appends after the end. Elevation
- * is held level rather than extrapolated: the rail's tangent at its ends has a
- * real vertical component, and continuing that for seventy metres would drive
- * the ground either through the end-cap buildings or far below them.
- */
-function extendFrames(frames, dir) {
-  const REACH = 80, STEP = 8;
-  const edge = dir < 0 ? frames[0] : frames[frames.length - 1];
-  const t = new THREE.Vector3(edge.t.x, 0, edge.t.z).normalize();
-  const out = [];
-  for (let k = 1; k <= REACH / STEP; k++) {
-    const off = dir * k * STEP;
-    out.push({
-      d: edge.d + off,
-      p: new THREE.Vector3(edge.p.x + t.x * off, edge.p.y, edge.p.z + t.z * off),
-      t: edge.t,
-      right: edge.right,
-      pavement: edge.pavement,
-      halfWidth: edge.halfWidth,
-    });
-  }
-  // Prepended frames must run toward the start, not away from it.
-  return dir < 0 ? out.reverse() : out;
-}
-
-/**
- * The ground the street sits on.
- *
- * Without this the road is a ribbon hanging in space. The distant plain is
- * thirty-eight metres below the route and starts a hundred and forty metres
- * out, and the Butte's flank cone tops out at the route's LOWEST elevation —
- * so everywhere the street climbs above that, there is a literal annular hole
- * between the edge of the pavement and the start of the world, and the camera
- * looks straight down into it. It is the single most damaging thing in any
- * frame that shows the lower half of the screen.
- *
- * The apron is a wide skirt following the rail at the street's own elevation,
- * falling away gently at its outer edge to meet the terrain. Generated from
- * the same frames as the carriageway, so it can never drift out of alignment
- * with the road it is supporting.
- */
-function buildApron(frames) {
-  const pos = [], idx = [];
-  const REACH = 95;      // comfortably past the buildings and the alley walls
-  const DROP = 7;        // how far the outer edge falls, so it reads as a hill
-  const BANDS = [0, 0.16, 0.42, 1.0];
-
-  for (let i = 0; i < frames.length; i++) {
-    const f = frames[i];
-    for (const side of [-1, 1]) {
-      for (const b of BANDS) {
-        const off = side * (f.halfWidth + f.pavement + b * REACH);
-        pos.push(
-          f.p.x + f.right.x * off,
-          f.p.y - 0.02 - DROP * b * b,
-          f.p.z + f.right.z * off,
-        );
-      }
-    }
-  }
-  const perRow = BANDS.length * 2;
-  for (let i = 0; i < frames.length - 1; i++) {
-    for (let side = 0; side < 2; side++) {
-      const base = i * perRow + side * BANDS.length;
-      const next = base + perRow;
-      for (let b = 0; b < BANDS.length - 1; b++) {
-        const a = base + b, c = a + 1, d = next + b, e = d + 1;
-        // Same flip as the carriageway; see the note there.
-        if (side === 1) idx.push(a, c, d, c, e, d);
-        else idx.push(a, d, c, c, d, e);
-      }
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, flat(PALETTE.limestoneDeep, { roughness: 1.0 }));
-  mesh.receiveShadow = true;
-  mesh.name = 'apron';
-  return mesh;
 }
 
 /** The cobbled roadway. Two-tone strips so the surface is not a dead plane. */

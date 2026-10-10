@@ -5,16 +5,16 @@ import { Rail } from '../src/core/spline.js';
 import { ENCOUNTERS } from '../src/gameplay/encounters.js';
 import { ENEMY_TYPES } from '../src/gameplay/enemyTypes.js';
 import { WEAPONS } from '../src/gameplay/weapons.js';
+import { insideBuilding } from '../src/world/geo.js';
 
 /**
  * These tests pin the TOPOLOGY of the walk, not its coordinates.
  *
- * docs/CONSTRAINTS.md §2 is explicit that the absolute positions carry about
- * ±15 m of error and that someone with Overpass access should replace them.
- * What must survive that replacement is the shape of the route: the order of
- * the streets, which way you turn, whether you are climbing, and which side
- * each landmark sits on. If a future coordinate fix reverses a turn or flattens
- * the crest, these fail — which is the whole point.
+ * The positions were re-derived from IGN and OpenStreetMap in October 2026
+ * (see src/data/route.js), and the tests below now pin them against those
+ * sources. What must survive any future correction is the shape of the
+ * route: the order of the streets, which way you turn, whether you are
+ * climbing, and which side each landmark sits on.
  */
 
 const byId = Object.fromEntries(WAYPOINTS.map((w) => [w.id, w]));
@@ -36,29 +36,42 @@ test('the route starts at Lamarck-Caulaincourt and ends at Abbesses', () => {
 });
 
 test('the elevation profile climbs to a crest then descends', () => {
+  // Measured by IGN RGE ALTI: the Pierre-Dac landing at 85 m, the crest on
+  // rue Girardon by Place Marcel-Aymé at about 111, Place des Abbesses at 82.
+  // The old survey had 92, 128 and 100 — the crest was put at the Moulin's
+  // mound rather than the street, and everything sat ~20 m too high.
   const start = byId.lamarck_station.elev;
-  const crest = byId.moulin_galette.elev;
   const end = byId.place_abbesses.elev;
-  assert.ok(crest > start + 30, `crest ${crest} must be well above the station ${start}`);
-  assert.ok(crest > end + 20, `crest ${crest} must be well above Abbesses ${end}`);
-  assert.ok(end > start, 'Abbesses sits higher than the station');
-  // The Butte's summit is 130 m; nothing on this route may exceed it.
-  assert.ok(Math.max(...WAYPOINTS.map((w) => w.elev)) <= 130,
-    'no waypoint may be higher than the summit of the Butte');
+  const crest = Math.max(...WAYPOINTS.map((w) => w.elev));
+  assert.ok(crest > start + 20, `crest ${crest} must be well above the station ${start}`);
+  assert.ok(crest > end + 25, `crest ${crest} must be well above Abbesses ${end}`);
+  assert.ok(end < start, 'Place des Abbesses sits below the Lamarck landing (82 m against 85)');
+  const crestId = WAYPOINTS.find((w) => w.elev === crest).id;
+  const order = WAYPOINTS.map((w) => w.id);
+  assert.ok(order.indexOf(crestId) > order.indexOf('place_dalida') &&
+            order.indexOf(crestId) < order.indexOf('lepic_orchampt'),
+    `the crest (${crestId}) must be on rue Girardon between Place Dalida and rue Lepic`);
+  assert.ok(crest <= 130, 'no waypoint may be higher than the summit of the Butte');
 });
 
+// A 2.5 m terrain grid carries a couple of decimetres of noise; a level square
+// reading 20 cm "uphill" is the model, not the street.
+const NOISE = 0.4;
+const crestIndex = () => {
+  const top = Math.max(...WAYPOINTS.map((w) => w.elev));
+  return WAYPOINTS.findIndex((w) => w.elev === top);
+};
+
 test('the climb is monotonic up to the crest', () => {
-  const crestIndex = WAYPOINTS.findIndex((w) => w.id === 'moulin_galette');
-  for (let i = 1; i <= crestIndex; i++) {
-    assert.ok(WAYPOINTS[i].elev >= WAYPOINTS[i - 1].elev,
+  for (let i = 1; i <= crestIndex(); i++) {
+    assert.ok(WAYPOINTS[i].elev >= WAYPOINTS[i - 1].elev - NOISE,
       `${WAYPOINTS[i].id} must not dip below ${WAYPOINTS[i - 1].id} on the way up`);
   }
 });
 
 test('the descent to Abbesses is monotonic after the crest', () => {
-  const crestIndex = WAYPOINTS.findIndex((w) => w.id === 'moulin_galette');
-  for (let i = crestIndex + 1; i < WAYPOINTS.length; i++) {
-    assert.ok(WAYPOINTS[i].elev <= WAYPOINTS[i - 1].elev,
+  for (let i = crestIndex() + 1; i < WAYPOINTS.length; i++) {
+    assert.ok(WAYPOINTS[i].elev <= WAYPOINTS[i - 1].elev + NOISE,
       `${WAYPOINTS[i].id} must not rise above ${WAYPOINTS[i - 1].id} on the way down`);
   }
 });
@@ -73,10 +86,14 @@ test('the walk is southbound overall', () => {
 });
 
 test('the origin is the Dalida bust, and it is the local zero', () => {
-  const d = geoToLocal(byId.place_dalida.lat, byId.place_dalida.lon, byId.place_dalida.elev);
-  assert.ok(Math.abs(d.x) < 0.001 && Math.abs(d.y) < 0.001 && Math.abs(d.z) < 0.001,
-    'Place Dalida must be exactly the origin of the local frame');
-  assert.equal(ORIGIN.lat, byId.place_dalida.lat);
+  const bust = LANDMARKS.find((l) => l.id === 'dalida_bust');
+  const d = geoToLocal(bust.lat, bust.lon);
+  assert.ok(Math.abs(d.x) < 0.001 && Math.abs(d.z) < 0.001,
+    'the Dalida bust must be exactly the origin of the local frame');
+  // The waypoint is beside her, on the path, not on top of her.
+  const w = geoToLocal(byId.place_dalida.lat, byId.place_dalida.lon);
+  const off = Math.hypot(w.x, w.z);
+  assert.ok(off > 2.5 && off < 7, `the Place Dalida waypoint is ${off.toFixed(1)} m from the bust`);
 });
 
 test('geoToLocal and localToGeo round-trip', () => {
@@ -133,10 +150,11 @@ test('the whole walk is a plausible distance for these two stations', () => {
 });
 
 test('every street has a usable width', () => {
+  // Three and a half metres is not a typo: the top of rue d'Orchampt is four
+  // metres wall to wall, measured from the cadastral footprints.
   for (const w of WAYPOINTS) {
-    assert.ok(w.width >= 5 && w.width <= 30, `${w.id} width ${w.width} m is implausible`);
+    assert.ok(w.width >= 3.5 && w.width <= 30, `${w.id} width ${w.width} m is implausible`);
   }
-  // The squares are the widest points and the lane is the narrowest.
   assert.ok(byId.place_abbesses.width > byId.maison_dalida.width,
     'Place des Abbesses must be wider than rue d\'Orchampt');
   assert.ok(byId.place_dalida.width > byId.maison_dalida.width);
@@ -254,7 +272,7 @@ test('the stage ends on a boss', () => {
  * width of the band outside which the model would be telling a different story
  * about the place.
  */
-test('the survey agrees with its cited sources', () => {
+test('the survey agrees with its independent sources', () => {
   const at = (id) => {
     const w = WAYPOINTS.find((x) => x.id === id) ?? LANDMARKS.find((x) => x.id === id);
     if (!w) throw new Error(`no such place: ${id}`);
@@ -262,71 +280,79 @@ test('the survey agrees with its cited sources', () => {
   };
   const apart = (a, b) => Math.hypot(at(a).x - at(b).x, at(a).z - at(b).z);
 
+  // [a, b, metres, tolerance, why]. Each pair crosses two sources, so a
+  // closure here is a check, not a restatement.
   const checks = [
-    // Two metro stations, both cited to six decimal places.
-    ['lamarck_station', 'place_abbesses', 479, 15,
-      'metro to metro, the span of the whole level'],
-    // Rue de l'Abreuvoir is cited at 133 m along its curve; the straight line
-    // between its ends is necessarily a little less, and the bust and the
-    // house are both cited, so this is a genuine closure check on the survey.
-    ['place_dalida', 'maison_rose', 133, 18,
-      "rue de l'Abreuvoir, the most photographed sightline on the route"],
-    // Bust and mill are both cited. Was modelled at 126 m.
-    ['place_dalida', 'moulin_blutefin', 150, 15,
-      'the climb from the square to the crest'],
-    // Bust and Bateau-Lavoir both cited.
-    ['place_dalida', 'emile_goudeau', 282, 20,
-      'the length of the descent through Orchampt and Ravignan'],
-    // Both newly cited, and both replaced estimates that were badly out.
-    // Saint-Jean was 80 m north-east of itself — most of a block up the wrong
-    // street — which is the largest single positional error the survey had
-    // left. The closure is against the Guimard edicule, which is cited, so
-    // this checks the correction rather than merely recording it.
-    ['place_abbesses', 'st_jean', 101, 18,
-      'the length of place des Abbesses, edicule to church door'],
-    // The Passe-Muraille was 55 m out, up the street and across it. Closed
-    // against the Blute-fin because both sit on the crest and the pair fixes
-    // where rue Girardon meets rue Norvins.
-    ['marcel_ayme', 'moulin_blutefin', 70, 15,
-      'the crest: Girardon at Norvins to the mill'],
+    // OSM's two métro entrances against IGN's two station points (BD TOPO
+    // equipement_de_transport), which put them 594 m apart.
+    ['lamarck_station', 'edicule_abbesses', 594, 12, 'station to station, the span of the level'],
+    // Paris street nomenclature: rue de l'Abreuvoir is 133 m along its curve.
+    ['dalida_bust', 'maison_rose', 133, 12, "rue de l'Abreuvoir, the sightline the bust faces"],
+    // The walk passes the things it is named for.
+    ['lamarck_station', 'metro_lamarck', 0, 3, 'the game opens at the real entrance'],
+    ['place_abbesses', 'edicule_abbesses', 0, 25, 'the game ends at the édicule'],
+    ['moulin_galette', 'moulin_radet', 0, 16, 'the Lepic corner is the Radet corner'],
   ];
-
+  // The Bateau-Lavoir's footprint runs thirty metres back down the slope
+  // behind the square, so its centroid says little. Its FRONT is the far
+  // side of the planted terrace — about twenty metres across, per the
+  // cadastre and the city's tree records, not the seven-metre lane the old
+  // model made of it. Walk from the walk toward it: its wall within 26 m.
+  {
+    const bl = at('bateau_lavoir'), sq = at('emile_goudeau');
+    const dx = bl.x - sq.x, dz = bl.z - sq.z, l = Math.hypot(dx, dz);
+    let hit = null;
+    for (let k = 0; k <= 26 && hit === null; k += 0.5) {
+      if (insideBuilding(sq.x + dx / l * k, sq.z + dz / l * k)) hit = k;
+    }
+    assert.ok(hit !== null, 'the Bateau-Lavoir does not front Place Emile-Goudeau');
+  }
+  // 11 bis: the waypoint is on the lane, the landmark is the house.
+  const house = LANDMARKS.find((l) => l.id === 'maison_dalida');
+  const hp = geoToLocal(house.lat, house.lon), wp = at('maison_dalida');
+  assert.ok(Math.hypot(hp.x - wp.x, hp.z - wp.z) < 14, '11 bis is beside the lane');
   for (const [a, b, want, tol, why] of checks) {
     const got = apart(a, b);
     assert.ok(Math.abs(got - want) <= tol,
-      `${a} to ${b} is ${got.toFixed(0)} m; cited sources put it at ~${want} m ` +
-      `(+/- ${tol}). ${why}.`);
+      `${a} to ${b} is ${got.toFixed(0)} m; expected ~${want} m (+/- ${tol}). ${why}.`);
   }
+});
+
+test('the two windmills are the right way round', () => {
+  // The previous survey had the Blute-fin's coordinate on the Radet. IGN
+  // classifies both as "Moulin à vent", and the difference is unmistakable in
+  // the data: the Blute-fin stands on its mound, seven metres above the
+  // street the Radet's restaurant stands on, sixty metres further west.
+  const blute = LANDMARKS.find((l) => l.id === 'moulin_blutefin');
+  const radet = LANDMARKS.find((l) => l.id === 'moulin_radet');
+  assert.ok(blute.elev - radet.elev > 5, 'the Blute-fin is on its mound, above the Radet');
+  const b = geoToLocal(blute.lat, blute.lon), r = geoToLocal(radet.lat, radet.lon);
+  assert.ok(b.x < r.x - 40, 'the Blute-fin is west of the Radet, along rue Lepic');
 });
 
 test('every place records where its coordinate came from', () => {
   // A survey that cannot say which of its numbers are sourced is a survey
-  // nobody can improve: the next person has no way to tell a cited coordinate
-  // from a guess, so they either trust all of it or none of it.
-  const ALLOWED = new Set(['cited', 'derived', 'est']);
+  // nobody can improve.
+  const ALLOWED = new Set(['surveyed', 'cited', 'derived', 'est']);
   const bad = [...WAYPOINTS, ...LANDMARKS].filter((w) => !ALLOWED.has(w.src));
   assert.deepEqual(bad.map((w) => w.id), [],
     `every waypoint and landmark needs src: one of ${[...ALLOWED].join(', ')}`);
-
-  // And the traverse has to be carried by real anchors, not by one lucky point.
-  const cited = [...WAYPOINTS, ...LANDMARKS].filter((w) => w.src === 'cited');
-  assert.ok(cited.length >= 5,
-    `only ${cited.length} cited anchors; the interpolated points between them ` +
-    `have nothing to close against`);
-  for (const id of ['lamarck_station', 'place_dalida', 'place_abbesses']) {
-    assert.equal(WAYPOINTS.find((w) => w.id === id).src, 'cited',
-      `${id} anchors an end or the origin of the traverse and must be cited`);
-  }
+  // Every point of the walk is on real street geometry now, and nothing on
+  // the route is a guess any more.
+  const off = WAYPOINTS.filter((w) => w.src !== 'surveyed').map((w) => w.id);
+  assert.deepEqual(off, [], `waypoints not placed on surveyed geometry: ${off.join(', ')}`);
+  const guesses = [...WAYPOINTS, ...LANDMARKS].filter((w) => w.src === 'est').map((w) => w.id);
+  assert.deepEqual(guesses, [], `still estimated: ${guesses.join(', ')}`);
 });
 
-test("Place Emile-Goudeau is a terrace, not a plaza", () => {
-  // Cited at 43 m long and 7 m wide. It was modelled at 18 m wide, which made
-  // the tightest space on the route more than twice as open as the street that
-  // feeds it — and it is the area the game builds its close-quarters fight in.
-  const sq = WAYPOINTS.find((w) => w.id === 'emile_goudeau');
-  assert.ok(sq.width <= 9,
-    `place Emile-Goudeau is cited at 7 m wide, got ${sq.width} m`);
-  const lane = WAYPOINTS.find((w) => w.id === 'orchampt_ravignan');
-  assert.ok(sq.width <= lane.width + 3,
-    'the square is barely wider than the lane that arrives at it');
+test("Place Emile-Goudeau is a terrace beside the Bateau-Lavoir", () => {
+  // Paris nomenclature gives the place 7 m of "width", which is the figure for
+  // the roadway along its east side — the line the walk takes. The space
+  // itself, per the cadastre and the OSM pedestrian area, is a sloping
+  // terrace of horse chestnuts about twenty metres across, with the
+  // Bateau-Lavoir on its far side. What must hold is that it slopes.
+  const sq = byId.emile_goudeau;
+  assert.ok(byId.orchampt_ravignan.elev - byId.ravignan_stairs.elev > 5,
+    'the square falls several metres from the lane to the steps');
+  assert.ok(sq.width <= 14, `place Emile-Goudeau reads as ${sq.width} m wide`);
 });

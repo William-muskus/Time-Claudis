@@ -54,7 +54,7 @@ export const ENCOUNTERS = [
   {
     areaId: 'A2',
     name: 'La Montée',
-    waypoint: 'lamarck_girardon',
+    waypoint: 'constantin_pecqueur',
     node: { lateral: 1.8, facingOffset: -0.1 },
     brief: 'The climb up Girardon. Introduces height: the street narrows and ' +
            'the balconies start mattering more than the doorways.',
@@ -116,7 +116,7 @@ export const ENCOUNTERS = [
   {
     areaId: 'A4',
     name: "L'Orchampt",
-    waypoint: 'lepic_orchampt',
+    waypoint: 'orchampt_bend',
     node: { lateral: -1.4, facingOffset: 0.22 },
     brief: 'The quiet lane past Dalida\'s gate. Tight, walled, almost no ' +
            'sightline — this is the claustrophobic area. Close range, fast ' +

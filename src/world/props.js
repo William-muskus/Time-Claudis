@@ -1,6 +1,6 @@
 import * as THREE from 'three';
+import { insideBuilding } from './geo.js';
 import { PALETTE, flat } from '../render/palette.js';
-import { buildWallaceFountain } from './landmarks.js';
 import { EMPTY_REGISTRY } from './assets.js';
 
 /**
@@ -27,6 +27,10 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
     const off = rail.widthAt(d) * 0.5 - 0.9;
+    const lx = p.x + right.x * side * off, lz = p.z + right.z * side * off;
+    // Against the cadastre a lamp at "half the street width" can land inside
+    // a building on a lane that narrows; skip those rather than embed them.
+    if (insideBuilding(lx, lz, 0.4)) continue;
     const lamp = assets.instance('street_lamp') ?? buildStreetLamp();
     lamp.position.copy(p).addScaledVector(right, side * off);
     lamp.position.y = p.y + 0.16;
@@ -34,37 +38,9 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
     group.add(lamp);
   }
 
-  // Plane trees. Montmartre's are pollarded hard, so they have stubby knuckled
-  // crowns rather than the big domes you get on the boulevards.
-  for (let d = 14; d < rail.length - 10; d += rng.range(13, 30)) {
-    const side = rng.chance(0.5) ? 1 : -1;
-    const p = rail.positionAt(d);
-    const tan = rail.tangentAt(d);
-    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    // Keep the crown clear of the building line. The pavement is 2.4 m and a
-    // pollarded crown is up to 1.5 m in radius, so a trunk at +1.5 m put
-    // foliage inside the facade — which rendered as leaves floating in front
-    // of a wall with no trunk and no ground contact.
-    const off = rail.widthAt(d) * 0.5 - 1.0;
-    const tree = buildPlaneTree(rng);
-    tree.position.copy(p).addScaledVector(right, side * off);
-    tree.position.y = p.y + 0.16;
-    group.add(tree);
-  }
-
-  // Benches and bollards clustered near the open squares.
-  for (let d = 20; d < rail.length - 20; d += rng.range(28, 60)) {
-    const side = rng.chance(0.5) ? 1 : -1;
-    const p = rail.positionAt(d);
-    const tan = rail.tangentAt(d);
-    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const off = rail.widthAt(d) * 0.5 - 0.8;
-    const b = rng.chance(0.55) ? buildBench() : buildBollardRow(rng);
-    b.position.copy(p).addScaledVector(right, side * off);
-    b.position.y = p.y + 0.16;
-    b.rotation.y = Math.atan2(tan.x, tan.z);
-    group.add(b);
-  }
+  // Trees, benches, bollards and the Wallace fountains used to be scattered
+  // here by rule. They are real now — the city's tree inventory and
+  // OpenStreetMap's furniture, at their mapped positions — see realtrees.js.
 
   // One Morris column — the round green advertising drum. Unmistakably Paris,
   // and a perfect waist-high piece of cover.
@@ -73,28 +49,19 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);
     const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const col = assets.instance('morris_column') ?? buildMorrisColumn();
-    col.position.copy(p).addScaledVector(right, rail.widthAt(d) * 0.5 - 0.9);
-    col.position.y = p.y + 0.16;
-    group.add(col);
-  }
-
-  // A second Wallace fountain up near the top, where there really is one.
-  {
-    const d = rail.length * 0.33;
-    const p = rail.positionAt(d);
-    const tan = rail.tangentAt(d);
-    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    const w = assets.instance('wallace_fountain') ?? buildWallaceFountain();
-    w.position.copy(p).addScaledVector(right, -(rail.widthAt(d) * 0.5 - 0.9));
-    w.position.y = p.y + 0.16;
-    group.add(w);
+    const off = rail.widthAt(d) * 0.5 - 0.9;
+    if (!insideBuilding(p.x + right.x * off, p.z + right.z * off, 0.8)) {
+      const col = assets.instance('morris_column') ?? buildMorrisColumn();
+      col.position.copy(p).addScaledVector(right, off);
+      col.position.y = p.y + 0.16;
+      group.add(col);
+    }
   }
 
   return group;
 }
 
-function buildStreetLamp() {
+export function buildStreetLamp() {
   const g = new THREE.Group();
   const iron = flat(PALETTE.ironwork, { roughness: 0.45, metalness: 0.4 });
 
@@ -131,47 +98,7 @@ function buildStreetLamp() {
   return g;
 }
 
-function buildPlaneTree(rng) {
-  const g = new THREE.Group();
-  const h = rng.range(4.2, 6.4);
-
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.28, h, 7),
-    flat(PALETTE.trunkBark, { roughness: 0.95 }));
-  trunk.position.y = h / 2;
-  trunk.castShadow = true;
-  g.add(trunk);
-
-  // Pollarded crown: a few knuckly clumps rather than one sphere. Three tones
-  // so the canopy has internal form under flat shading.
-  const tones = [PALETTE.foliageSun, PALETTE.foliageMid, PALETTE.foliageDeep];
-  const clumps = rng.int(4, 7);
-  for (let i = 0; i < clumps; i++) {
-    const r = rng.range(0.85, 1.5);
-    const clump = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(r, 0),
-      flat(tones[i % 3], { roughness: 1 }));
-    clump.position.set(
-      rng.range(-1.1, 1.1),
-      h + rng.range(-0.5, 1.2),
-      rng.range(-1.1, 1.1),
-    );
-    clump.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
-    clump.castShadow = true;
-    g.add(clump);
-  }
-
-  // The cast-iron tree grille at its foot.
-  const grille = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.82, 0.82, 0.06, 8),
-    flat(PALETTE.ironwork, { roughness: 0.6, metalness: 0.3 }));
-  grille.position.y = 0.03;
-  grille.receiveShadow = true;
-  g.add(grille);
-  return g;
-}
-
-function buildBench() {
+export function buildBench() {
   const g = new THREE.Group();
   const wood = flat(PALETTE.shutterGreen, { roughness: 0.85 });
   const iron = flat(PALETTE.ironwork, { roughness: 0.5, metalness: 0.35 });
@@ -197,23 +124,7 @@ function buildBench() {
   return g;
 }
 
-function buildBollardRow(rng) {
-  const g = new THREE.Group();
-  const iron = flat(PALETTE.ironwork, { roughness: 0.5, metalness: 0.4 });
-  const n = rng.int(3, 5);
-  for (let i = 0; i < n; i++) {
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.92, 8), iron);
-    b.position.set(0, 0.46, -((n - 1) * 0.75) / 2 + i * 0.75);
-    b.castShadow = true;
-    g.add(b);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.095, 7, 5), iron);
-    cap.position.set(0, 0.94, b.position.z);
-    g.add(cap);
-  }
-  return g;
-}
-
-function buildMorrisColumn() {
+export function buildMorrisColumn() {
   const g = new THREE.Group();
   const drum = new THREE.Mesh(
     new THREE.CylinderGeometry(0.72, 0.72, 2.9, 12),

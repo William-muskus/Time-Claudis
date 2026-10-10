@@ -39,127 +39,80 @@ const ONLY = arg('only', null);
  * on — see docs/ROUTE.md, "The things that must be right".
  */
 const SHOTS = [
-  // Shot from the top of the stairs looking BACK at the metro mouth, rather
-  // than from the mouth on a fixed yaw. A hard yaw only frames what it framed
-  // on the day it was written: after the re-survey corrected the bearings this
-  // one pointed at a wall, and the frame came back 89% warm with no station in
-  // it. Aiming at a named place survives the next correction too.
-  // From the metro mouth looking UP the climb, which is what the player
-  // actually sees when the game starts. Shot back down at the station from
-  // the top of the stairs it was an incoherent frame: awnings seen from above
-  // with their buildings lost in shadow under them, and a blank end-cap wall
-  // filling the right half.
+  // EVERY SHOT IS AIMED BY THE WORLD, NOT BY A COMPASS. The previous list used
+  // hard yaws tuned to the old hand-placed survey; after the October 2026
+  // re-derivation from IGN/OSM every one of them pointed at a wall. `look:`
+  // aims at a named landmark and `ahead:` down the rail, and both survive the
+  // next correction too.
   { name: '01_station_arrival',  at: 'lamarck_station', ahead: 16,
-    why: 'The opening frame. The stairs rising out of the dip, straight ahead.' },
-  { name: '02_stairs_climb',     at: 'escalier_foot',   yaw: 235,
-    why: 'Looking up the Lamarck flight. Tread rhythm must read.' },
-  { name: '03_girardon_climb',   at: 'lamarck_girardon', yaw: 200,
-    why: 'The turn south into rue Girardon. Gradient must be visible.' },
-  // Aimed ALONG the alley, not across it. On the old bearings yaw 195 pointed
-  // down it; after the re-survey the same number pointed broadside into the
-  // château's garden wall, and the frame came back as two blank panels. An
-  // alley is a thing you look down.
-  { name: '04_brouillards',      at: 'brouillards', ahead: 18,
-    why: 'Allee des Brouillards. Green shade on one side, sun on the other.' },
-  // Backed off and raised: parked ON the bust's own waypoint we were four
-  // metres from it and it filled the frame as an unreadable dark block.
-  // Lateral matches the bust's own offset from the rail (5.2 m, left hand), so
-  // the camera stands on her line instead of looking across it. `look` aims at
-  // the waypoint, which is the middle of the road, not at the statue beside it.
-  { name: '05_dalida_bust',      at: 'place_dalida', back: 13, lateral: -5.2,
-    look: 'place_dalida', lookHeight: 2.4,
-    why: 'THE landmark. Polished chest, swept hair, facing east.' },
-  // Close on the bust, for the same reason 07b and 11b exist: the level shot
-  // shows whether she is placed right, and this one shows whether she is
-  // MODELLED right. At thirteen metres a 0.6 m head is thirty pixels and any
-  // answer to "does the bust read" is really an answer about the framing.
-  { name: '05b_dalida_close',    at: 'place_dalida', back: 6, lateral: -5.2,
-    look: 'place_dalida', lookHeight: 2.5,
+    why: 'The opening frame. Out of the métro onto the landing, the Pierre-Dac flight rising ahead.' },
+  { name: '02_stairs_look_back', at: 'escalier_top', look: 'metro_lamarck', lookHeight: 0.5,
+    why: 'From rue Caulaincourt back down the steps to the métro entrance in the wall.' },
+  { name: '03_pecqueur',         at: 'constantin_pecqueur', ahead: 20,
+    why: 'Place Constantin-Pecqueur: the planted square climbing to the Girardon steps.' },
+  { name: '04_girardon_steps',   at: 'girardon_steps', ahead: 18,
+    why: 'Up the rue Girardon steps toward Place Dalida.' },
+  { name: '05_dalida_bust',      at: 'place_dalida', back: 9, look: 'dalida_bust', lookHeight: 2.4,
+    why: 'THE landmark. Polished chest, swept hair, facing east under her three limes.' },
+  { name: '05b_dalida_close',    at: 'place_dalida', back: 1, look: 'dalida_bust', lookHeight: 2.3,
     why: 'The bust itself: swept hair, the rubbed-gold chest, weathered bronze elsewhere.' },
-  { name: '06_abreuvoir_view',   at: 'place_dalida',    look: 'maison_rose',
-    why: 'The sightline down rue de l Abreuvoir. Most photographed view here.' },
-  // Both aimed AT the mill. The earlier yaws pointed across it into a distant
-  // unlit terrace, so the shot that exists to show the crest of the level was
-  // half a black wall and no windmill.
-  { name: '07_moulin',           at: 'moulin_galette', back: 20, look: 'moulin_blutefin', lookHeight: 7,
-    why: 'Approaching the crest. The Blute-fin on its mound.' },
-  { name: '07b_moulin_close',    at: 'moulin_galette', back: 4, look: 'moulin_blutefin', lookHeight: 6,
-    why: 'The Blute-fin itself: tower, cap, and the four sails on their hub.' },
-  // Backed off down the lane: parked on the waypoint in a six-metre street we
-  // were within touching distance of a wall and it filled the whole frame.
-  { name: '08_orchampt_gate',    at: 'maison_dalida', back: 16, look: 'maison_dalida', lookHeight: 2.0,
-    why: '11 bis. The gate is shut and only the roofline shows. That is correct.' },
-  { name: '09_goudeau',          at: 'emile_goudeau',   yaw: 170,
-    why: 'Place Emile-Goudeau. Wallace fountain, plane trees, Bateau-Lavoir.' },
-  { name: '10_ravignan_drop',    at: 'ravignan_stairs', yaw: 165,
-    why: 'The descent. Sightline opens over the rooftops of the 9th.' },
-  // Backed off and turned around: yaw 180 at the final waypoint pointed
-  // straight off the end of the level, at bare terrain.
-  { name: '11_abbesses',         at: 'place_abbesses', back: 18, yaw: 172,
-    why: 'The finish. Guimard edicule in green iron and amber glass.' },
-  // Close on the edicule. At real scale it is about four metres across, so
-  // from the far side of a twenty-two metre square it is correctly small —
-  // which is right for the level and useless for judging whether the ironwork
-  // and the amber glass read. This shot exists to judge the object.
-  { name: '11b_guimard_close',   at: 'place_abbesses', back: 15, lateral: 3, yaw: 186, pitch: 2,
+  { name: '06_abreuvoir_view',   at: 'place_dalida', look: 'maison_rose', lookHeight: 4,
+    why: 'Down rue de l Abreuvoir to La Maison Rose. The most photographed view here.' },
+  { name: '06b_chateau',         at: 'place_dalida', look: 'chateau_brouillards', lookHeight: 5,
+    why: 'The Château des Brouillards behind its garden, west of the square.' },
+  { name: '07_girardon_climb',   at: 'girardon_climb', ahead: 22,
+    why: 'Rue Girardon climbing south, square Suzanne-Buisson on the right.' },
+  { name: '07b_passe_muraille',  at: 'marcel_ayme', look: 'marcel_ayme', lookHeight: 1.6,
+    why: 'Up Place Marcel-Aymé to the Passe-Muraille in its wall.' },
+  { name: '08_moulin_radet',     at: 'marcel_ayme', ahead: 30, lookHeight: 4,
+    why: 'Toward the rue Lepic corner: the Radet over its restaurant.' },
+  { name: '08b_blutefin',        at: 'moulin_galette', look: 'moulin_blutefin', lookHeight: 6,
+    why: 'The Blute-fin on its mound above rue Lepic, seen over the garden wall.' },
+  { name: '09_orchampt_lane',    at: 'lepic_orchampt', ahead: 14,
+    why: 'Into rue d Orchampt: four metres wall to wall.' },
+  { name: '10_orchampt_gate',    at: 'maison_dalida', back: 9, look: 'maison_dalida', lookHeight: 2.0,
+    why: '11 bis. The garden wall and the shut green gate. You never see the house.' },
+  { name: '11_orchampt_bend',    at: 'orchampt_bend', ahead: 18,
+    why: 'Where the lane widens and turns: the A4 fight.' },
+  { name: '12_goudeau',          at: 'emile_goudeau', look: 'bateau_lavoir', lookHeight: 4,
+    why: 'Place Emile-Goudeau: chestnuts, the Wallace fountain, the Bateau-Lavoir across the terrace.' },
+  { name: '13_ravignan_drop',    at: 'trois_freres', ahead: 28,
+    why: 'The descent down rue Ravignan to rue des Abbesses.' },
+  { name: '14_rue_abbesses',     at: 'abbesses_corner', ahead: 22,
+    why: 'Rue des Abbesses: shops, awnings, toward the square.' },
+  { name: '15_abbesses',         at: 'place_abbesses', back: 16, look: 'edicule_abbesses', lookHeight: 2.5,
+    why: 'The finish. Guimard édicule in green iron and amber glass.' },
+  { name: '15b_guimard_close',   at: 'place_abbesses', back: 3, look: 'edicule_abbesses', lookHeight: 2.2,
     why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
-  // Shot from Place Emile-Goudeau, and aimed at the dome rather than the body.
-  //
-  // Both earlier framings came back as a wall filling the frame. That is not a
-  // framing accident, it is the truth about this place: sweeping the whole
-  // rail against the real geometry, the basilica is visible from exactly three
-  // stretches of the route and only ever above 46 m — which is the dome and
-  // the cross, not the building. From inside Montmartre's streets you do not
-  // see Sacre-Coeur, you catch the top of it over a roofline, and that is what
-  // this shot should show.
-  // Backed off fourteen metres. Sweeping the rail against the real geometry,
-  // the basilica clears the rooflines from four short stretches of the route
-  // and Place Emile-Goudeau itself is not one of them — it is clear fourteen
-  // metres back up rue Ravignan. tools/verify/skyline-probe.mjs finds them.
-  { name: '12_sacre_coeur',      at: 'emile_goudeau', back: 14,
-    look: 'sacre_coeur', lookHeight: 46,
+  { name: '16_st_jean',          at: 'rue_abbesses', look: 'st_jean', lookHeight: 10,
+    why: 'Saint-Jean-de-Montmartre in red brick on the square.' },
+  { name: '17_sacre_coeur',      at: 'emile_goudeau', back: 14, look: 'sacre_coeur', lookHeight: 46,
     why: 'The dome over the rooftops. A glimpse, which is all the streets give you.' },
-
-  // --- the first-person weapon, in each of its states --------------------
-  { name: '13_weapon_ready',     at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN',
+  { name: '18_weapon_ready',     at: 'place_dalida', back: 6, ahead: 18, weapon: 'HANDGUN',
     why: 'Handgun at rest. Lower right, angled in, not covering the middle third.' },
-  { name: '14_weapon_firing',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', fire: true,
+  { name: '19_weapon_firing',    at: 'place_dalida', back: 6, ahead: 18, weapon: 'HANDGUN', fire: true,
     why: 'Muzzle flash and recoil kick. The flash must bloom.' },
-  { name: '15_weapon_shotgun',   at: 'place_dalida', back: 6, yaw: 195, weapon: 'SHOTGUN', fire: true,
+  { name: '20_weapon_shotgun',   at: 'place_dalida', back: 6, ahead: 18, weapon: 'SHOTGUN', fire: true,
     why: 'Different silhouette, bigger kick, fatter flash.' },
-  // No `back` on these two. Backing off five metres at Emile-Goudeau walks the
-  // camera into the facade on the east side of the square, and half the frame
-  // came back as one flat lavender wall — a framing artifact of the harness,
-  // not something the rail ever does (see 09, shot from the same node).
-  { name: '16_weapon_mg',        at: 'emile_goudeau', yaw: 175, weapon: 'MACHINE_GUN',
+  { name: '21_weapon_mg',        at: 'emile_goudeau', ahead: 18, weapon: 'MACHINE_GUN',
     why: 'Long magazine below the receiver is the recognition cue.' },
-  { name: '17_weapon_grenade',   at: 'emile_goudeau', yaw: 175, weapon: 'GRENADE', fire: true,
+  { name: '22_weapon_grenade',   at: 'emile_goudeau', ahead: 18, weapon: 'GRENADE', fire: true,
     why: 'The drum. Rare, and the answer to the boss.' },
-  { name: '18_gun_up_reload',    at: 'place_dalida', back: 6, yaw: 195, weapon: 'HANDGUN', gunUp: true,
+  { name: '23_gun_up_reload',    at: 'place_dalida', back: 6, ahead: 18, weapon: 'HANDGUN', gunUp: true,
     why: 'Hand raised to reload. The on-screen gun must mirror the gesture: barrel vertical.' },
-
-  // --- combat, staged so the moment is deterministic ----------------------
-  // No `back` on the combat shots. The foreground cover is placed 3.4 m ahead
-  // of each combat node, so backing the camera off by eight metres put its own
-  // cover eleven metres away and left the bottom of the frame as empty road —
-  // the exact dead space the cover exists to fill. These are framed where the
-  // game actually parks the camera.
-  { name: '20_wave_windup',      at: 'lamarck_station', ahead: 16, weapon: 'HANDGUN',
+  { name: '30_wave_windup',      at: 'lamarck_station', ahead: 16, weapon: 'HANDGUN',
     spawn: ['GRUNT', 'GRUNT', 'SOLDIER'], stage: 'windup',
     why: 'A wave out of real doorways, winding up. Enemies must read against the facade.' },
-  { name: '21_telegraph_commit', at: 'place_dalida', ahead: 18, weapon: 'HANDGUN',
+  { name: '31_telegraph_commit', at: 'place_dalida', ahead: 18, weapon: 'HANDGUN',
     spawn: ['RED', 'GRUNT'], stage: 'commit',
     why: 'THE moment. Committed telegraph: white chest flash, unmissable in peripheral vision.' },
-  { name: '22_incoming_fire',    at: 'place_dalida', ahead: 18, weapon: 'HANDGUN',
-    spawn: ['RED', 'SOLDIER'], stage: 'commit', incoming: true,
-    why: 'Rounds in flight. Ducking now still saves you; this is why the game is fair.' },
-  { name: '23_behind_cover',     at: 'place_dalida', ahead: 18, weapon: 'HANDGUN',
+  { name: '32_behind_cover',     at: 'place_dalida', ahead: 18, weapon: 'HANDGUN',
     spawn: ['RED', 'GRUNT'], stage: 'flash', duck: true,
-    why: 'Ducked. The camera drops 92 cm and the foreground cover rises across the frame.' },
-  { name: '24_crowded_lane',     at: 'lepic_orchampt', ahead: 14, weapon: 'SHOTGUN',
+    why: 'Ducked. The camera drops and the foreground cover rises across the frame.' },
+  { name: '33_crowded_lane',     at: 'orchampt_bend', ahead: 14, weapon: 'SHOTGUN',
     spawn: ['SOLDIER', 'GRUNT', 'BOMBER', 'RED'], stage: 'flash',
-    why: 'The claustrophobic area. Four enemies at close range in a six-metre lane.' },
-  { name: '25_heavy_and_sniper', at: 'emile_goudeau', ahead: 20, weapon: 'MACHINE_GUN',
+    why: 'The claustrophobic area, at the real bend of rue d Orchampt.' },
+  { name: '34_heavy_and_sniper', at: 'emile_goudeau', ahead: 20, weapon: 'MACHINE_GUN',
     spawn: ['HEAVY', 'SNIPER', 'GRUNT'], stage: 'windup',
     why: 'Long sightlines. Colour must separate the classes at distance.' },
 ];

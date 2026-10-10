@@ -4,3 +4,4 @@ artifacts/
 *.log
 __pycache__/
 .DS_Store
+tools/geo/raw/

@@ -65,7 +65,7 @@ export class Renderer {
     // without it the basilica sat against the sun's own glare at the horizon
     // and disappeared completely. Less haze is not more legibility when the
     // subject and the sky are the same value. The rooftop hole was filled with
-    // geometry instead — see buildGroundPlane in world/index.js.
+    // geometry instead, and later replaced by the real terrain (world/terrain.js).
     this.scene.fog = new THREE.Fog(PALETTE.fogColor, 110, 560);
 
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);

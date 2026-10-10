@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
-import { geoToLocal, LANDMARKS, waypointById } from '../data/route.js';
+import { geoToLocal, LANDMARKS } from '../data/route.js';
 import { EMPTY_REGISTRY } from './assets.js';
+import { groundAt } from './geo.js';
 
 /**
  * The named things.
@@ -16,190 +17,135 @@ import { EMPTY_REGISTRY } from './assets.js';
  */
 export function buildLandmarks(rail, assets = EMPTY_REGISTRY, rng = null) {
   /**
-   * A seeded source of scatter, never Math.random.
-   *
-   * The ivy on the Orchampt gate and the fragments on the Mur des Je t'aime
-   * were scattered with Math.random, which made the world non-deterministic
-   * for a fixed seed. That is not a cosmetic complaint: the entire
-   * verification approach here rests on a given seed producing a given frame,
-   * and a test that fires rays at the Orchampt lane failed four times in ten
-   * on identical code because the ivy landed somewhere different each build.
-   * An intermittently failing test is worse than no test — it trains you to
-   * re-run rather than to look.
+   * A seeded source of scatter, never Math.random — a fixed seed must produce
+   * a fixed world or no frame can be measured twice.
    */
   const scatter = rng ? () => rng() : Math.random;
   const group = new THREE.Group();
   group.name = 'landmarks';
   const anchors = [];
 
-  /**
-   * Prefer the Blender-authored GLB; fall back to the procedural version.
-   *
-   * The fallback is not a formality. A missing or truncated export must not
-   * leave a hole where the Dalida bust should be, and the failure is reported
-   * on the console rather than swallowed.
-   */
+  /** Prefer the Blender-authored GLB; fall back to the procedural version. */
   const authored = (key, procedural) => assets.instance(key) ?? procedural();
 
-  // Off the path, on the left hand of the southbound rail — which here is the
-  // east side of the square, where she actually stands and where the
-  // Abreuvoir sightline the survey insists on is preserved.
-  group.add(placeOffRail(
-    rail, 'place_dalida', authored('dalida_bust', () => buildDalidaBust()), -1, 5.2, 1.2));
-  // THREE TREES AROUND THE BUST. Cited, and load-bearing: without them she
-  // stands alone on an open corner and reads as a bollard. Three crowns at
-  // roughly her own height are what make the square a square and give the
-  // bronze something to be seen against other than sky.
-  group.add(buildDalidaTrees(rail, scatter));
-  // EVERYTHING BESIDE THE RAIL IS PLACED OFF THE RAIL, NOT OFF WORLD X.
-  //
-  // placeAt's `lateral` shifts an object along world X, which only means "to
-  // the side of the street" when the street happens to run north-south. Nobody
-  // noticed while the survey was hand-placed, because the offsets had been
-  // eyeballed against those particular coordinates. The moment the re-survey
-  // corrected the bearings, three landmarks — the metro mouth, the Orchampt
-  // gate and a Wallace fountain — swung into the middle of the road, and the
-  // clearance test caught all three.
-  //
-  // placeOffRail takes the street's own perpendicular, so an offset means what
-  // it says at any bearing and survives the next coordinate correction too.
-  group.add(placeOffRail(rail, 'lamarck_station', buildMetroEntrance(), 1, 5.5));
-  // Placed at its own surveyed coordinate rather than offset from the rail.
-  group.add(atGeo('moulin_blutefin', authored('moulin_galette', () => buildMoulin())));
-  // Aligned as well as offset: the gate and its wall run ALONG rue d'Orchampt,
-  // and an unaligned wall in a six-metre lane lies across it. 8.5 m because
-  // the wall is long and the lane bends — at 6 m its far end swung to within
-  // half a metre of the centreline, which in a lane this narrow is the middle
-  // of the road.
-  group.add(placeOffRail(rail, 'maison_dalida', buildDalidaHouseGate(scatter), -1, 8.5, 0, true));
-  group.add(placeOffRail(rail, 'emile_goudeau', authored('wallace_fountain', buildWallaceFountain), 1, 4.2));
-  // Eleven metres, not nine: the square is only 7 m wide and the building is
-  // 10 m deep, so its facade has to clear a 3.5 m half-width plus its own
-  // half-depth before it stops standing in the square it faces.
-  group.add(placeOffRail(rail, 'emile_goudeau', buildBateauLavoir(), -1, 11.0));
-  // Beside the rail, not on it — the same mistake the bust made. The edicule
-  // is the last thing the level shows you and it was built around the camera:
-  // the player finished the stage standing inside the metro entrance. The real
-  // one sits in the middle of the square with the pavement passing to its
-  // north, which is the rail's left hand coming down off the Butte.
-  group.add(placeOffRail(
-    rail, 'place_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()), -1, 5.6));
-  group.add(placeOffRail(rail, 'place_abbesses', buildCarousel(), 1, 11.0));
-  group.add(placeOffRail(rail, 'trois_freres', authored('wallace_fountain', buildWallaceFountain), -1, 6.5));
+  /**
+   * EVERY LANDMARK STANDS AT ITS SOURCE COORDINATE.
+   *
+   * Until October 2026 most of these were placed as offsets from the rail —
+   * "five metres to the left of the place_dalida waypoint" — because the rail
+   * and the landmarks were both estimates and offsets were the only way to
+   * keep them in a sensible relationship. Every object here now has a real
+   * position (the OSM node or way, or the BD TOPO footprint; see LANDMARKS in
+   * src/data/route.js), and the ground under it comes from the same terrain
+   * model as everything else. Orientation is the one thing the data does not
+   * give, so each model is turned to face the nearest point of the walk —
+   * which for a statue, a gate or a shop sign is what "facing the street"
+   * means.
+   */
+  const place = (id, obj, { up = 0, face = true, yaw = null } = {}) => {
+    const l = LANDMARKS.find((x) => x.id === id);
+    const p = geoToLocal(l.lat, l.lon, l.elev);
+    const y = groundAt(p.x, p.z) ?? p.y;
+    obj.position.set(p.x, y + up, p.z);
+    if (yaw !== null) obj.rotation.y = yaw;
+    else if (face) obj.rotation.y = yawToRail(rail, p.x, p.z);
+    group.add(obj);
+    return obj;
+  };
 
-  // Off-rail but on the sightlines.
-  group.add(atGeo('maison_rose', buildMaisonRose()));
-  group.add(atGeo('sacre_coeur', buildSacreCoeur()));
-  group.add(atGeo('st_jean', buildSaintJean()));
-  group.add(atGeo('mur_des_je', buildMurDesJeTaime(scatter)));
-  // Against the building line, aligned to the street — not dropped at its own
-  // coordinate. A café TERRACE is a spreading thing: tables, chairs, an awning,
-  // all modelled outward from one point, so placing it by that point alone put
-  // its furniture 0.9 m from the player's face at the opening combat node.
-  group.add(placeOffRail(rail, 'lamarck_station', buildCafeTerrace(), 1, 9.5, 0, true));
-  // Off the rail, against the street wall, aligned to it. Placed at its own
-  // estimated coordinate it stood squarely in the carriageway — measured, 0.00
-  // m from the centreline. The Passe-Muraille is set INTO a wall, so it has to
-  // be positioned like a wall, not like a monument in a space.
-  group.add(placeOffRail(rail, 'girardon_climb', buildPasseMuraille(scatter), 1, 6.4, 0, true));
-  // Both flanks of the allée, authored, because the procedural street wall is
-  // reserved out of this stretch.
-  group.add(buildBrouillardsAlley(rail, scatter));
-  // The Radet is the corner building at 83 rue Lepic / 1 rue Girardon with a
-  // mill on its roof — it was re-erected up there in 1924, hollow, and it is a
-  // restaurant underneath. So it is placed as a BUILDING beside the street,
-  // not as a monument at a point: its own derived coordinate put it five
-  // metres from the rail, and an eight-metre-wide base five metres from the
-  // centreline is a building in the middle of the road.
-  group.add(placeOffRail(rail, 'moulin_galette', buildMoulinRadet(), -1, 11.0));
+  // The bust faces EAST, down rue de l'Abreuvoir toward La Maison Rose. That
+  // is the one orientation in the level that is a fact rather than a rule,
+  // so it is set explicitly: +Z rotated to point at the Maison Rose.
+  {
+    const b = LANDMARKS.find((x) => x.id === 'dalida_bust');
+    const r = LANDMARKS.find((x) => x.id === 'maison_rose');
+    const pb = geoToLocal(b.lat, b.lon), pr = geoToLocal(r.lat, r.lon);
+    place('dalida_bust', authored('dalida_bust', () => buildDalidaBust()),
+      { yaw: Math.atan2(pr.x - pb.x, pr.z - pb.z) });
+  }
+  // The rail starts ON the entrance's mapped point, so the model there stood
+  // in the player's first step. It goes behind the start — far enough that its
+  // 8.6 m handrails clear the first step too — turned
+  // to face up the walk: the player emerges from it, which is the fiction.
+  {
+    const m = buildMetroEntrance();
+    const p0 = rail.positionAt(0), t0 = rail.tangentAt(0);
+    const fx = t0.x, fz = t0.z, fl = Math.hypot(fx, fz) || 1;
+    const x = p0.x - (fx / fl) * 5.6, z = p0.z - (fz / fl) * 5.6;
+    m.position.set(x, groundAt(x, z) ?? p0.y, z);
+    m.rotation.y = Math.atan2(fx, fz);
+    group.add(m);
+  }
+  // The Blute-fin on its mound: the model's base is at the mound top, which
+  // BD TOPO records at 116.5 m — seven metres above rue Lepic.
+  place('moulin_blutefin', authored('moulin_galette', () => buildMoulin()), { face: false });
+  // The Radet on its restaurant at the rue Lepic corner. The restaurant's
+  // footprint is skipped from the cadastral city (see index.js) so the
+  // authored base stands in its place rather than inside it.
+  place('moulin_radet', buildMoulinRadet());
+  // The gate of 11 bis stands on the LANE, not at the house's centroid. The
+  // cadastre shows exactly where: the east side of rue d'Orchampt is a
+  // building wall, and the west side opens onto the garden in front of the
+  // house — open ground, not a building — so the garden wall and its carriage
+  // gate run ALONG the lane on that side, just clear of the walk.
+  {
+    const gate = buildDalidaHouseGate(scatter);
+    const d = rail.distanceToWaypoint('maison_dalida');
+    const p = rail.positionAt(d), t = rail.tangentAt(d);
+    const rx = -t.z, rz = t.x, rl = Math.hypot(rx, rz) || 1;
+    const l = LANDMARKS.find((x) => x.id === 'maison_dalida');
+    const ph = geoToLocal(l.lat, l.lon);
+    const side = Math.sign((ph.x - p.x) * rx + (ph.z - p.z) * rz) || -1;
+    const off = 2.3;
+    const gx = p.x + (rx / rl) * side * off, gz = p.z + (rz / rl) * side * off;
+    gate.position.set(gx, groundAt(gx, gz) ?? p.y, gz);
+    // Front (+Z) faces back across the lane; the wall's length runs along it.
+    gate.rotation.y = Math.atan2(-rx * side, -rz * side);
+    // Nine metres of wall rather than the model's thirteen: the lane bends
+    // here, and a straight thirteen-metre wall cuts the inside of the bend.
+    gate.scale.x = 0.7;
+    group.add(gate);
+  }
+  place('maison_rose', buildMaisonRose());
+  place('sacre_coeur', buildSacreCoeur(), { face: false });
+  place('mur_des_je', buildMurDesJeTaime(scatter));
+  place('marcel_ayme', buildPasseMuraille(scatter));
+  place('edicule_abbesses', authored('guimard_edicule', () => buildGuimardEdicule()));
+  place('carousel_abbesses', buildCarousel(), { face: false });
 
-  // The Moulin's mound and the Bateau-Lavoir frontage are both good elevated
-  // positions, and the métro mouth is the single best "they came from
-  // underground" beat on the route.
+  // Spawn anchors the architecture cannot provide: the métro mouths, and the
+  // mound around the Blute-fin as a sniper's perch.
   anchors.push(
     anchorAtLandmark('moulin_blutefin', 'roof', new THREE.Vector3(0, 7.5, 0)),
-    anchorAtWaypoint('lamarck_station', 'metro', new THREE.Vector3(0, 0, 0)),
-    anchorAtWaypoint('emile_goudeau', 'balcony', new THREE.Vector3(-13, 6.0, 0)),
-    anchorAtWaypoint('place_abbesses', 'metro', new THREE.Vector3(0, 0, 0)),
+    anchorAtLandmark('metro_lamarck', 'metro', new THREE.Vector3(0, 0, 0)),
+    anchorAtLandmark('edicule_abbesses', 'metro', new THREE.Vector3(0, 0, 0)),
   );
 
-  void rail;
   return { group, anchors };
+}
+
+/**
+ * Yaw that turns a model's +Z front toward the nearest point of the walk.
+ */
+function yawToRail(rail, x, z) {
+  let best = null, bd = Infinity;
+  for (let d = 0; d <= rail.length; d += 2) {
+    const p = rail.positionAt(d);
+    const dd = (p.x - x) ** 2 + (p.z - z) ** 2;
+    if (dd < bd) { bd = dd; best = p; }
+  }
+  return Math.atan2(best.x - x, best.z - z);
 }
 
 // ---------------------------------------------------------------------------
 // placement helpers
 // ---------------------------------------------------------------------------
 
-function placeAt(waypointId, obj, lateral = 0, up = 0) {
-  const w = waypointById(waypointId);
-  const p = geoToLocal(w.lat, w.lon, w.elev);
-  obj.position.set(p.x + lateral, p.y + up, p.z);
-  return obj;
-}
-
-/**
- * Put an object beside the rail rather than on it.
- *
- * A waypoint is a point on the PLAYER'S PATH, so anything placed at one is
- * placed in the player's way. The Dalida bust was, and at hero scale it is
- * four metres tall: the rail passed 1.8 m from it, which meant the whole view
- * at the Place Dalida combat node was bronze. Every enemy the director spawned
- * there was behind it. Measured with a ray from the camera, the first thing
- * hit was the statue, 1.3 m out.
- *
- * The survey note for this waypoint is explicit that the player stands BEHIND
- * the bust with rue de l'Abreuvoir falling away east, which is also where the
- * real one is — set back on the terrace with the pavement passing to its west.
- * So the offset is measured off the rail's own perpendicular, which keeps it
- * correct however the path curves through the square.
- *
- * `side` is +1 for the rail's right hand, -1 for its left.
- */
-function placeOffRail(rail, waypointId, obj, side, lateral, up = 0, align = false) {
-  const w = waypointById(waypointId);
-  const p = geoToLocal(w.lat, w.lon, w.elev);
-  const d = rail.distanceToWaypoint(waypointId);
-  const tan = rail.tangentAt(d);
-  const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-  obj.position.set(
-    p.x + right.x * side * lateral,
-    p.y + up,
-    p.z + right.z * side * lateral);
-  // ALIGN anything longer than it is wide.
-  //
-  // Positioning alone is enough for a statue or a fountain and useless for a
-  // wall: a 34 m garden wall modelled along its own Z and merely translated
-  // sideways lies across the street at whatever angle the street happens to
-  // run. Yaw is taken from the LEVELLED tangent, because the rail climbs 36 m
-  // over its length and a wall aimed down a real 3D tangent leans over.
-  if (align) obj.rotation.y = Math.atan2(tan.x, tan.z);
-  return obj;
-}
-
-function atGeo(landmarkId, obj) {
-  const l = LANDMARKS.find((x) => x.id === landmarkId);
-  const p = geoToLocal(l.lat, l.lon, l.elev);
-  obj.position.set(p.x, p.y, p.z);
-  return obj;
-}
-
 function anchorAtLandmark(landmarkId, type, offset) {
   const l = LANDMARKS.find((x) => x.id === landmarkId);
   const p = geoToLocal(l.lat, l.lon, l.elev);
   return {
     id: `lm_${landmarkId}_${type}`,
-    type,
-    worldPos: new THREE.Vector3(p.x + offset.x, p.y + offset.y, p.z + offset.z),
-    facing: new THREE.Vector3(0, 0, 1),
-  };
-}
-
-function anchorAtWaypoint(waypointId, type, offset) {
-  const w = waypointById(waypointId);
-  const p = geoToLocal(w.lat, w.lon, w.elev);
-  return {
-    id: `lm_${waypointId}_${type}`,
     type,
     worldPos: new THREE.Vector3(p.x + offset.x, p.y + offset.y, p.z + offset.z),
     facing: new THREE.Vector3(0, 0, 1),
@@ -271,188 +217,6 @@ function buildDalidaBust() {
 
   // She faces roughly east, down rue de l'Abreuvoir toward La Maison Rose.
   g.rotation.y = -Math.PI * 0.42;
-  return g;
-}
-
-/** The three trees that ring the Dalida bust. */
-function buildDalidaTrees(rail, rnd = Math.random) {
-  const g = new THREE.Group();
-  g.name = 'dalida_trees';
-  const d0 = rail.distanceToWaypoint('place_dalida');
-  const bark = flat(PALETTE.trunkBark, { roughness: 0.9 });
-  // Spaced around her, all on the same flank as the bust so the sightline east
-  // down rue de l'Abreuvoir stays open — that view is the reason the square is
-  // photographed and nothing may be planted across it.
-  const spots = [[-7.5, 7.0], [1.5, 8.2], [8.5, 6.4]];
-  for (let i = 0; i < spots.length; i++) {
-    const [along, lateral] = spots[i];
-    const d = d0 + along;
-    const p = rail.positionAt(d);
-    const t = rail.tangentAt(d);
-    const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
-    const h = 5.4 + rnd() * 1.6;
-    const x = p.x - right.x * lateral, z = p.z - right.z * lateral;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, h, 6), bark);
-    trunk.position.set(x, p.y + h / 2, z);
-    trunk.castShadow = true;
-    g.add(trunk);
-    const crown = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(2.2 + rnd() * 0.6, 0),
-      flat(i === 1 ? PALETTE.foliageMid : PALETTE.foliageDeep, { roughness: 1 }));
-    crown.position.set(x, p.y + h + 1.0, z);
-    crown.castShadow = true;
-    g.add(crown);
-  }
-  return g;
-}
-
-/**
- * The allée des Brouillards, built by walking the rail.
- *
- * WHY THIS STRETCH IS AUTHORED AT ALL. The allée is a narrow PEDESTRIAN alley:
- * the Château des Brouillards and its garden down one side, low pavilions and
- * houses down the other, trees over both. The procedural generator built what
- * it builds everywhere — a six-storey Haussmann terrace on each flank — and
- * that is the one thing this place is definitively not. It is why people come
- * up this way instead of taking the stairs, and the level was walking them
- * through an ordinary street with a good name.
- *
- * The "folie" went up in 1772 for a lawyer of the Paris Parlement, on the site
- * of an older mill; the mists it is named for came off the springs here. Nerval
- * lived in it around 1830. From the alley you see a white house with a
- * triangular pediment, set back behind a garden wall and trees.
- *
- * WHY IT WALKS THE RAIL instead of being one group placed at the waypoint.
- * Three attempts went in as a rigid block — position it, then align it to the
- * tangent, then flip which flank it sat on — and the clearance test rejected
- * every one. The alley is barely forty metres long and the rail curves through
- * BOTH ends of it, into the climb at the top and into the square at the
- * bottom, so no single straight object of any useful length stays beside it.
- * Emitting a piece per step, each oriented to the tangent where it stands, is
- * how src/world/index.js builds the rest of the street wall, and it follows
- * any curve for free — including whatever the next re-survey produces.
- */
-function buildBrouillardsAlley(rail, rnd = Math.random) {
-  const g = new THREE.Group();
-  g.name = 'brouillards_alley';
-
-  const stone = flat(PALETTE.limestoneMid, { roughness: 0.93 });
-  const render = flat(PALETTE.limestoneLit, { roughness: 0.9 });
-  const iron = flat(PALETTE.ironwork, { roughness: 0.5, metalness: 0.35 });
-  const slate = flat(PALETTE.slateDark, { roughness: 0.7 });
-  const shutter = flat(PALETTE.shutterGreen, { roughness: 0.8 });
-  const bark = flat(PALETTE.trunkBark, { roughness: 0.9 });
-
-  const d0 = rail.distanceToWaypoint('brouillards');
-  const FROM = d0 - 11, TO = d0 + 10;
-
-  /** Frame at a distance along the rail, with the tangent levelled. */
-  const frame = (d) => {
-    const p = rail.positionAt(d);
-    const t = rail.tangentAt(d);
-    const level = new THREE.Vector3(t.x, 0, t.z).normalize();
-    const right = new THREE.Vector3(-level.z, 0, level.x);
-    return { p, level, right, yaw: Math.atan2(level.x, level.z) };
-  };
-  /** Put a mesh at `lateral` metres to `side` of the rail at `d`, facing it. */
-  const place = (mesh, d, side, lateral, up) => {
-    const f = frame(d);
-    mesh.position.set(
-      f.p.x + f.right.x * side * lateral, f.p.y + up,
-      f.p.z + f.right.z * side * lateral);
-    mesh.rotation.y = f.yaw;
-    g.add(mesh);
-    return mesh;
-  };
-  const setback = (d) => Math.max(3.0, rail.widthAt(d) * 0.5);
-
-  // --- west flank: the château's garden wall, railings and trees -----------
-  // Panels overlap by 20% (2.4 m of wall every 2.0 m). A curving run of
-  // straight segments opens a wedge at every joint on the outside of the bend,
-  // and a garden wall with daylight through its joints reads as a fence.
-  for (let d = FROM; d < TO; d += 2.0) {
-    const off = setback(d) + 0.4;
-    const w = place(new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.3, 2.4), stone), d, 1, off, 1.15);
-    w.castShadow = w.receiveShadow = true;
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 2.4), stone), d, 1, off, 2.37);
-    for (let k = 0; k < 2; k++) {
-      place(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), iron), d + k, 1, off, 2.9);
-    }
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.4), iron), d, 1, off, 3.33);
-  }
-  // Trees behind the wall. Deep green shade on this flank against sun on the
-  // other is the whole character of the alley.
-  for (let i = 0; i < 5; i++) {
-    const d = FROM + 2 + i * 4.2;
-    const h = 6.5 + rnd() * 2.5;
-    const off = setback(d) + 3.2 + rnd() * 1.5;
-    const tr = place(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, h, 6), bark), d, 1, off, h / 2);
-    tr.castShadow = true;
-    const cr = place(new THREE.Mesh(
-      new THREE.IcosahedronGeometry(2.6 + rnd() * 0.8, 0),
-      flat(i % 2 ? PALETTE.foliageDeep : PALETTE.foliageMid, { roughness: 1 })),
-      d, 1, off, h + 1.2);
-    cr.castShadow = true;
-  }
-  // The château itself, set well back behind the garden, with its pediment.
-  const dc = d0 + 1;
-  const back = setback(dc) + 11.5;
-  const body = place(new THREE.Mesh(new THREE.BoxGeometry(13, 9.5, 11), render), dc, 1, back, 4.75);
-  body.castShadow = body.receiveShadow = true;
-  place(new THREE.Mesh(new THREE.BoxGeometry(13.6, 0.5, 11.6), slate), dc, 1, back, 9.75).castShadow = true;
-  const ped = place(new THREE.Mesh(new THREE.ConeGeometry(3.4, 1.9, 3), render), dc, 1, back - 5.6, 10.3);
-  ped.rotation.set(Math.PI / 2, 0, ped.rotation.y + Math.PI / 2);
-  ped.scale.set(1, 0.22, 1);
-  ped.castShadow = true;
-  for (let f = 0; f < 3; f++) {
-    for (let i = 0; i < 3; i++) {
-      place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 0.9), shutter),
-        dc - 3.4 + i * 3.4, 1, back - 5.5, 2.1 + f * 3.0);
-    }
-  }
-
-  // --- east flank: low pavilions, two and three storeys -------------------
-  //
-  // SHALLOWER AND WITH FACES ON THEM. The first pass made these nine metres
-  // deep with a single shutter each, and at the width of this alley that is
-  // not a house, it is a blank slab filling half the frame. What makes a small
-  // Montmartre pavilion read is that it is SMALL — a narrow frontage, a low
-  // roof with an overhang that casts a line, a door, and shutters in pairs.
-  const door = flat(PALETTE.shutterBlue, { roughness: 0.75 });
-  let d = FROM + 1;
-  for (let i = 0; i < 5 && d < TO; i++) {
-    const len = 4.4 + rnd() * 2.2;
-    const floors = rnd() < 0.5 ? 2 : 3;
-    const h = floors * 2.85;
-    const depth = 5.5 + rnd() * 1.5;
-    const off = setback(d + len / 2) + 0.7 + depth / 2;
-    const face = off - depth / 2 - 0.08;
-    const mid = d + len / 2;
-    const wallMat = flat(
-      [PALETTE.plasterCream, PALETTE.plasterOchre, PALETTE.limestoneMid,
-       PALETTE.limestoneLit][i % 4],
-      { roughness: 0.92 });
-    const b = place(new THREE.Mesh(new THREE.BoxGeometry(depth, h, len), wallMat),
-      mid, -1, off, h / 2);
-    b.castShadow = b.receiveShadow = true;
-    // Roof with a real overhang, so the top of each house draws a hard line.
-    place(new THREE.Mesh(new THREE.BoxGeometry(depth + 0.7, 0.42, len + 0.6), slate),
-      mid, -1, off, h + 0.21).castShadow = true;
-    // A door at ground level and shutters in pairs above it.
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.05, 0.95), door),
-      mid - len * 0.22, -1, face, 1.03);
-    for (let f = 1; f < floors; f++) {
-      for (const k of [-0.26, 0.26]) {
-        place(new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.8), shutter),
-          mid + len * k, -1, face, 1.6 + f * 2.85);
-      }
-    }
-    // A chimney, because every one of these has one and it breaks the roofline.
-    place(new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.1, 0.6),
-      flat(PALETTE.chimneyTerra, { roughness: 0.9 })),
-      mid + len * 0.3, -1, off + 1.2, h + 0.85).castShadow = true;
-    d += len + 0.5 + rnd() * 0.8;
-  }
   return g;
 }
 
@@ -766,36 +530,6 @@ function buildSacreCoeur() {
   return g;
 }
 
-/** Saint-Jean-de-Montmartre: red brick over concrete, on Place des Abbesses. */
-function buildSaintJean() {
-  const g = new THREE.Group();
-  g.name = 'st_jean';
-  const brick = flat(PALETTE.chimneyTerra, { roughness: 0.92 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(16, 19, 24), brick);
-  body.position.y = 9.5;
-  body.castShadow = body.receiveShadow = true;
-  g.add(body);
-
-  // The two slim towers and the big arched west window between them.
-  for (const s of [-1, 1]) {
-    const t = new THREE.Mesh(new THREE.BoxGeometry(3.6, 26, 3.6), brick);
-    t.position.set(s * 6.2, 13, 12);
-    t.castShadow = true;
-    g.add(t);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(2.7, 3.2, 4), brick);
-    cap.rotation.y = Math.PI / 4;
-    cap.position.set(s * 6.2, 27.6, 12);
-    g.add(cap);
-  }
-  const arch = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.6, 12, 1, false, 0, Math.PI),
-    flat(PALETTE.guimardAmber, { roughness: 0.3 }));
-  arch.rotation.x = Math.PI / 2;
-  arch.rotation.z = Math.PI;
-  arch.position.set(0, 13, 12.2);
-  g.add(arch);
-  return g;
-}
-
 /**
  * The Abbesses édicule: Guimard, cast iron, amber glass.
  *
@@ -870,34 +604,6 @@ function buildGuimardEdicule() {
   return g;
 }
 
-/** Place Émile-Goudeau's Bateau-Lavoir frontage: big north-lit studio glass. */
-function buildBateauLavoir() {
-  const g = new THREE.Group();
-  g.name = 'bateau_lavoir';
-  const body = new THREE.Mesh(new THREE.BoxGeometry(17, 9, 10),
-    flat(PALETTE.plasterGrey, { roughness: 0.92 }));
-  body.position.y = 4.5;
-  body.castShadow = body.receiveShadow = true;
-  g.add(body);
-
-  const glassMat = flat(PALETTE.slateDark, { roughness: 0.22, metalness: 0.15 });
-  for (let i = 0; i < 4; i++) {
-    const w = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.4, 0.14), glassMat);
-    w.position.set(-6 + i * 4, 6.0, 5.05);
-    g.add(w);
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(2.9, 3.7, 0.08),
-      flat(PALETTE.ironwork, { roughness: 0.5 }));
-    frame.position.set(-6 + i * 4, 6.0, 5.0);
-    g.add(frame);
-  }
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(17.4, 0.4, 10.4),
-    flat(PALETTE.zincShadow, { roughness: 0.6, metalness: 0.3 }));
-  roof.position.y = 9.2;
-  roof.castShadow = true;
-  g.add(roof);
-  return g;
-}
-
 /** A Wallace fountain. Dark green, four caryatids, a little dome. */
 export function buildWallaceFountain() {
   const g = new THREE.Group();
@@ -952,49 +658,6 @@ function buildMurDesJeTaime(rnd = Math.random) {
     frag.position.set(-5 + rnd() * 10, 0.9 + rnd() * 2.6, 0.23);
     frag.rotation.z = rnd() * 0.5;
     g.add(frag);
-  }
-  return g;
-}
-
-/** Café terrace: awning, tables, rattan chairs. Le Refuge at the Lamarck stairs. */
-function buildCafeTerrace() {
-  const g = new THREE.Group();
-  g.name = 'cafe';
-  const body = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 9),
-    flat(PALETTE.plasterCream, { roughness: 0.9 }));
-  body.position.y = 6;
-  body.castShadow = body.receiveShadow = true;
-  g.add(body);
-
-  const awning = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.14, 2.6),
-    flat(PALETTE.awningRed, { roughness: 0.95 }));
-  awning.position.set(0, 3.5, 5.6);
-  awning.rotation.x = -0.16;
-  awning.castShadow = true;
-  g.add(awning);
-
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(8.4, 2.6, 0.12),
-    flat(PALETTE.slateDark, { roughness: 0.25 }));
-  glass.position.set(0, 1.9, 4.55);
-  g.add(glass);
-
-  const tableMat = flat(PALETTE.trunkBark, { roughness: 0.8 });
-  const chairMat = flat(PALETTE.plasterOchre, { roughness: 0.85 });
-  for (let i = 0; i < 4; i++) {
-    const x = -3.6 + i * 2.4;
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 8), tableMat);
-    top.position.set(x, 0.74, 6.4);
-    top.castShadow = true;
-    g.add(top);
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.72, 6), tableMat);
-    leg.position.set(x, 0.36, 6.4);
-    g.add(leg);
-    for (const s of [-1, 1]) {
-      const ch = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.85, 0.42), chairMat);
-      ch.position.set(x + s * 0.75, 0.45, 6.4);
-      ch.castShadow = true;
-      g.add(ch);
-    }
   }
   return g;
 }
