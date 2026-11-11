@@ -288,13 +288,18 @@ function buildBollards(rail, frames) {
   // survey photos. Grade over 7%, both kerbs, a two-metre panel with a gap
   // every third one for crossing.
   const rails = [];
+  const RAILED = [['s_girardon_3', 'moulin_galette']];
+  const spans = RAILED.map(([a, b]) => { try { return [rail.distanceToWaypoint(a), rail.distanceToWaypoint(b)]; } catch { return [0, -1]; } });
+  const railed = (d) => spans.some(([a, b]) => d >= Math.min(a, b) && d <= Math.max(a, b));
   const bar = new THREE.BoxGeometry(0.025, 0.8, 0.025);
   const rl = new THREE.BoxGeometry(0.035, 0.04, 2.0);
   for (let i = 2; i < frames.length - 2; i += 2) {
     const f = frames[i], g0 = frames[i - 2], g1 = frames[i + 2];
     if (f.surf !== 'sett' || onStairs(f.d)) continue;
-    const grade = Math.abs(g1.p.y - g0.p.y) / Math.max(0.1, g1.d - g0.d);
-    if (grade < 0.07 || (f.halfWidth + f.pavement) * 2 >= 12.5) continue;
+    // Only where the survey photographs show them: rue Girardon above Place
+    // Marcel-Aymé and rue Lepic. A steepness rule also caught the mouth of
+    // rue d'Orchampt, which has none.
+    if (!railed(f.d)) continue;
     if (Math.floor(f.d / 2) % 3 === 2) continue;
     const yaw = Math.atan2(f.t.x, f.t.z);
     const pitch = Math.atan2(g1.p.y - g0.p.y, g1.d - g0.d);

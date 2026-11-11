@@ -1,0 +1,206 @@
+{
+ "about": "Facades recorded from the Ville de Paris survey photographs (tools/geo/references.json), keyed '<building id>:<edge>' as tools/geo/facade_overlay.py labels them. Positions are fractions of the wall from its first corner; see drawRecordedGround in src/world/realbuildings.js.",
+ "facades": {
+  "245179356:2": {
+   "src": "rue_abbesses~right",
+   "note": "Le Saint-Jean, 23 rue des Abbesses",
+   "wall": "#EFE7D6",
+   "floors": 2,
+   "groundH": 4.2,
+   "bays": [
+    0.08,
+    0.2,
+    0.335,
+    0.466,
+    0.597,
+    0.727,
+    0.858
+   ],
+   "ww": 0.95,
+   "wh": 1.6,
+   "shutters": null,
+   "boxes": [
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "2:4",
+    "2:5",
+    "2:6"
+   ],
+   "dormers": [
+    0.33,
+    0.7
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.99,
+     "col": "#2E3A2E",
+     "awning": "#ECE6D6",
+     "glass": "#3E3A34"
+    }
+   ],
+   "whRows": {
+    "1": 1.1,
+    "2": 1.6
+   }
+  },
+  "245179356:1": {
+   "src": "rue_abbesses~right",
+   "note": "Le Saint-Jean, side on rue des Abbesses",
+   "floors": 2,
+   "groundH": 4.2,
+   "bays": [
+    0.06,
+    0.19,
+    0.32,
+    0.45,
+    0.58,
+    0.71,
+    0.84,
+    0.95
+   ],
+   "ww": 0.95,
+   "wh": 1.6,
+   "shutters": null,
+   "boxes": [
+    "2:4",
+    "2:5",
+    "2:6",
+    "2:7"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.55,
+     "t1": 0.99,
+     "col": "#2E3A2E",
+     "awning": "#ECE6D6",
+     "glass": "#3E3A34"
+    },
+    {
+     "k": "door",
+     "t": 0.3,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#2E3A5C"
+    }
+   ],
+   "whRows": {
+    "1": 1.1,
+    "2": 1.6
+   }
+  },
+  "245179513:3": {
+   "src": "emile_goudeau~left",
+   "note": "Corner on Place Emile-Goudeau",
+   "base": {
+    "h": 2.6,
+    "col": "#8E8578"
+   },
+   "floors": 4,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.7,
+   "shutters": "#D8D2C2",
+   "guards": true,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 1.2,
+     "bars": true,
+     "y": 1.8
+    }
+   ]
+  },
+  "245179512:5": {
+   "src": "emile_goudeau~left",
+   "base": {
+    "h": 2.6,
+    "col": "#8E8578"
+   },
+   "floors": 4,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.7,
+   "shutters": "#D8D2C2",
+   "guards": true,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.6,
+     "h": 0.9,
+     "bars": true,
+     "y": 2.2
+    }
+   ]
+  },
+  "245180031:3": {
+   "src": "maison_dalida~left, s_orchampt_1c~left",
+   "note": "No. 16 rue d'Orchampt",
+   "wall": "#D9C6A4",
+   "base": {
+    "h": 1.0,
+    "col": "#A8A49D"
+   },
+   "floors": 3,
+   "groundH": 3.8,
+   "bays": [
+    0.24,
+    0.53,
+    0.79
+   ],
+   "ww": 1.3,
+   "wh": 2.1,
+   "shutters": null,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "2:0",
+    "2:1",
+    "2:2",
+    "3:0",
+    "3:1",
+    "3:2"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.24,
+     "w": 2.1,
+     "h": 2.4,
+     "shut": "#ECEAE4",
+     "y": 1.9
+    },
+    {
+     "k": "door",
+     "t": 0.53,
+     "w": 1.45,
+     "h": 2.9,
+     "col": "#6B4A32"
+    },
+    {
+     "k": "win",
+     "t": 0.79,
+     "w": 1.7,
+     "h": 2.1,
+     "bars": true,
+     "y": 2.0
+    }
+   ]
+  }
+ },
+ "walls": {
+  "245179479": "#ECE4D2"
+ }
+}
