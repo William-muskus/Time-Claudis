@@ -35,10 +35,10 @@ const c = (hex) => new THREE.Color(hex);
 
 export const PALETTE = {
   // --- sky and atmosphere -------------------------------------------------
-  skyZenith:    c('#7EA7CF'),   // cerulean overhead. Lifted from #2E5A8C: that
+  skyZenith:    c('#9DB6CF'),   // cerulean overhead. Lifted from #2E5A8C: that
                                 //  was a dusk blue and it dragged the whole sky,
                                 //  and the hemisphere fill that samples it, toward night.
-  skyHorizon:   c('#E4EAEE'),   // molten gold at the rooftops
+  skyHorizon:   c('#EEF0F0'),   // molten gold at the rooftops
   // The hemisphere's lower half. Desaturated from #A57F5E: a vertical wall
   // receives roughly a 50/50 mix of sky and ground from a hemisphere light, so
   // a strongly warm ground colour cancels the blue and leaves shadowed façades
@@ -95,14 +95,14 @@ export const PALETTE = {
   stairStone:   c('#B3ACA0'),
 
   // --- planting -----------------------------------------------------------
-  foliageSun:   c('#6F8A45'),
-  foliageMid:   c('#4F6B35'),
+  foliageSun:   c('#7B9550'),
+  foliageMid:   c('#5B773F'),
   // Lifted from #3D4A2A. At that value a shaded crown came through the grade
   // at around 25/255 against a 200/255 sky and read as a hole punched in the
   // frame rather than as a tree. Foliage is the only large organic mass in a
   // world of flat stone, so when it goes to silhouette the picture loses the
   // one thing that was not architecture.
-  foliageDeep:  c('#3C5428'),
+  foliageDeep:  c('#4A6533'),
   trunkBark:    c('#4E4438'),
   ivyGreen:     c('#3F5A2F'),
 

@@ -13,7 +13,7 @@ import { buildRealCity, sideStreetAnchors } from './realbuildings.js';
 import { buildTerrain } from './terrain.js';
 import { buildRealTrees, buildRealFurniture, buildGardenTrees } from './realtrees.js';
 import { buildBoundaries } from './boundaries.js';
-import { buildParkedVehicles } from './traffic.js';
+import { buildParkedVehicles, buildTerraces } from './traffic.js';
 
 /**
  * Assembles Montmartre from the survey.
@@ -71,6 +71,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   root.add(buildProps(rail, rng, assets));
   root.add(buildCover(rail, rng));
   root.add(buildParkedVehicles(rail));
+  root.add(buildTerraces(rail, near));
 
   const sky = buildSky();
   sky.userData.dynamic = true;   // never batched; it tracks the camera

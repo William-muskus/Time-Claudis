@@ -214,7 +214,7 @@ ST_JEAN = L(2.3379083, 48.8841996)
 
 
 def church_style(poly):
-    return "brick" if poly.buffer(2).contains(Point(*ST_JEAN)) else "stone"
+    return "redbrick" if poly.buffer(2).contains(Point(*ST_JEAN)) else "stone"
 
 
 def roof_kind(code, floors, area, short):

@@ -30,6 +30,8 @@ const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : d; };
 const OUT = resolve(arg('out', join(ROOT, 'artifacts/compare')));
 const ONLY = arg('only', null);
+/** Rebuild the contact sheets from renders already on disk. */
+const SHEETS_ONLY = argv.includes('--sheets-only');
 // The survey rig's camera height. Immergis's backpack/vehicle frames sit a
 // little above a pedestrian's eye; matching it matters more than matching the
 // player, because the point is to line up with the photo.
@@ -78,9 +80,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 675 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-await page.goto(`http://localhost:${port}/?demo=1&fixed=${1 / 60}`, { waitUntil: 'load', timeout: 90000 });
-await page.waitForFunction(() => window.__ready === true, { timeout: 90000 });
-await page.evaluate(async () => {
+if (!SHEETS_ONLY) await page.goto(`http://localhost:${port}/?demo=1&fixed=${1 / 60}`, { waitUntil: 'load', timeout: 90000 });
+if (!SHEETS_ONLY) await page.waitForFunction(() => window.__ready === true, { timeout: 90000 });
+if (!SHEETS_ONLY) await page.evaluate(async () => {
   for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(() => r()));
   window.__tour.clearHud();
   window.__tour.freeze(true);
@@ -89,7 +91,7 @@ await page.evaluate(async () => {
 
 const sheet = await browser.newPage({ viewport: { width: 1280, height: 1380 } });
 let n = 0;
-for (const r of refs) {
+for (const r of SHEETS_ONLY ? [] : refs) {
   n++;
   await page.evaluate((p) => window.__tour.pose(p), {
     lat: r.lat, lon: r.lon, eye: EYE, heading: r.heading, hfov: r.hfov });
@@ -119,7 +121,9 @@ for (let k = 0; k < refs.length; k += PER) {
       <img src="http://localhost:${port}/__out/game/${r.name}.png?${Date.now()}" style="display:block;width:426px;height:225px">
     </div>`).join('');
   await sheet.setViewportSize({ width: 1282, height: 980 });
-  await sheet.setContent(`<html><body style="margin:0;background:#111">${cells}</body></html>`, { waitUntil: 'load' });
+  // font-size 0 on the body: the whitespace between inline blocks is a
+  // character wide, and three 426 px cells plus two spaces overflow 1282 px.
+  await sheet.setContent(`<html><body style="margin:0;background:#111;font-size:0">${cells}</body></html>`, { waitUntil: 'load' });
   await sheet.screenshot({ path: join(OUT, `sheet_${String(k / PER + 1).padStart(2, '0')}.png`) });
 }
 

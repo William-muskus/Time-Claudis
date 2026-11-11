@@ -166,6 +166,23 @@ export class Renderer {
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(this.renderPass);
 
+    // NaN GUARD, ahead of bloom. A single non-finite pixel from the world
+    // pass (a flat-shaded triangle seen exactly edge-on gives a zero-length
+    // derivative normal) is spread by the bloom's blur chain into a black
+    // rectangle covering half the screen. Found by tools/verify/compare.mjs
+    // on rue Norvins, where it blacked out the right half of the frame. One
+    // bad pixel becomes one dark pixel instead.
+    this.composer.addPass(new ShaderPass({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D(tDiffuse, vUv);
+          if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+          gl_FragColor = vec4(clamp(c.rgb, 0.0, 64.0), c.a);
+        }`,
+    }));
+
     // Bloom, restrained. The telegraph flash, the tracers and the sun's halo
     // need to bloom; the limestone must not. The threshold sits just under
     // pure white for that reason — at 0.86 the street lanterns smeared into

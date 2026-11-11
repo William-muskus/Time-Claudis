@@ -46,7 +46,11 @@ const WALL = {
   grey: PALETTE.plasterGrey,
   stone: PALETTE.limestoneLit,
   meuliere: PALETTE.limestoneMid,
-  brick: new THREE.Color('#A97A65'),   // the 1920s brick-and-render blocks, faded
+  // Montmartre's bare brick is the pale buff brick of the 1900-30 blocks
+  // (the Pharmacie du Bateau-Lavoir's corner, rue Ravignan), not red; the
+  // one red-brick building on the route is Saint-Jean.
+  brick: new THREE.Color('#CDB896'),
+  redbrick: new THREE.Color('#A0523E'),   // the 1920s brick-and-render blocks, faded
   wood: new THREE.Color('#9C7A5A'),
 };
 const ROOF = {
@@ -73,7 +77,18 @@ const AWNING = {
   shop: [PALETTE.awningRed, PALETTE.awningGreen, PALETTE.awningCream, new THREE.Color('#2E3A5C'),
     PALETTE.plasterOchre, new THREE.Color('#5C2E4A')],
 };
-const GLASS = new THREE.Color('#2A2E33');
+// Window glass in daylight reflects the sky and the facade opposite: a mid
+// grey, not black. As near-black every window read as a slot cut through
+// the wall (compare.mjs, rue d'Orchampt and rue Lepic).
+const GLASS = new THREE.Color('#59626B');
+// Painted shopfronts ("devantures"), from the survey photos: navy, bottle
+// green, black, oxblood, varnished wood, and the odd cream.
+const DEVANTURE = [new THREE.Color('#24324A'), new THREE.Color('#233D30'), new THREE.Color('#1E1F21'),
+  new THREE.Color('#5A2124'), new THREE.Color('#6B4A32'), new THREE.Color('#24324A'), new THREE.Color('#D9D2C2')];
+const WOOD_DOOR = [new THREE.Color('#6B4A32'), new THREE.Color('#5A3B26'), new THREE.Color('#7A5638')];
+// Old houses on the Butte sit on a base of exposed rubble or dressed stone,
+// a metre or so high, darker than the render above it.
+const RUBBLE_BASE = new THREE.Color('#B4A487');
 const GLASS_SHOP = new THREE.Color('#2F3740');
 const TRIM = PALETTE.limestoneLit;
 const SOCLE = PALETTE.limestoneDeep;
@@ -381,8 +396,11 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
 
       if (!detailed) continue;
 
-      // Socle and the band over the ground floor.
-      fam.trim.box(at(len / 2, streetY + 0.3, 0.05), u, up, w, len / 2, 0.32, 0.08, SOCLE);
+      // Socle and the band over the ground floor. Rendered houses (most of
+      // the old village) get the taller exposed-stone base they have in life.
+      const tallBase = b.s !== 'stone' && hash(seed, 13) < 0.55;
+      const sh = tallBase ? 0.55 + hash(seed, 14) * 0.45 : 0.32;
+      fam.trim.box(at(len / 2, streetY + sh - 0.02, 0.05), u, up, w, len / 2, sh, 0.08, tallBase ? RUBBLE_BASE : SOCLE);
       if (upper > 0) {
         fam.trim.box(at(len / 2, streetY + groundH + 0.05, 0.1), u, up, w, len / 2 + 0.05, 0.1, 0.14, TRIM);
       }
@@ -397,22 +415,31 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           const ac = pal[Math.floor(hash(seed, 7 + Math.round(t * 50)) * pal.length)];
           const gy = streetY + 0.35;
           const gh = groundH * 0.72;
-          fam.glass.quad(at(c - sw / 2, gy, 0.05), at(c + sw / 2, gy, 0.05),
-            at(c + sw / 2, gy + gh, 0.05), at(c - sw / 2, gy + gh, 0.05), GLASS_SHOP);
-          // Fascia with the shop's colour, then the awning sloping out over
-          // the pavement — the cue that reads "shop" at forty metres.
-          fam.trim.box(at(c, gy + gh + 0.32, 0.1), u, up, w, sw / 2 + 0.15, 0.3, 0.1, shade(ac, 0.8));
-          const out = Math.min(1.5, 0.9 + hash(seed, 9) * 0.6);
-          const yTop = gy + gh + 0.05, yBot = yTop - 0.55;
-          const p0 = at(c - sw / 2, yTop, 0.12), p1 = at(c + sw / 2, yTop, 0.12);
-          const p2 = at(c + sw / 2, yBot, out), p3 = at(c - sw / 2, yBot, out);
-          fam.trim.quad(p3, p2, p1, p0, ac);
-          fam.trim.quad(p0, p1, p2, p3, shade(ac, 0.7));
-          // The valance: bottom-left, bottom-right, top-right, top-left as
-          // seen from the street, or it is wound away from the viewer and
-          // simply does not render.
-          fam.trim.quad(at(c - sw / 2, yBot - 0.22, out), at(c + sw / 2, yBot - 0.22, out),
-            at(c + sw / 2, yBot, out), at(c - sw / 2, yBot, out), shade(ac, 0.9));
+          // The devanture: a painted timber shopfront proud of the wall, with
+          // pilasters, a deep fascia and a stall riser under the glass. This
+          // is what reads "shop" in Paris; the awning is optional and about
+          // half of the shops on the route have none.
+          const dv = DEVANTURE[Math.floor(hash(seed, 17 + Math.round(t * 50)) * DEVANTURE.length)];
+          const D = 0.16;
+          fam.trim.box(at(c, gy + gh + 0.34, D), u, up, w, sw / 2 + 0.22, 0.34, 0.08, dv);
+          for (const sx of [-1, 1]) fam.trim.box(at(c + sx * (sw / 2 + 0.1), streetY + (gh + 0.7) / 2, D), u, up, w, 0.12, (gh + 0.7) / 2, 0.08, dv);
+          fam.trim.box(at(c, streetY + 0.3, D), u, up, w, sw / 2, 0.3, 0.06, dv);
+          fam.glass.quad(at(c - sw / 2, gy + 0.25, 0.12), at(c + sw / 2, gy + 0.25, 0.12),
+            at(c + sw / 2, gy + gh, 0.12), at(c - sw / 2, gy + gh, 0.12), GLASS_SHOP);
+          // Glazing bars dividing the window into the usual three lights.
+          for (const k of [-1, 1]) rect(fam.trim, c + k * sw / 6, gy + 0.25 + (gh - 0.25) / 2, 0.04, (gh - 0.25) / 2, 0.14, dv);
+          if (hash(seed, 19 + Math.round(t * 50)) < 0.5 || kind === 'cafe' || kind === 'restaurant' || kind === 'bar') {
+            const out = Math.min(1.5, 0.9 + hash(seed, 9) * 0.6);
+            const yTop = gy + gh + 0.05, yBot = yTop - 0.55;
+            const p0 = at(c - sw / 2, yTop, 0.24), p1 = at(c + sw / 2, yTop, 0.24);
+            const p2 = at(c + sw / 2, yBot, out), p3 = at(c - sw / 2, yBot, out);
+            fam.trim.quad(p3, p2, p1, p0, ac);
+            fam.trim.quad(p0, p1, p2, p3, shade(ac, 0.7));
+            // The valance: bottom-left, bottom-right, top-right, top-left as
+            // seen from the street, or it is wound away from the viewer.
+            fam.trim.quad(at(c - sw / 2, yBot - 0.22, out), at(c + sw / 2, yBot - 0.22, out),
+              at(c + sw / 2, yBot, out), at(c - sw / 2, yBot, out), shade(ac, 0.9));
+          }
           if (anchored) pushAnchor('door', at(c, streetY, 0.7), `s${Math.round(t * 100)}`);
         }
       } else if (len > 3.2) {
@@ -420,7 +447,10 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
         const cochere = len > 11 && H > 11 && hash(seed, 12 + ei) < 0.5;
         const dw = cochere ? 2.8 : 1.25, dh = Math.min(groundH - 0.2, cochere ? 3.6 : 2.55);
         const c = Math.min(len - dw / 2 - 0.3, Math.max(dw / 2 + 0.3, tDoor * len));
-        fam.trim.box(at(c, streetY + dh / 2, 0.06), u, up, w, dw / 2, dh / 2, 0.06, doorCol);
+        // Carriage doors are varnished or painted wood, nearly always.
+        const dc = cochere ? WOOD_DOOR[Math.floor(hash(seed, 15 + ei) * WOOD_DOOR.length)] : doorCol;
+        fam.trim.box(at(c, streetY + dh / 2, 0.06), u, up, w, dw / 2, dh / 2, 0.06, dc);
+        if (cochere) rect(fam.trim, c, streetY + dh / 2, 0.03, dh / 2 - 0.05, 0.13, shade(dc, 0.7));
         fam.trim.box(at(c, streetY + dh + 0.12, 0.09), u, up, w, dw / 2 + 0.18, 0.12, 0.1, TRIM);
         if (anchored) pushAnchor('door', at(c, streetY, 0.6), 'd');
         // Ground-floor windows either side of the door, shuttered or barred.

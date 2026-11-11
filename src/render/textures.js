@@ -133,52 +133,57 @@ export function surfaceTexture(surface) {
  */
 export const SURFACE_TINT = {
   sett: new THREE.Color('#9A948B'),
-  asphalt: new THREE.Color('#6A6B6D'),
+  asphalt: new THREE.Color('#8E8B86'),   // worn Paris asphalt is a pale warm grey in daylight
   paving: new THREE.Color('#B9B4AA'),
   gravel: new THREE.Color('#B4A68E'),
 };
 
 /**
- * Rubble masonry: the irregular limestone and gypsum blocks of every old
- * garden wall on the Butte, pointed with pale mortar. Cells are a jittered
- * grid read as Voronoi, so the stones are irregular but tile seamlessly.
- * One tile is 1.6 m.
+ * Coursed rubble: the roughly squared limestone blocks of every old garden
+ * wall on the Butte (rue d'Orchampt, rue Girardon), laid in rough courses
+ * of varying height with pale mortar joints. The first version was a
+ * Voronoi "crazy paving" that read as a patio, not a wall. One tile is 1.6 m.
  */
 export function rubbleTexture() {
   if (cache.has('rubble')) return cache.get('rubble');
-  const N = 128, G = 8;              // 8 x 8 stones per tile
-  const cell = N / G;
-  const pts = [];
-  for (let j = 0; j < G; j++) {
-    for (let i = 0; i < G; i++) {
-      pts.push({ x: (i + 0.15 + rnd(i, j) * 0.7) * cell, y: (j + 0.2 + rnd(j + 50, i) * 0.6) * cell,
-        tone: 0.78 + rnd(i * 13 + j, 5) * 0.32, warm: (rnd(i, j * 7 + 1) - 0.4) * 0.12 });
-    }
-  }
+  const N = 128;
   const data = new Uint8Array(N * N * 4);
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      let d1 = Infinity, d2 = Infinity, best = null;
-      const ci = Math.floor(x / cell), cj = Math.floor(y / cell);
-      for (let dj = -1; dj <= 1; dj++) {
-        for (let di = -1; di <= 1; di++) {
-          const ii = (ci + di + G) % G, jj = (cj + dj + G) % G;
-          const p = pts[jj * G + ii];
-          // Wrap the cell's point into this neighbourhood so the tile is seamless.
-          const px = p.x + (ci + di - ii) * cell * 0 + (ci + di < 0 ? -N : ci + di >= G ? N : 0);
-          const py = p.y + (cj + dj < 0 ? -N : cj + dj >= G ? N : 0);
-          const d = Math.hypot(x - px, (y - py) * 1.35);   // stones are wider than tall
-          if (d < d1) { d2 = d1; d1 = d; best = p; } else if (d < d2) d2 = d;
+  const fill = (x, y, v, warm) => {
+    const i = (((y % N) + N) % N * N + (((x % N) + N) % N)) * 4;
+    data[i] = Math.min(255, 255 * v * (1 + warm));
+    data[i + 1] = Math.min(255, 255 * v);
+    data[i + 2] = Math.min(255, 255 * v * (1 - warm * 1.6));
+    data[i + 3] = 255;
+  };
+  // Mortar everywhere first.
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) fill(x, y, 1.02 + rnd(x, y) * 0.04, 0.02);
+  // Courses: heights 9-16 px (11-20 cm), summing to exactly N.
+  const courses = [];
+  let sum = 0;
+  while (sum < N - 16) { const h = 9 + Math.floor(rnd(courses.length, 77) * 8); courses.push(h); sum += h; }
+  courses[courses.length - 1] += N - sum;
+  let y0 = 0;
+  courses.forEach((h, r) => {
+    let x0 = Math.floor(rnd(r, 5) * N);
+    let made = 0;
+    while (made < N) {
+      const w = Math.min(N - made, 12 + Math.floor(rnd(r * 13 + made, 9) * 22));
+      const tone = 0.74 + rnd(r * 7 + made, 11) * 0.26;
+      const warm = 0.03 + rnd(made, r * 3 + 1) * 0.07;
+      // Irregular edges: each stone loses 0-2 px on each side, rounder corners.
+      const l = 1 + Math.floor(rnd(r, made + 1) * 2), rr = 1 + Math.floor(rnd(made, r + 2) * 2);
+      const t = 1 + Math.floor(rnd(r + 3, made) * 2), bb = 1 + Math.floor(rnd(made + 5, r) * 2);
+      for (let yy = t; yy < h - bb; yy++) {
+        for (let xx = l; xx < w - rr; xx++) {
+          const corner = (xx < l + 2 || xx > w - rr - 3) && (yy < t + 2 || yy > h - bb - 3);
+          if (corner && rnd(xx + made, yy + r) < 0.6) continue;
+          const shadeV = 1 - (yy / h) * 0.12;   // lit from above
+          fill(x0 + xx, y0 + yy, tone * shadeV * (0.92 + rnd(x0 + xx, y0 + yy) * 0.12), warm);
         }
       }
-      const mortar = d2 - d1 < 1.6;
-      const v = mortar ? 1.12 : best.tone * (0.93 + rnd(x, y) * 0.1) * (1 - Math.min(0.12, d1 / cell * 0.1));
-      const i4 = (y * N + x) * 4;
-      data[i4] = Math.min(255, 255 * v * (1 + (mortar ? 0 : best.warm)));
-      data[i4 + 1] = Math.min(255, 255 * v);
-      data[i4 + 2] = Math.min(255, 255 * v * (1 - (mortar ? 0.02 : best.warm)));
-      data[i4 + 3] = 255;
+      x0 += w; made += w;
     }
-  }
+    y0 += h;
+  });
   return finish(data, N, 'rubble', 1.6);
 }

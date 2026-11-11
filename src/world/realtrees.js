@@ -29,7 +29,7 @@ const SPECIES = {
   robinia:   { crown: new THREE.Color('#99A050'), lobes: 3, r: 0.28, sy: 0.9, bark: PALETTE.trunkBark },
   cypress:   { crown: new THREE.Color('#3E4E30'), lobes: 0, r: 0.12, sy: 1, bark: PALETTE.trunkBark },
   mulberry:  { crown: PALETTE.foliageMid, lobes: 2, r: 0.32, sy: 0.85, bark: PALETTE.trunkBark },
-  cherry:    { crown: new THREE.Color('#8A6B4E'), lobes: 2, r: 0.3, sy: 0.85, bark: new THREE.Color('#5A3A2E') },
+  cherry:    { crown: new THREE.Color('#6A8846'), lobes: 2, r: 0.3, sy: 0.85, bark: new THREE.Color('#5A3A2E') },   // green in summer, as in every survey frame
   olive:     { crown: new THREE.Color('#8C9478'), lobes: 2, r: 0.3, sy: 0.8, bark: new THREE.Color('#6E6658') },
   hornbeam:  { crown: PALETTE.foliageMid, lobes: 2, r: 0.3, sy: 1.0, bark: PALETTE.trunkBark },
   celtis:    { crown: PALETTE.foliageSun, lobes: 2, r: 0.3, sy: 0.9, bark: PALETTE.trunkBark },
@@ -60,14 +60,18 @@ function hash(i, k) {
  * in plain view, which is exactly how it is on Place Dalida.
  */
 function crownOccluder(spec, h, x, y, z) {
-  const trunkH = spec.lobes === 0 ? h * 0.12 : h * 0.42;
+  const trunkH = spec.lobes === 0 ? h * 0.12 : Math.max(h * 0.45, Math.min(4.5, h * 0.6));
   const r = spec.lobes === 0 ? h * spec.r * 0.6 : Math.max(0.9, h * spec.r) * 0.7;
   return polyOccluder([[x - r, z - r], [x - r, z + r], [x + r, z + r], [x + r, z - r]], y + trunkH + 0.3, y + h);
 }
 
 function buildTree(spec, h, i) {
   const g = new THREE.Group();
-  const trunkH = spec.lobes === 0 ? h * 0.12 : h * 0.42;
+  // Street and square trees in Paris are crown-lifted: a clear trunk to 4 m
+  // or more, so that buses pass and the crowns meet over the street. The
+  // first version started the crown at 42% of the height, which on a 9 m tree
+  // put a dark mass at eye level in every frame of every square.
+  const trunkH = spec.lobes === 0 ? h * 0.12 : Math.max(h * 0.45, Math.min(4.5, h * 0.6));
   const trunkR = Math.max(0.12, h * 0.022);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.8, trunkR, trunkH, 5), mat(spec.bark));
   trunk.position.y = trunkH / 2;
@@ -90,7 +94,8 @@ function buildTree(spec, h, i) {
     const lobe = new THREE.Mesh(new THREE.IcosahedronGeometry(R * (k === 0 ? 1 : 0.72), 0),
       mat(k === 0 ? col : col.clone().multiplyScalar(1.07)));
     lobe.position.set(Math.cos(a) * off, cy + (k === 0 ? 0 : R * 0.3), Math.sin(a) * off);
-    lobe.scale.y = spec.sy;
+    // Wider than tall, like a pollarded crown seen from the street.
+    lobe.scale.set(1.18, spec.sy * 0.82, 1.18);
     lobe.rotation.set(hash(i, 20 + k) * 3, hash(i, 30 + k) * 3, 0);
     lobe.castShadow = true;
     g.add(lobe);
