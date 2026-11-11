@@ -198,6 +198,355 @@
      "y": 2.0
     }
    ]
+  },
+  "245180365:4": {
+   "src": "s_girardon_3",
+   "note": "Les Cinq Marches, rue Girardon",
+   "wall": "#E9E1CF",
+   "floors": 4,
+   "groundH": 3.6,
+   "bays": [
+    0.2,
+    0.47,
+    0.74
+   ],
+   "ww": 1.2,
+   "wh": 2.0,
+   "shutters": null,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "2:0",
+    "2:1",
+    "2:2",
+    "3:0",
+    "3:1",
+    "3:2",
+    "4:0",
+    "4:1",
+    "4:2"
+   ],
+   "boxes": [
+    "1:1",
+    "1:2"
+   ],
+   "ground": [
+    {
+     "k": "rolling",
+     "t0": 0.05,
+     "t1": 0.9,
+     "h": 2.9,
+     "col": "#3F4246"
+    }
+   ]
+  },
+  "245180387:0": {
+   "src": "s_girardon_3",
+   "note": "Small house, rue Girardon, louvred shutters",
+   "wall": "#E6DFD2",
+   "base": {
+    "h": 0.8,
+    "col": "#B9B2A6"
+   },
+   "floors": 2,
+   "groundH": 3.0,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.6,
+   "shutters": "#BDB3A4",
+   "dormers": [
+    0.5
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.1,
+     "h": 1.4,
+     "bars": true
+    }
+   ]
+  },
+  "245180355:1": {
+   "src": "s_girardon_3",
+   "wall": "#E8E1D3",
+   "floors": 2,
+   "groundH": 3.0,
+   "bays": [
+    0.5
+   ],
+   "ww": 0.9,
+   "wh": 1.5,
+   "shutters": "#C9C0B2",
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 2.3,
+     "col": "#5B5E60"
+    }
+   ]
+  },
+  "245180055:7": {
+   "src": "orchampt_bend",
+   "note": "No. 7 rue d'Orchampt",
+   "wall": "#CDBFA8",
+   "base": {
+    "h": 2.4,
+    "col": "#B9AC97"
+   },
+   "floors": 2,
+   "groundH": 3.4,
+   "bays": [
+    0.575,
+    0.655
+   ],
+   "ww": 1.1,
+   "wh": 1.7,
+   "shutters": null,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.53,
+     "w": 0.8,
+     "h": 1.3,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.575,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E2DDD2"
+    },
+    {
+     "k": "door",
+     "t": 0.655,
+     "w": 1.5,
+     "h": 2.7,
+     "col": "#3F6B66"
+    }
+   ]
+  },
+  "245180023:1": {
+   "src": "orchampt_bend",
+   "note": "rue d'Orchampt, white block with lilac-grey louvres",
+   "wall": "#EEEAE2",
+   "base": {
+    "h": 0.6,
+    "col": "#CFCAC0"
+   },
+   "floors": 4,
+   "groundH": 3.2,
+   "bays": [
+    0.08,
+    0.245,
+    0.41,
+    0.575,
+    0.74,
+    0.905
+   ],
+   "ww": 1.05,
+   "wh": 1.8,
+   "shutters": "#CBBFC6",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.08,
+     "w": 1.1,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.245,
+     "w": 1.1,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "door",
+     "t": 0.41,
+     "w": 1.3,
+     "h": 2.6,
+     "col": "#3A3F44"
+    },
+    {
+     "k": "win",
+     "t": 0.575,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#CBBFC6"
+    },
+    {
+     "k": "win",
+     "t": 0.74,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#CBBFC6"
+    },
+    {
+     "k": "shop",
+     "t0": 0.84,
+     "t1": 0.99,
+     "col": "#2F3B33"
+    }
+   ]
+  },
+  "245179528:3": {
+   "src": "s_ravignan_1",
+   "note": "Gilles Marchal, foot of rue Ravignan",
+   "wall": "#F1ECE2",
+   "floors": 4,
+   "shutters": null,
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.45,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#3A3F44"
+    },
+    {
+     "k": "shop",
+     "t0": 0.62,
+     "t1": 0.99,
+     "col": "#EEEBE4",
+     "glass": "#5C5A55"
+    }
+   ]
+  },
+  "245179377:4": {
+   "src": "s_ravignan_1",
+   "note": "The wooden bistro on the corner of rue Ravignan",
+   "wall": "#F2EEE6",
+   "floors": 5,
+   "balcony": [
+    2,
+    5
+   ],
+   "shutters": null,
+   "guards": true,
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.3,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#2E3A5C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.5,
+     "t1": 0.99,
+     "col": "#6B3F22",
+     "awning": "#C8622E",
+     "glass": "#4A3A2C"
+    }
+   ]
+  },
+  "245179514:5": {
+   "src": "s_ravignan_1",
+   "note": "Rue Ravignan, blue-painted ground floor",
+   "wall": "#E6DCC4",
+   "base": {
+    "h": 2.6,
+    "col": "#2F4A6A"
+   },
+   "floors": 4,
+   "shutters": "#ECEAE4",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.35,
+     "w": 1.0,
+     "h": 1.5,
+     "bars": true,
+     "y": 1.6
+    },
+    {
+     "k": "door",
+     "t": 0.7,
+     "w": 1.2,
+     "h": 2.4,
+     "col": "#2F4A6A"
+    }
+   ]
+  },
+  "245180502:12": {
+   "src": "escalier_foot",
+   "note": "Haussmann corner at the foot of the Pierre-Dac steps: bakery on the corner",
+   "wall": "#E3D3B5",
+   "floors": 5,
+   "balcony": [
+    2,
+    5
+   ],
+   "shutters": null,
+   "guards": true,
+   "bays": [
+    0.1,
+    0.24,
+    0.38,
+    0.52,
+    0.66,
+    0.8,
+    0.93
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.1,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.24,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.38,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.52,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "cochere",
+     "t": 0.66,
+     "w": 2.4,
+     "h": 3.6,
+     "col": "#2A2622"
+    },
+    {
+     "k": "shop",
+     "t0": 0.75,
+     "t1": 0.92,
+     "col": "#1F3A30",
+     "glass": "#4E5550"
+    },
+    {
+     "k": "shop",
+     "t0": 0.945,
+     "t1": 0.995,
+     "col": "#1F3A30"
+    }
+   ]
   }
  },
  "walls": {

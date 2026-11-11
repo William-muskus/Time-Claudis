@@ -35,7 +35,6 @@ const PARKING = [
   { from: 'lamarck_station', to: 'escalier_foot', kind: 'cars', both: false },           // rue Caulaincourt
   { from: 's_caulaincourt', to: 'constantin_pecqueur', kind: 'cars', both: false },
   { from: 's_pecqueur', to: 's_pecqueur_2', kind: 'cars', both: false },                 // vans and cars at the kerb
-  { from: 's_girardon_3', to: 's_girardon_4', kind: 'scooters', both: false },
   { from: 's_orchampt_1c', to: 's_orchampt_2', kind: 'scooters', both: false },          // rue d'Orchampt, nose to the kerb
   { from: 'orchampt_bend', to: 's_orchampt_4', kind: 'mixed', both: false },
   { from: 'trois_freres', to: 'abbesses_corner', kind: 'cars', both: true },             // lower rue Ravignan, both kerbs
