@@ -185,27 +185,58 @@ function cafeTerrace() {
  * eye line, and it is glazed.
  */
 export function parkedCar(rnd = Math.random) {
+  // A side profile extruded across the car's width: bonnet, raked
+  // windscreen, roof, hatch. Low poly still, but it reads as a Clio or a
+  // 208 rather than as two boxes, which is what the survey photos are full of.
   const g = new THREE.Group();
-  const paints = ['#E9E7E2', '#2A2C30', '#8E9296', '#C9CCCE', '#6B1F24', '#2F3F55'];
+  const paints = ['#E9E7E2', '#2A2C30', '#8E9296', '#C9CCCE', '#6B1F24', '#2F3F55', '#E9E7E2', '#1D1E20'];
   const paint = flat(new THREE.Color(paints[Math.floor(rnd() * paints.length)]), { roughness: 0.35, metalness: 0.4 });
-  const glass = flat(new THREE.Color('#2C3238'), { roughness: 0.2, metalness: 0.3 });
+  const glass = flat(new THREE.Color('#3A4148'), { roughness: 0.15, metalness: 0.3 });
   const tyre = flat(new THREE.Color('#1C1C1E'), { roughness: 0.9 });
-  const L = 3.7, W = 1.66;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(W, 0.72, L), paint);
-  body.position.y = 0.62;
+  const lamp = flat(new THREE.Color('#E8E4D8'), { roughness: 0.3 });
+  const tail = flat(new THREE.Color('#8E1E1E'), { roughness: 0.3 });
+  const L = 3.9 + rnd() * 0.4, W = 1.72;
+  const h = L / 2;
+  // Profile in (z along the car, y up), front at -z.
+  const prof = new THREE.Shape([
+    new THREE.Vector2(-h, 0.32), new THREE.Vector2(-h, 0.72), new THREE.Vector2(-h + 0.9, 0.86),
+    new THREE.Vector2(-h + 1.55, 1.38), new THREE.Vector2(h - 0.55, 1.42), new THREE.Vector2(h - 0.12, 1.02),
+    new THREE.Vector2(h, 0.9), new THREE.Vector2(h, 0.32),
+  ]);
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(prof, { depth: W, bevelEnabled: false }), paint);
+  body.geometry.translate(0, 0, -W / 2);
+  body.rotation.y = Math.PI / 2;   // profile x -> world z, depth -> world x
   body.castShadow = body.receiveShadow = true;
   g.add(body);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(W - 0.12, 0.5, L * 0.52), glass);
-  cabin.position.set(0, 1.2, -0.1);
-  cabin.castShadow = true;
-  g.add(cabin);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(W - 0.16, 0.06, L * 0.46), paint);
-  roof.position.set(0, 1.48, -0.12);
-  g.add(roof);
+  // Side windows as a slightly proud dark band on each flank, and the screens.
+  for (const sx of [-1, 1]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.34, L * 0.46), glass);
+    win.position.set(sx * (W / 2 + 0.005), 1.12, 0.08);
+    g.add(win);
+  }
+  const ws = new THREE.Mesh(new THREE.BoxGeometry(W - 0.2, 0.62, 0.02), glass);
+  ws.position.set(0, 1.12, -h + 1.22);
+  ws.rotation.x = -0.68;
+  g.add(ws);
+  // Bumpers, lights, wheels.
+  const bumper = flat(new THREE.Color('#2B2C2E'), { roughness: 0.7 });
+  for (const z of [-h - 0.02, h + 0.02]) {
+    const bp = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.18, 0.1), bumper);
+    bp.position.set(0, 0.42, z);
+    g.add(bp);
+  }
+  for (const sx of [-1, 1]) {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.04), lamp);
+    hl.position.set(sx * (W / 2 - 0.25), 0.66, -h - 0.01);
+    g.add(hl);
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.04), tail);
+    tl.position.set(sx * (W / 2 - 0.15), 0.8, h + 0.01);
+    g.add(tl);
+  }
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 10), tyre);
     w.rotation.z = Math.PI / 2;
-    w.position.set(sx * (W / 2 - 0.08), 0.31, sz * (L / 2 - 0.62));
+    w.position.set(sx * (W / 2 - 0.06), 0.31, sz * (h - 0.68));
     g.add(w);
   }
   return g;

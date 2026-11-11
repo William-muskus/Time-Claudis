@@ -32,13 +32,23 @@ export function buildParkedVehicles(rail) {
   const stairs = STAIR_SEGMENTS.map((s) => {
     try { return [rail.distanceToWaypoint(s.from) - 4, rail.distanceToWaypoint(s.to) + 4]; } catch { return [0, -1]; }
   });
+  // The open squares on the walk: Constantin-Pecqueur, Dalida, Marcel-Aymé,
+  // Émile-Goudeau and the Abbesses square itself.
+  const SQUARES = ['constantin_pecqueur', 'place_dalida', 'marcel_ayme', 'emile_goudeau', 'place_abbesses', 's_place_1', 's_place_2'];
+  const sq = SQUARES.map((id) => { try { return rail.distanceToWaypoint(id); } catch { return -1e9; } });
+  const inSquare = (d) => sq.some((q) => Math.abs(q - d) < 12);
   let d = 8;
   while (d < rail.length - 8) {
     const width = rail.widthAt(d);
     const nearFight = fights.some((f) => Math.abs(f - d) < 14);
     const onStairs = stairs.some(([a, b]) => d >= a && d <= b);
-    if (width < 8.5 || width >= 12.5 || nearFight || onStairs) { d += 2; continue; }
-    const side = Math.floor(d / 43) % 2 ? 1 : -1;
+    // Survey widths are wall to wall and capped at 14 in the route, so a
+    // 14 m reading is a wide street (rue Ravignan, rue des Abbesses), not
+    // necessarily a square: only the waypoints that ARE squares are skipped.
+    if (width < 8.5 || inSquare(d) || nearFight || onStairs) { d += 2; continue; }
+    // Wide streets park on both sides, the way rue Ravignan does.
+    const both = width >= 11.5;
+    const side = both ? (Math.floor(d / 5.3) % 2 ? 1 : -1) : Math.floor(d / 43) % 2 ? 1 : -1;
     const p = rail.positionAt(d);
     const t = rail.tangentAt(d);
     const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
@@ -55,7 +65,7 @@ export function buildParkedVehicles(rail) {
     v.position.set(x, p.y + 0.02, z);
     v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);
     group.add(v);
-    d += isCar ? 4.6 + rnd() * 1.4 : 4.4;
+    d += (isCar ? 4.6 + rnd() * 1.4 : 4.4) / (both ? 2 : 1);
   }
   return group;
 }

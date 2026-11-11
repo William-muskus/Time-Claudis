@@ -90,7 +90,15 @@ const WOOD_DOOR = [new THREE.Color('#6B4A32'), new THREE.Color('#5A3B26'), new T
 // a metre or so high, darker than the render above it.
 const RUBBLE_BASE = new THREE.Color('#B4A487');
 const POT = new THREE.Color('#B0644A');   // terracotta chimney pots
-const GLASS_SHOP = new THREE.Color('#2F3740');
+const ZINC_PIPE = new THREE.Color('#B4B6B4');   // weathered zinc reads pale grey, not blue
+const PLATE_BLUE = new THREE.Color('#1F3E7A');   // Paris street-name enamel
+const PLATE_WHITE = new THREE.Color('#F2F2EE');
+const FLOWERS = [new THREE.Color('#C8383A'), new THREE.Color('#D46A8C'), new THREE.Color('#E8E2D6'), new THREE.Color('#C8383A')];
+const BOX_GREEN = new THREE.Color('#3F5A30');
+const FOLIAGE_BOX = new THREE.Color('#557A3A');
+// Shop windows in daylight show the lit interior and reflections: a mid
+// warm grey. Darker read as a closed shutter across every ground floor.
+const GLASS_SHOP = new THREE.Color('#6E6A62');
 const TRIM = PALETTE.limestoneLit;
 const SOCLE = PALETTE.limestoneDeep;
 const IRON = PALETTE.ironwork;
@@ -372,8 +380,16 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
 
       // Upper floors.
       let balconies = 0;
+      const stoneFace = b.s === 'stone';
+      const surround = shade(wallCol, stoneFace ? 1.06 : 1.04);
       for (let f = 1; f <= upper; f++) {
         const y0 = streetY + groundH + (f - 1) * floorH;
+        // String course at every floor of a cut-stone block: the horizontal
+        // rhythm of every Haussmann-era front on rue Caulaincourt and rue
+        // des Abbesses.
+        if (detailed && stoneFace && f > 1) {
+          fam.trim.box(at(len / 2, y0 + 0.02, 0.06), u, up, w, len / 2, 0.06, 0.07, surround);
+        }
         // French windows: tall and close, as on every street in the survey
         // photos. The first version's 1.2 x 1.85 m at a 3 m pitch read as a
         // prison block from twenty metres.
@@ -396,6 +412,14 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
             at(cx + ww / 2, wy + wh / 2, 0.04), at(cx - ww / 2, wy + wh / 2, 0.04), GLASS);
           if (!detailed) continue;
           fam.trim.box(at(cx, wy - wh / 2 - 0.07, 0.1), u, up, w, ww / 2 + 0.1, 0.07, 0.12, TRIM);
+          // The surround: a moulded stone architrave with a keystone on the
+          // stone blocks, a flat painted band on the rendered houses.
+          {
+            const bw = stoneFace ? 0.14 : 0.1;
+            rect(fam.trim, cx, wy + wh / 2 + bw / 2, ww / 2 + bw, bw / 2, 0.03, surround);
+            for (const sx of [-1, 1]) rect(fam.trim, cx + sx * (ww / 2 + bw / 2), wy, bw / 2, wh / 2, 0.03, surround);
+            if (stoneFace) fam.trim.box(at(cx, wy + wh / 2 + 0.16, 0.06), u, up, w, 0.13, 0.17, 0.06, surround);
+          }
           // White joinery: the frame and the glazing bar are what make a dark
           // rectangle read as a Paris window rather than a hole.
           rect(fam.trim, cx, wy + wh / 2 - 0.04, ww / 2, 0.05, 0.06, FRAME);
@@ -412,10 +436,23 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
             for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * ww / 5, ry + 0.54, 0.012, 0.32, 0.12, IRON);
           }
           if (hasShutters && !grand) {
+            // Persiennes: louvred, folded back against the wall. The slats
+            // read as fine dark lines, three per leaf at this distance.
+            const louvre = shade(shutterCol, 0.72);
             for (const s of [-1, 1]) {
-              fam.trim.box(at(cx + s * (ww / 2 + ww * 0.27), wy, 0.07), u, up, w,
-                ww * 0.26, wh / 2, 0.04, shutterCol);
+              const sx = cx + s * (ww / 2 + ww * 0.27);
+              fam.trim.box(at(sx, wy, 0.07), u, up, w, ww * 0.26, wh / 2, 0.04, shutterCol);
+              for (let k = 1; k <= 3; k++) {
+                rect(fam.trim, sx, wy - wh / 2 + (wh * k) / 4, ww * 0.22, 0.02, 0.115, louvre);
+              }
             }
+          }
+          // Window boxes with geraniums on the old houses, one window in five.
+          if (!grand && !stoneFace && f <= 2 && hash(seed, 300 + f * 17 + j) < 0.2) {
+            const by = wy - wh / 2;
+            fam.trim.box(at(cx, by + 0.09, 0.2), u, up, w, ww / 2, 0.09, 0.12, BOX_GREEN);
+            const fl = FLOWERS[Math.floor(hash(seed, 301 + j) * FLOWERS.length)];
+            for (let k = -1; k <= 1; k++) fam.trim.box(at(cx + k * ww / 3, by + 0.24, 0.22), u, up, w, ww / 7, 0.08, 0.1, k ? fl : FOLIAGE_BOX);
           }
           const ownBalcony = !runBalcony && hash(seed, 100 + f * 31 + j) < (grand ? 0.0 : 0.14);
           if (ownBalcony) {
@@ -438,6 +475,28 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       const tallBase = b.s !== 'stone' && hash(seed, 13) < 0.55;
       const sh = tallBase ? 0.55 + hash(seed, 14) * 0.45 : 0.32;
       fam.trim.box(at(len / 2, streetY + sh - 0.02, 0.05), u, up, w, len / 2, sh, 0.08, tallBase ? RUBBLE_BASE : SOCLE);
+      // Rusticated ground floor on the stone blocks: horizontal channelled
+      // joints every half metre up to the first-floor band.
+      if (stoneFace && !shops.length) {
+        const joint = shade(wallCol, 0.82);
+        for (let y = streetY + sh + 0.45; y < streetY + groundH - 0.2; y += 0.5) rect(fam.trim, len / 2, y, len / 2, 0.025, 0.02, joint);
+      }
+      // A zinc downpipe at one end of every front, eaves to pavement.
+      {
+        const t = hash(seed, 20 + ei) < 0.5 ? 0.18 : len - 0.18;
+        fam.iron.box(at(t, (streetY + e) / 2, 0.1), u, up, w, 0.05, (e - streetY) / 2, 0.05, ZINC_PIPE);
+        fam.iron.box(at(t, e - 0.25, 0.22), u, up, w, 0.12, 0.12, 0.12, ZINC_PIPE);
+      }
+      // The blue enamel street plate, on corners: where the previous wall of
+      // this footprint faces a street too.
+      {
+        const prev = (ei - 1 + ring.length) % ring.length;
+        if (b.se.some((q) => q[0] === prev) && len > 3) {
+          const py = Math.min(streetY + groundH + 0.6, e - 1);
+          fam.trim.box(at(0.7, py, 0.05), u, up, w, 0.38, 0.14, 0.02, PLATE_WHITE);
+          fam.trim.box(at(0.7, py, 0.07), u, up, w, 0.35, 0.11, 0.02, PLATE_BLUE);
+        }
+      }
       if (upper > 0) {
         fam.trim.box(at(len / 2, streetY + groundH + 0.05, 0.1), u, up, w, len / 2 + 0.05, 0.1, 0.14, TRIM);
       }
@@ -501,6 +560,9 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           } else {
             fam.glass.quad(at(cx - 0.55, wy - 0.8, 0.04), at(cx + 0.55, wy - 0.8, 0.04),
               at(cx + 0.55, wy + 0.8, 0.04), at(cx - 0.55, wy + 0.8, 0.04), GLASS);
+            // Street-level windows are barred all over the Butte.
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * 0.22, wy, 0.015, 0.8, 0.1, IRON);
+            rect(fam.trim, cx, wy + 0.85, 0.65, 0.06, 0.05, surround);
           }
         }
       }
