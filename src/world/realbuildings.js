@@ -89,6 +89,7 @@ const WOOD_DOOR = [new THREE.Color('#6B4A32'), new THREE.Color('#5A3B26'), new T
 // Old houses on the Butte sit on a base of exposed rubble or dressed stone,
 // a metre or so high, darker than the render above it.
 const RUBBLE_BASE = new THREE.Color('#B4A487');
+const POT = new THREE.Color('#B0644A');   // terracotta chimney pots
 const GLASS_SHOP = new THREE.Color('#2F3740');
 const TRIM = PALETTE.limestoneLit;
 const SOCLE = PALETTE.limestoneDeep;
@@ -264,6 +265,42 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       }
     }
     capPolygon(fam.roof, capRing, holes, capY, roofKind === 'mansard' ? shade(roofCol, 0.88) : roofCol);
+
+    // ---- chimney stacks ----------------------------------------------------
+    // The Paris roofline is chimneys: rendered stacks along the party walls,
+    // topped with rows of terracotta pots. In every survey photograph that
+    // shows a roof (rue d'Orchampt's bend, rue Lepic, Place des Abbesses)
+    // they are the strongest thing on the skyline, and a flat-capped block
+    // without them reads as a modern building.
+    {
+      const c0 = centroid(ring);
+      const nr0 = near.nearest(c0[0], c0[1], 140);
+      if (nr0 && nr0.dist < 80 && roofKind !== 'church') {
+        const streetEdges = new Set(b.se.map((e) => e[0]));
+        const topY = roofKind === 'flat' ? e : e + roofH;
+        let made = 0;
+        for (let i = 0; i < ring.length && made < 2; i++) {
+          if (streetEdges.has(i)) continue;
+          const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % ring.length];
+          const len = Math.hypot(bx - ax, bz - az);
+          if (len < 4 || hash(seed, 60 + i) < 0.35) continue;
+          const u = [(bx - ax) / len, 0, (bz - az) / len];
+          const w = [-u[2], 0, u[0]];
+          const inset = (roofKind === 'flat' ? 0.5 : b.i) + 0.25;
+          const cx = (ax + bx) / 2 - w[0] * inset, cz = (az + bz) / 2 - w[2] * inset;
+          const sw = Math.min(1.6, len * 0.22), sh = 1.0 + hash(seed, 61 + i) * 0.8;
+          const stackCol = shade(wallCol, 0.95);
+          fam.wall.box([cx, topY + sh / 2 - 0.3, cz], u, up, w, sw / 2, sh / 2 + 0.3, 0.3, stackCol);
+          fam.trim.box([cx, topY + sh + 0.05, cz], u, up, w, sw / 2 + 0.06, 0.06, 0.36, TRIM);
+          const pots = Math.min(3, Math.max(2, Math.round(sw / 0.4)));
+          for (let k = 0; k < pots; k++) {
+            const t = (k + 0.5) / pots - 0.5;
+            fam.roof.box([cx + u[0] * t * sw, topY + sh + 0.28, cz + u[2] * t * sw], u, up, w, 0.08, 0.18, 0.08, POT);
+          }
+          made++;
+        }
+      }
+    }
 
     // ---- facades onto streets -------------------------------------------
     const cent = centroid(ring);
