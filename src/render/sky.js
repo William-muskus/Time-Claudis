@@ -66,13 +66,13 @@ export function buildSky(radius = 800) {
           // read as a sunset postcard rather than as late afternoon. 1.15
           // keeps gold at the rooflines AND cerulean overhead, which is the
           // contrast the whole amber/violet palette is built on.
-          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 1.15));
+          vec3 sky = mix(uHorizon, uZenith, pow(clamp(h, 0.0, 1.0), 0.8));
 
           // A warm mid-band just above the roofline, where the sun's glow
           // bleeds into the blue. Without it the gradient is a clean two-stop
           // ramp and reads as a UI element rather than as air.
           float band = exp(-pow((h - 0.06) / 0.11, 2.0));
-          sky = mix(sky, uHorizon * 1.12, band * 0.45);
+          sky = mix(sky, uHorizon * 1.04, band * 0.35);
 
           // Below: the warm haze of the city underneath the Butte.
           vec3 below = mix(uHorizon, uGround, pow(clamp(-h, 0.0, 1.0), 0.5));
@@ -81,8 +81,8 @@ export function buildSky(radius = 800) {
           // The sun, and the big soft halo that makes low sun feel hot.
           float cosA = dot(d, normalize(uSunDir));
           float disc = smoothstep(0.9995, 0.99985, cosA);
-          float halo = pow(max(cosA, 0.0), 220.0) * 0.55
-                     + pow(max(cosA, 0.0), 14.0) * 0.30;
+          float halo = pow(max(cosA, 0.0), 220.0) * 0.45
+                     + pow(max(cosA, 0.0), 14.0) * 0.12;
           col += uSunColor * halo;
           col = mix(col, uSunColor * 1.6, disc);
 

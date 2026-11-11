@@ -143,3 +143,46 @@ function distToRing(ring, x, z) {
   }
   return best;
 }
+
+/**
+ * What the street is paved with at (x, z): 'sett', 'asphalt', 'paving',
+ * 'gravel', or `fallback` where OpenStreetMap says nothing within `maxR`.
+ *
+ * `footway` asks about the pavement rather than the carriageway: OSM maps
+ * many of the route's pavements as their own footways, and on rue Girardon the
+ * road is granite setts while the pavement beside it is asphalt.
+ */
+let _sIndex = null;
+export function surfaceAt(x, z, { footway = false, maxR = 9, fallback = 'asphalt' } = {}) {
+  if (!_sIndex) {
+    _sIndex = new Map();
+    for (const s of GEO.surfaces ?? []) {
+      const p = pairs(s.p);
+      for (let i = 0; i < p.length - 1; i++) {
+        const seg = { a: p[i], b: p[i + 1], s: s.s, fw: !!s.fw };
+        const x0 = Math.min(seg.a[0], seg.b[0]), x1 = Math.max(seg.a[0], seg.b[0]);
+        const z0 = Math.min(seg.a[1], seg.b[1]), z1 = Math.max(seg.a[1], seg.b[1]);
+        for (let ci = Math.floor((x0 - 10) / 20); ci <= Math.floor((x1 + 10) / 20); ci++) {
+          for (let cj = Math.floor((z0 - 10) / 20); cj <= Math.floor((z1 + 10) / 20); cj++) {
+            const k = `${ci},${cj}`;
+            if (!_sIndex.has(k)) _sIndex.set(k, []);
+            _sIndex.get(k).push(seg);
+          }
+        }
+      }
+    }
+  }
+  let best = null, bd = maxR;
+  for (const seg of _sIndex.get(`${Math.floor(x / 20)},${Math.floor(z / 20)}`) ?? []) {
+    if (seg.fw !== footway) continue;
+    const d = distToSeg(seg.a, seg.b, x, z);
+    if (d < bd) { bd = d; best = seg; }
+  }
+  return best ? best.s : fallback;
+}
+
+function distToSeg([ax, az], [bx, bz], x, z) {
+  const dx = bx - ax, dz = bz - az;
+  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(x - ax - dx * t, z - az - dz * t);
+}

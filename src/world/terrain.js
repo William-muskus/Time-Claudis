@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from '../render/palette.js';
-import { GEO, groundAt, pairs, pointInRing } from './geo.js';
+import { GEO, groundAt, pairs, pointInRing, surfaceAt } from './geo.js';
+import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
 
 /**
  * The ground of the Butte, from IGN's terrain model.
@@ -24,10 +25,12 @@ import { GEO, groundAt, pairs, pointInRing } from './geo.js';
  */
 
 const COL = {
-  ground: new THREE.Color('#A6927F'),
-  groundAlt: new THREE.Color('#9C8A79'),
-  green: new THREE.Color('#6E7B45'),
-  greenAlt: new THREE.Color('#62703F'),
+  // Bare ground between things in this city is paving, gravel and packed
+  // earth: a neutral warm grey, not the brown it used to be.
+  ground: new THREE.Color('#A29C92'),
+  groundAlt: new THREE.Color('#9B958B'),
+  green: new THREE.Color('#5F7440'),
+  greenAlt: new THREE.Color('#566B3A'),
   road: PALETTE.cobbleCool,
   roadEdge: PALETTE.pavement,
   stairs: PALETTE.stairStone,
@@ -38,20 +41,25 @@ const COL = {
 };
 
 class Mesher {
-  constructor() { this.pos = []; this.col = []; }
-  tri(a, b, c, col) {
+  constructor(uvs = false) { this.pos = []; this.col = []; this.uv = uvs ? [] : null; }
+  tri(a, b, c, col, ta, tb, tc) {
     this.pos.push(...a, ...b, ...c);
     for (let i = 0; i < 3; i++) this.col.push(col.r, col.g, col.b);
+    if (this.uv) this.uv.push(...(ta ?? [0, 0]), ...(tb ?? [0, 0]), ...(tc ?? [0, 0]));
   }
-  quad(a, b, c, d, col) { this.tri(a, b, c, col); this.tri(a, c, d, col); }
-  mesh(name, { roughness = 0.95, receiveShadow = true, castShadow = false } = {}) {
+  quad(a, b, c, d, col, t = null) {
+    this.tri(a, b, c, col, t?.[0], t?.[1], t?.[2]);
+    this.tri(a, c, d, col, t?.[0], t?.[2], t?.[3]);
+  }
+  mesh(name, { roughness = 0.95, receiveShadow = true, castShadow = false, map = null } = {}) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    if (this.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
     g.computeVertexNormals();
     g.computeBoundingSphere();
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
-      vertexColors: true, flatShading: true, roughness, metalness: 0,
+      vertexColors: true, flatShading: !map, roughness, metalness: 0, map,
     }));
     m.name = name;
     m.receiveShadow = receiveShadow;
@@ -143,12 +151,19 @@ export function buildTerrain(rail, near) {
  * width, following its own levels.
  */
 function buildSideStreets(rail, near) {
-  const m = new Mesher();
+  // One mesher per surface, so each street wears its real paving (OSM
+  // surface=*) with the shared ground textures; UVs in metres, U across.
+  const meshers = new Map();
+  const mesher = (k) => {
+    if (!meshers.has(k)) meshers.set(k, new Mesher(true));
+    return meshers.get(k);
+  };
   for (const r of GEO.roads) {
     const pts = [];
     for (let i = 0; i < r.p.length; i += 3) pts.push([r.p[i], r.p[i + 1], r.p[i + 2]]);
     const half = r.w / 2;
     const edge = r.k === 'road' ? 1.6 : 0;   // pavements on real streets
+    let along = 0;
     for (let s = 0; s < pts.length - 1; s++) {
       const [ax, ay, az] = pts[s], [bx, by, bz] = pts[s + 1];
       const len = Math.hypot(bx - ax, bz - az);
@@ -156,11 +171,16 @@ function buildSideStreets(rail, near) {
       // Skip the stretches that ARE the walk: street.js draws those.
       const mx = (ax + bx) / 2, mz = (az + bz) / 2;
       const nr = near.nearest(mx, mz, 10);
+      const a0 = along;
+      along += len;
       if (nr) {
         const tan = rail.tangentAt(nr.d);
-        const along = Math.abs(((bx - ax) * tan.x + (bz - az) * tan.z) / len);
-        if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && along > 0.6) continue;
+        const al = Math.abs(((bx - ax) * tan.x + (bz - az) * tan.z) / len);
+        if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && al > 0.6) continue;
       }
+      const raw = r.k === 'stairs' ? 'paving' : r.k === 'path' ? surfaceAt(mx, mz, { footway: true, fallback: 'gravel' })
+        : surfaceAt(mx, mz, { fallback: 'asphalt' });
+      const surf = r.k === 'road' && raw === 'paving' ? 'sett' : raw;
       const ux = (bx - ax) / len, uz = (bz - az) / len;
       const rx = -uz, rz = ux;
       // Subdivide so a long segment follows the terrain rather than bridging it.
@@ -169,7 +189,8 @@ function buildSideStreets(rail, near) {
         const t0 = k / n, t1 = (k + 1) / n;
         const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
         const p1 = [ax + (bx - ax) * t1, az + (bz - az) * t1];
-        const ribbon = (w, lift, col) => {
+        const v0 = a0 + len * t0, v1 = a0 + len * t1;
+        const ribbon = (w, lift, kind, tint) => {
           const Y = (x, z) => {
             const g = groundAt(x, z);
             const yc = ay + (by - ay) * ((t0 + t1) / 2);
@@ -181,20 +202,21 @@ function buildSideStreets(rail, near) {
           ];
           for (const v of q) v[1] = Y(v[0], v[2]);
           // Upward-facing: left-back, left-front, right-front, right-back.
-          m.quad(q[0], q[3], q[2], q[1], col);
+          mesher(kind).quad(q[0], q[3], q[2], q[1], tint, [[-w, v0], [w, v0], [w, v1], [-w, v1]]);
         };
         if (r.k === 'stairs') {
-          ribbon(half, 0.08, k % 2 ? COL.stairs : COL.stairsDark);
-        } else if (r.k === 'path') {
-          ribbon(half, 0.06, COL.path);
+          ribbon(half, 0.08, 'paving', k % 2 ? COL.stairs : COL.stairsDark);
         } else {
-          ribbon(half + edge, 0.05, COL.roadEdge);
-          ribbon(half, 0.09, COL.road);
+          if (edge) ribbon(half + edge, 0.05, 'asphalt', SURFACE_TINT.asphalt.clone().multiplyScalar(1.12));
+          ribbon(half, 0.09, surf, SURFACE_TINT[surf] ?? SURFACE_TINT.asphalt);
         }
       }
     }
   }
-  return m.mesh('side_streets', { roughness: 0.92 });
+  const group = new THREE.Group();
+  group.name = 'side_streets';
+  for (const [k, m] of meshers) group.add(m.mesh(`side_streets_${k}`, { roughness: 0.92, map: surfaceTexture(k) }));
+  return group;
 }
 
 /**

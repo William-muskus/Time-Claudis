@@ -22,13 +22,20 @@ import { ENCOUNTERS } from '../gameplay/encounters.js';
  */
 
 /** What the player hides behind in each area, in encounter order. */
+//
+// Checked against the Ville de Paris survey photographs (tools/verify/
+// compare.mjs). The first list put a cafe terrace on Place Dalida, which has
+// no cafe, and stone planters across rue d'Orchampt, which is lined with
+// parked scooters. What you duck behind is now what is parked there.
 const COVER_BY_AREA = {
   A1: 'metro_balustrade',  // the ironwork around the Lamarck stairwell
-  A2: 'stone_wall',        // a garden wall on the climb up Girardon
-  A3: 'terrace',           // cafe terrace on Place Dalida
-  A4: 'planters',          // the walled lane: stone troughs and bins
+  A2: 'parked_car',        // Place Constantin-Pecqueur: cars along the kerb
+  A3: 'velib',             // Place Dalida: the bike dock at the top of rue Girardon
+  A4: 'scooters',          // rue d'Orchampt: scooters parked nose to the kerb
   A5: 'fountain_bench',    // Place Emile-Goudeau: Wallace fountain and benches
 };
+/** Pieces that belong against a kerb rather than across the walk. */
+const AT_KERB = new Set(['parked_car', 'scooters', 'velib']);
 
 export function buildCover(rail, rng = null) {
   // Seeded, for the same reason landmarks.js is: a fixed seed must produce a
@@ -48,13 +55,17 @@ export function buildCover(rail, rng = null) {
     // Sit it just in front of where the camera parks, offset the same way the
     // node is, so it lands in the lower third of the frame rather than
     // wandering off to one side.
+    const kind = COVER_BY_AREA[enc.areaId] ?? 'stone_wall';
     const lateral = enc.node?.lateral ?? 0;
     const AHEAD = 3.4;
+    // A parked car or a row of scooters stands against the kerb on the side
+    // the player is standing, so it fills that half of the foreground.
+    const kerb = Math.sign(lateral || 1) * Math.max(Math.abs(lateral) + 0.9, rail.widthAt(d) / 2 - 1.6);
     const base = p.clone()
       .addScaledVector(tan, AHEAD)
-      .addScaledVector(right, lateral);
+      .addScaledVector(right, AT_KERB.has(kind) ? kerb : lateral);
 
-    const piece = buildPiece(COVER_BY_AREA[enc.areaId] ?? 'stone_wall', rnd);
+    const piece = buildPiece(kind, rnd, Math.sign(lateral || 1));
     piece.position.copy(base);
     piece.position.y = p.y + 0.16;
     // atan2 on the horizontal components only; the tangent climbs and a
@@ -66,11 +77,14 @@ export function buildCover(rail, rng = null) {
   return group;
 }
 
-function buildPiece(kind, rnd) {
+function buildPiece(kind, rnd, side = 1) {
   switch (kind) {
     case 'metro_balustrade': return metroBalustrade();
     case 'terrace': return cafeTerrace();
     case 'planters': return planters(rnd);
+    case 'parked_car': return parkedCar(rnd);
+    case 'scooters': return scooters(rnd);
+    case 'velib': return velibDock(rnd, side);
     case 'fountain_bench': return fountainBench();
     default: return stoneWall(rnd);
   }
@@ -161,6 +175,117 @@ function cafeTerrace() {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), iron);
     post.position.set(s * W / 2, H / 2, 0);
     g.add(post);
+  }
+  return g;
+}
+
+/**
+ * A small parked hatchback, along the kerb. Chest-high at the bonnet so you
+ * duck below it and stand up over it; the cabin is the only part above the
+ * eye line, and it is glazed.
+ */
+export function parkedCar(rnd = Math.random) {
+  const g = new THREE.Group();
+  const paints = ['#E9E7E2', '#2A2C30', '#8E9296', '#C9CCCE', '#6B1F24', '#2F3F55'];
+  const paint = flat(new THREE.Color(paints[Math.floor(rnd() * paints.length)]), { roughness: 0.35, metalness: 0.4 });
+  const glass = flat(new THREE.Color('#2C3238'), { roughness: 0.2, metalness: 0.3 });
+  const tyre = flat(new THREE.Color('#1C1C1E'), { roughness: 0.9 });
+  const L = 3.7, W = 1.66;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(W, 0.72, L), paint);
+  body.position.y = 0.62;
+  body.castShadow = body.receiveShadow = true;
+  g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(W - 0.12, 0.5, L * 0.52), glass);
+  cabin.position.set(0, 1.2, -0.1);
+  cabin.castShadow = true;
+  g.add(cabin);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(W - 0.16, 0.06, L * 0.46), paint);
+  roof.position.set(0, 1.48, -0.12);
+  g.add(roof);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 10), tyre);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(sx * (W / 2 - 0.08), 0.31, sz * (L / 2 - 0.62));
+    g.add(w);
+  }
+  return g;
+}
+
+/**
+ * Four scooters parked nose to the kerb, as they are all along rue
+ * d'Orchampt in the survey photograph of the bend.
+ */
+export function scooters(rnd = Math.random) {
+  const g = new THREE.Group();
+  const black = flat(new THREE.Color('#1F2124'), { roughness: 0.4, metalness: 0.3 });
+  const tyre = flat(new THREE.Color('#151515'), { roughness: 0.9 });
+  const paints = ['#1F2124', '#3A3D42', '#E4E2DC', '#1F2124', '#5A1E22'];
+  for (let i = 0; i < 4; i++) {
+    const s = new THREE.Group();
+    const paint = flat(new THREE.Color(paints[Math.floor(rnd() * paints.length)]), { roughness: 0.35, metalness: 0.35 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.55, 1.5), paint);
+    body.position.y = 0.6;
+    body.castShadow = true;
+    s.add(body);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.75), black);
+    seat.position.set(0, 0.94, 0.2);
+    s.add(seat);
+    if (rnd() < 0.6) {
+      const topcase = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, 0.42), black);
+      topcase.position.set(0, 1.12, 0.62);
+      topcase.castShadow = true;
+      s.add(topcase);
+    }
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.12), paint);
+    shield.position.set(0, 1.0, -0.62);
+    shield.rotation.x = -0.25;
+    s.add(shield);
+    for (const z of [-0.6, 0.6]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.13, 10), tyre);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(0, 0.27, z);
+      s.add(w);
+    }
+    // Nose to the kerb: the row runs ALONG the street, each scooter across it.
+    s.rotation.y = Math.PI / 2 + (rnd() - 0.5) * 0.18;
+    s.position.set(0, 0, -1.6 + i * 1.05);
+    g.add(s);
+  }
+  return g;
+}
+
+/**
+ * A Vélib dock with five bikes, the commonest street furniture in Paris,
+ * against the kerb as the real ones are: posts on the pavement side, bikes
+ * nosed into them across the parking lane. `side` is +1 for the right-hand
+ * kerb, -1 for the left; local +Z runs along the street.
+ */
+function velibDock(rnd = Math.random, side = 1) {
+  const g = new THREE.Group();
+  const grey = flat(new THREE.Color('#8C9297'), { roughness: 0.5, metalness: 0.3 });
+  const frameCols = ['#7FB5D8', '#8FBF5A', '#7FB5D8'];   // blue mechanical, green electric
+  const tyre = flat(new THREE.Color('#1A1A1A'), { roughness: 0.9 });
+  // Local -X is the player's right (see buildCover's rotation), so the
+  // pavement side of a right-hand dock is -X.
+  const out = -side;
+  for (let i = 0; i < 5; i++) {
+    const z = -2.2 + i * 1.1;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.0, 0.16), grey);
+    post.position.set(out * 0.95, 0.5, z);
+    post.castShadow = true;
+    g.add(post);
+    const frame = flat(new THREE.Color(frameCols[Math.floor(rnd() * frameCols.length)]), { roughness: 0.45, metalness: 0.2 });
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.08), frame);
+    bar.position.set(out * 0.1, 0.72, z);
+    g.add(bar);
+    const basket = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.28, 0.4), grey);
+    basket.position.set(out * 0.72, 0.95, z);
+    g.add(basket);
+    for (const x of [out * 0.55, -out * 0.55]) {
+      const w = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.035, 4, 12), tyre);
+      w.position.set(x, 0.36, z);
+      g.add(w);
+    }
   }
   return g;
 }

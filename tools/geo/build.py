@@ -176,18 +176,36 @@ def orient_ccw(ring):
 
 
 # ------------------------------------------------------------------- styling
-WALL = {"1": "stone", "2": "meuliere", "3": "plaster", "4": "brick", "5": "plaster", "6": "wood"}
+# Cadastral codes describe the MASONRY, not the finish. On the Butte almost all
+# rubble and millstone ("2") is rendered over, so it reads as render in the
+# survey photographs, not as the rough brown meulière of the suburbs.
+WALL = {"1": "stone", "2": "plaster", "3": "plaster", "4": "brick", "5": "plaster", "6": "wood"}
 ROOF = {"1": "tile", "2": "slate", "3": "zinc", "4": "flat"}
 
 
-def wall_style(code, seed):
-    """Wall finish from the cadastral material code, with Montmartre's plaster
-    variety layered on where the code says only "rendered" or nothing at all."""
+def wall_style(code, seed, floors=0):
+    """Wall finish from the cadastral material code, with Montmartre's render
+    variety layered on where the code says only "rendered" or nothing at all.
+
+    The variety is weighted from the Ville de Paris survey photographs of the
+    route (tools/geo/references.json): off-white and cream render almost
+    everywhere, pale grey next, cut stone on the apartment blocks, and the
+    ochre and rose washes the postcards remember as a small minority. The
+    first version drew ochre and pink for three buildings in seven, and the
+    Butte came out looking like Burano."""
     first = (code or "0")[:1]
+    if first == "4" and seed % 4:
+        # Brick masonry in Paris is nearly always rendered over; the bare
+        # brick-and-render blocks (one on the rue Girardon climb) are the
+        # minority. Treating every brick code as bare brick turned a hundred
+        # cream buildings terracotta, the Bateau-Lavoir's pharmacy among them.
+        first = "3"
     if first in WALL and WALL[first] != "plaster":
         return WALL[first]
-    # Rendered or unknown: the Butte is cream, ochre, pink and grey render.
-    return ["plaster", "plaster", "ochre", "pink", "grey", "plaster", "ochre"][seed % 7]
+    if floors >= 5 and seed % 3:
+        return "stone"            # the Haussmann-era blocks of rue Caulaincourt and rue des Abbesses
+    k = seed % 20
+    return "plaster" if k < 11 else "grey" if k < 16 else "stone" if k < 18 else "ochre" if k < 19 else "pink"
 
 
 # Saint-Jean-de-Montmartre (de Baudot, 1904) is red brick over concrete; BD TOPO
@@ -421,7 +439,7 @@ def main():
             g=round(ground - ORIGIN["elev"], 2),
             e=round(eaves - ORIGIN["elev"], 2),
             f=int(floors),
-            s=church_style(poly) if nature == "Eglise" else wall_style(p.get("materiaux_des_murs"), seed),
+            s=church_style(poly) if nature == "Eglise" else wall_style(p.get("materiaux_des_murs"), seed, floors),
             r=kind,
             i=round(inset, 2),
             u={"Résidentiel": "res", "Commercial et services": "com", "Religieux": "rel",
@@ -495,6 +513,54 @@ def main():
         walls.append(dict(k=p.get("nature"), hgt=p.get("hauteur") or 2.5,
                           p=[v for (x, z), y in zip(pts, ys) for v in (r1(x), round(y - ORIGIN["elev"], 2), r1(z))]))
 
+    # ----- OSM: street surfaces, garden walls and fences, gardens -----
+    # The look of these streets is mostly in three things the footprints do not
+    # carry: whether the street is granite setts or asphalt, the walls and
+    # railings that close every gap between buildings, and the gardens behind
+    # them. OpenStreetMap maps all three along the route.
+    nodes = {n.get("id"): (float(n.get("lon")), float(n.get("lat"))) for n in osm.iter("node")}
+    SURF = {"sett": "sett", "unhewn_cobblestone": "sett", "cobblestone": "sett",
+            "asphalt": "asphalt", "paving_stones": "paving", "concrete": "paving",
+            "compacted": "gravel", "fine_gravel": "gravel", "gravel": "gravel"}
+    surfaces, barriers, gardens = [], [], []
+    GARDEN = {("leisure", "garden"): "garden", ("leisure", "park"): "park", ("landuse", "grass"): "grass",
+              ("natural", "scrub"): "scrub", ("natural", "wood"): "wood", ("landuse", "vineyard"): "vineyard",
+              ("landuse", "cemetery"): "cemetery"}
+    for w in osm.iter("way"):
+        tg = {x.get("k"): x.get("v") for x in w.findall("tag")}
+        refs = [nd.get("ref") for nd in w.findall("nd")]
+        if any(r not in nodes for r in refs) or len(refs) < 2:
+            continue
+        pts = [L(*nodes[r]) for r in refs]
+        if "highway" in tg and tg.get("surface") in SURF:
+            surfaces.append(dict(s=SURF[tg["surface"]], fw=1 if tg["highway"] in ("footway", "steps") else 0,
+                                 p=[v for x, z in pts for v in (r1(x), r1(z))]))
+        if tg.get("barrier") in ("wall", "fence", "retaining_wall", "gate", "hedge"):
+            ys = [terrain.at(x, z) for x, z in pts]
+            if any(y is None for y in ys):
+                continue
+            h = tg.get("height")
+            try:
+                h = float(h) if h else None
+            except ValueError:
+                h = None
+            barriers.append(dict(k=tg["barrier"], m=tg.get("material") or tg.get("fence_type") or "",
+                                 h=h, p=[v for (x, z), y in zip(pts, ys)
+                                         for v in (r1(x), round(y - ORIGIN["elev"], 2), r1(z))]))
+        kind = next((v for (k, val), v in GARDEN.items() if tg.get(k) == val), None)
+        if kind and refs[0] == refs[-1] and len(refs) >= 4:
+            lp = Polygon(pts[:-1])
+            if lp.is_valid and lp.area >= 20:
+                lp = lp.simplify(0.5)
+                gardens.append(dict(k=kind, o=[v for xz in list(lp.exterior.coords)[:-1] for v in (r1(xz[0]), r1(xz[1]))]))
+    for n in osm.iter("node"):
+        tg = {x.get("k"): x.get("v") for x in n.findall("tag")}
+        if tg.get("barrier") == "gate":
+            x, z = L(float(n.get("lon")), float(n.get("lat")))
+            y = terrain.at(x, z)
+            if y is not None:
+                pois.setdefault("gate", []).append([r1(x), round(y - ORIGIN["elev"], 2), r1(z)])
+
     out = dict(
         origin=ORIGIN,
         frame="metres; +X east, +Y up, +Z south; origin at the Dalida bust",
@@ -511,6 +577,9 @@ def main():
         trees=trees,
         greens=greens,
         walls=walls,
+        surfaces=surfaces,
+        barriers=barriers,
+        gardens=gardens,
         pois=pois,
     )
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -520,7 +589,7 @@ def main():
           f"{sum(len(b['se']) for b in buildings_out)}, shops {sum(len(b.get('sh', [])) for b in buildings_out)}, "
           f"doors {sum(len(b.get('dr', [])) for b in buildings_out)}")
     print(f"roads {len(roads_out)}, trees {len(trees)} ({osm_trees} from OSM), greens {len(greens)}, "
-          f"walls {len(walls)}, pois " + ", ".join(f"{k} {len(v)}" for k, v in pois.items()))
+          f"walls {len(walls)}, surfaces {len(surfaces)}, barriers {len(barriers)}, gardens {len(gardens)}, pois " + ", ".join(f"{k} {len(v)}" for k, v in pois.items()))
     print(f"roofs: " + ", ".join(f"{k} {sum(1 for b in buildings_out if b['r'] == k)}"
                                   for k in ("mansard", "hip", "flat", "church")))
     print(f"wrote {OUT} ({os.path.getsize(OUT) / 1024:.0f} KB)")

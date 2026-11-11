@@ -1,7 +1,7 @@
 # Playtest
 
 **Nobody has ever played this game.** Every verification in this repository is a
-machine looking at it: 145 unit tests, a software rasteriser taking screenshots
+machine looking at it: 147 unit tests, a software rasteriser taking screenshots
 at 0.8 frames a second, a stub WebAudio graph measuring a mix nobody has heard,
 an oracle player that ducks on frame-perfect telegraph timing and never misses.
 
@@ -212,7 +212,7 @@ behaves differently on your machine, that is worth knowing.
 
 | Command | What it does |
 |---|---|
-| `npm test` | 145 unit tests, ~13 s. Includes a full simulated playthrough. |
+| `npm test` | 147 unit tests, ~13 s. Includes a full simulated playthrough. |
 | `npm run tour` | 27 screenshots of the route and the fights. Slow: SwiftShader. |
 | `npm run palette artifacts/tour` | Measures the amber/violet split per frame. It reports `cool%` but no longer judges on it: that is a census of how much cool-albedo material is in shot, and it went *down* every time the Sacré-Cœur frame was improved, because what was added was warm rooftops. It judges on `shade` and `lit` — of the darkest third of the frame, how much is violet, and of the brightest third, how much is amber. |
 | `npm run mix` | Every sound's peak level, ranked. |

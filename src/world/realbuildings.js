@@ -46,19 +46,23 @@ const WALL = {
   grey: PALETTE.plasterGrey,
   stone: PALETTE.limestoneLit,
   meuliere: PALETTE.limestoneMid,
-  brick: PALETTE.chimneyTerra,
+  brick: new THREE.Color('#A97A65'),   // the 1920s brick-and-render blocks, faded
   wood: new THREE.Color('#9C7A5A'),
 };
 const ROOF = {
   mansard: PALETTE.zincLit,
-  hip: new THREE.Color('#A3563F'),
-  flat: new THREE.Color('#8E8579'),
+  hip: new THREE.Color('#A0614A'),     // faded flat tile, on the small houses only
+  flat: new THREE.Color('#8F8F8B'),
   church: PALETTE.slateDark,
 };
-const SHUTTERS = [PALETTE.shutterGreen, PALETTE.shutterBlue, PALETTE.shutterGrey,
-  PALETTE.awningCream, new THREE.Color('#7A3B33'), PALETTE.shutterGreen];
-const DOORS = [new THREE.Color('#2F4A3A'), new THREE.Color('#6B2E2A'), new THREE.Color('#2E3A5C'),
-  new THREE.Color('#4A3A2E'), PALETTE.metroGreen];
+// Louvred shutters on these streets are overwhelmingly white, off-white and
+// pale grey (see the August 2025 survey frames on rue d'Orchampt and rue
+// Girardon); green and blue-grey are the exceptions, not the rule.
+const SHUTTERS = [new THREE.Color('#ECE9E2'), new THREE.Color('#E2DDD2'), PALETTE.shutterGrey,
+  new THREE.Color('#ECE9E2'), PALETTE.shutterGrey, new THREE.Color('#D6D2C8'), PALETTE.shutterGreen];
+const DOORS = [new THREE.Color('#2F4A3A'), new THREE.Color('#5F7A78'), new THREE.Color('#2E3A5C'),
+  new THREE.Color('#4A3A2E'), new THREE.Color('#5B2A28'), PALETTE.metroGreen];
+const FRAME = new THREE.Color('#F2EFE8');
 const AWNING = {
   cafe: [PALETTE.awningRed, PALETTE.awningGreen, PALETTE.awningRed],
   bar: [PALETTE.awningRed, new THREE.Color('#2E2E3E'), PALETTE.awningGreen],
@@ -69,8 +73,8 @@ const AWNING = {
   shop: [PALETTE.awningRed, PALETTE.awningGreen, PALETTE.awningCream, new THREE.Color('#2E3A5C'),
     PALETTE.plasterOchre, new THREE.Color('#5C2E4A')],
 };
-const GLASS = new THREE.Color('#2B3047');
-const GLASS_SHOP = new THREE.Color('#3A4258');
+const GLASS = new THREE.Color('#2A2E33');
+const GLASS_SHOP = new THREE.Color('#2F3740');
 const TRIM = PALETTE.limestoneLit;
 const SOCLE = PALETTE.limestoneDeep;
 const IRON = PALETTE.ironwork;
@@ -190,7 +194,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
   const fam = {
     wall: new Family('wall', { roughness: 0.9 }),
     roof: new Family('roof', { roughness: 0.62, metalness: 0.15 }),
-    glass: new Family('glass', { roughness: 0.28, metalness: 0.2, castShadow: false }),
+    glass: new Family('glass', { roughness: 0.45, metalness: 0, castShadow: false }),
     trim: new Family('trim', { roughness: 0.85 }),
     iron: new Family('iron', { roughness: 0.5, metalness: 0.35, castShadow: false }),
   };
@@ -292,13 +296,24 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       const nb = Math.max(1, Math.floor(len / 3.05));
       const bayW = len / nb;
       const at = (t, y, out = 0) => [ax + u[0] * t + w[0] * out, y, az + u[2] * t + w[2] * out];
+      // A flat rectangle on the facade plane, facing the street: two
+      // triangles where a box costs twelve. Thin joinery and ironwork are
+      // only ever seen from the front.
+      const rect = (f, cx, cy, hw, hh, out, col) => f.quad(at(cx - hw, cy - hh, out), at(cx + hw, cy - hh, out),
+        at(cx + hw, cy + hh, out), at(cx - hw, cy + hh, out), col);
       const side = nm ? sideOf(rail, nm, mid) : 0;
-      const pushAnchor = (type, pos, k) => anchors.push({
+      const pushAnchor = (type, pos, k) => {
+        // A door more than 0.8 m below the walk is in a garden or a sunken
+        // court under the street: an enemy there is invisible from the rail.
+        // These only showed up once the terrain was drawn the right way up.
+        if (type === 'door' && pos[1] < nm.y - 0.8) return;
+        anchors.push({
         id: `b${b.id}_${ei}_${type}_${k}`, type,
         worldPos: new THREE.Vector3(pos[0], pos[1], pos[2]),
         railDistance: nm.d, side,
         facing: new THREE.Vector3(w[0], 0, w[2]),
-      });
+        });
+      };
 
       // Cornice: the strongest horizontal on any Paris street.
       fam.trim.box(at(len / 2, e - 0.18, 0.18), u, up, w, len / 2 + 0.25, 0.2, 0.32, TRIM);
@@ -307,13 +322,21 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       let balconies = 0;
       for (let f = 1; f <= upper; f++) {
         const y0 = streetY + groundH + (f - 1) * floorH;
-        const wh = Math.min(1.85, floorH * 0.6);
+        // French windows: tall and close, as on every street in the survey
+        // photos. The first version's 1.2 x 1.85 m at a 3 m pitch read as a
+        // prison block from twenty metres.
+        const wh = Math.min(2.15, floorH * 0.72);
         const ww = Math.min(1.2, bayW * 0.44);
-        const wy = y0 + floorH * 0.24 + wh / 2;
+        const wy = y0 + floorH * 0.14 + wh / 2;
         const runBalcony = detailed && grand && (f === 2 || f === upper);
         if (runBalcony) {
-          fam.iron.box(at(len / 2, y0 + floorH * 0.24 + 0.5, 0.55), u, up, w, len / 2 - 0.1, 0.5, 0.04, IRON);
-          fam.trim.box(at(len / 2, y0 + floorH * 0.24 - 0.06, 0.35), u, up, w, len / 2, 0.08, 0.35, TRIM);
+          // Open wrought iron: handrail, bottom rail and a baluster every
+          // 60 cm. As a solid plate it read as a black band across the block.
+          const by = y0 + floorH * 0.14;
+          fam.iron.box(at(len / 2, by + 0.95, 0.6), u, up, w, len / 2 - 0.1, 0.03, 0.04, IRON);
+          fam.iron.box(at(len / 2, by + 0.12, 0.6), u, up, w, len / 2 - 0.1, 0.02, 0.02, IRON);
+          for (let t = 0.3; t < len - 0.2; t += 0.6) rect(fam.iron, t, by + 0.54, 0.015, 0.41, 0.6, IRON);
+          fam.trim.box(at(len / 2, y0 + floorH * 0.14 - 0.06, 0.35), u, up, w, len / 2, 0.08, 0.35, TRIM);
         }
         for (let j = 0; j < nb; j++) {
           const cx = (j + 0.5) * bayW;
@@ -321,6 +344,21 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
             at(cx + ww / 2, wy + wh / 2, 0.04), at(cx - ww / 2, wy + wh / 2, 0.04), GLASS);
           if (!detailed) continue;
           fam.trim.box(at(cx, wy - wh / 2 - 0.07, 0.1), u, up, w, ww / 2 + 0.1, 0.07, 0.12, TRIM);
+          // White joinery: the frame and the glazing bar are what make a dark
+          // rectangle read as a Paris window rather than a hole.
+          rect(fam.trim, cx, wy + wh / 2 - 0.04, ww / 2, 0.05, 0.06, FRAME);
+          for (const s of [-1, 1]) rect(fam.trim, cx + s * (ww / 2 - 0.04), wy, 0.05, wh / 2, 0.06, FRAME);
+          rect(fam.trim, cx, wy, 0.03, wh / 2, 0.06, FRAME);
+          // Wrought-iron guard rail across the lower third of every French
+          // window on the stone buildings that do not have a running balcony.
+          // Open ironwork, not a plate: a solid box here read as a black bar
+          // across every window and turned the facades into rows of "H"s.
+          if (grand && !runBalcony) {
+            const ry = wy - wh / 2;
+            rect(fam.iron, cx, ry + 0.86, ww / 2 + 0.06, 0.025, 0.12, IRON);
+            rect(fam.iron, cx, ry + 0.22, ww / 2 + 0.06, 0.02, 0.12, IRON);
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * ww / 5, ry + 0.54, 0.012, 0.32, 0.12, IRON);
+          }
           if (hasShutters && !grand) {
             for (const s of [-1, 1]) {
               fam.trim.box(at(cx + s * (ww / 2 + ww * 0.27), wy, 0.07), u, up, w,
@@ -329,7 +367,9 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           }
           const ownBalcony = !runBalcony && hash(seed, 100 + f * 31 + j) < (grand ? 0.0 : 0.14);
           if (ownBalcony) {
-            fam.iron.box(at(cx, wy - wh / 2 + 0.45, 0.42), u, up, w, ww / 2 + 0.15, 0.45, 0.03, IRON);
+            const by = wy - wh / 2;
+            fam.iron.box(at(cx, by + 0.9, 0.42), u, up, w, ww / 2 + 0.15, 0.03, 0.03, IRON);
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * (ww / 2 + 0.1) / 2, by + 0.45, 0.015, 0.45, 0.42, IRON);
             fam.trim.box(at(cx, wy - wh / 2 - 0.05, 0.22), u, up, w, ww / 2 + 0.2, 0.06, 0.24, TRIM);
           }
           if (anchored && (runBalcony || ownBalcony) && f <= 3 && balconies < 3) {
@@ -497,7 +537,10 @@ export function sideStreetAnchors(rail, near, isBlocked = () => false) {
         if (!nr || nr.dist < MIN || nr.dist > MAX) continue;
         const tan = rail.tangentAt(nr.d);
         if (Math.abs(dx * tan.x + dz * tan.z) > 0.55) continue;
-        if (Math.abs(y - nr.y) > 4) continue;
+        // Above the walk is fine (a lane climbing away); more than a metre below
+        // it and the enemy is down a slope the player cannot see into.
+        const gy = groundAt(x, z) ?? y;
+        if (gy - nr.y > 4 || gy < nr.y - 1.0) continue;
         if (isBlocked(x, z)) continue;
         if (out.some((a) => (a.worldPos.x - x) ** 2 + (a.worldPos.z - z) ** 2 < 100)) continue;
         const toRail = new THREE.Vector3(nr.x - x, 0, nr.z - z).normalize();

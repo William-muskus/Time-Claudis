@@ -368,3 +368,51 @@ test('every ground surface is wound to face upward', () => {
   assert.deepEqual(offenders, [],
     `ground surfaces lit from underneath:\n  ${offenders.join('\n  ')}`);
 });
+
+test('no garden wall and no parked car stands in the walk', async () => {
+  // boundaries.js closes every facade gap and traffic.js lines the kerbs,
+  // both by rule; a rule that misjudges one corner would put a wall or a car
+  // across the camera's path. Nothing may come within 1.2 m of the line the
+  // camera travels (rue d'Orchampt's real walls stand about 1.4 m from it).
+  const { Rail } = await import('../src/core/spline.js');
+  const { railPoints } = await import('../src/data/route.js');
+  const { railIndex } = await import('../src/world/geo.js');
+  const { buildBoundaries } = await import('../src/world/boundaries.js');
+  const { buildParkedVehicles } = await import('../src/world/traffic.js');
+  const rail = new Rail(railPoints());
+  const near = railIndex(rail, 1);
+  const bad = [];
+  const b = buildBoundaries(rail, near);
+  for (const m of b.children) {
+    if (m.name === 'railings') continue;   // gates and rails are checked with their walls
+    const p = m.geometry.attributes.position.array;
+    for (let i = 0; i < p.length; i += 3) {
+      const nr = near.nearest(p[i], p[i + 2], 3);
+      if (nr && nr.dist < 1.2) bad.push(`${m.name} at ${p[i].toFixed(1)},${p[i + 2].toFixed(1)}`);
+    }
+  }
+  for (const v of buildParkedVehicles(rail).children) {
+    const nr = near.nearest(v.position.x, v.position.z, 3);
+    if (nr && nr.dist < 1.2) bad.push(`vehicle at ${v.position.x.toFixed(1)},${v.position.z.toFixed(1)}`);
+  }
+  assert.deepEqual([...new Set(bad)].slice(0, 5), [], `${bad.length} vertices in the walk`);
+});
+
+test('every reference photograph was taken on the route', async () => {
+  // tools/verify/compare.mjs stands the game camera where each photo was
+  // taken. A reference far from the walk compares the game with a street the
+  // player never sees.
+  const { readFileSync } = await import('node:fs');
+  const { Rail } = await import('../src/core/spline.js');
+  const { railPoints, geoToLocal } = await import('../src/data/route.js');
+  const { railIndex } = await import('../src/world/geo.js');
+  const { references } = JSON.parse(readFileSync('tools/geo/references.json', 'utf8'));
+  assert.ok(references.length >= 30, `${references.length} references`);
+  const near = railIndex(new Rail(railPoints()), 1);
+  const far = references.filter((r) => {
+    const p = geoToLocal(r.lat, r.lon);
+    const nr = near.nearest(p.x, p.z, 40);
+    return !nr || nr.dist > 25;
+  }).map((r) => r.name);
+  assert.deepEqual(far, [], 'these references are not on the walk');
+});

@@ -11,7 +11,9 @@ import { buildSky } from '../render/sky.js';
 import { railIndex, insideBuilding, pairs } from './geo.js';
 import { buildRealCity, sideStreetAnchors } from './realbuildings.js';
 import { buildTerrain } from './terrain.js';
-import { buildRealTrees, buildRealFurniture } from './realtrees.js';
+import { buildRealTrees, buildRealFurniture, buildGardenTrees } from './realtrees.js';
+import { buildBoundaries } from './boundaries.js';
+import { buildParkedVehicles } from './traffic.js';
 
 /**
  * Assembles Montmartre from the survey.
@@ -53,10 +55,22 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   anchors.push(...sideStreetAnchors(rail, near, (x, z) => insideBuilding(x, z, 0.3)));
 
   root.add(buildTerrain(rail, near));
-  root.add(buildRealTrees(rail, near, (x, z) => insideBuilding(x, z)));
+  const trees = buildRealTrees(rail, near, (x, z) => insideBuilding(x, z));
+  root.add(trees);
+  occluders.push(...trees.userData.occluders);
+  // The walls, railings and gates between the buildings, and the gardens'
+  // trees behind them: see boundaries.js for why the street was unrecognisable
+  // without them.
+  const bounds = buildBoundaries(rail, near);
+  root.add(bounds);
+  occluders.push(...bounds.userData.occluders);
+  const gardens = buildGardenTrees(rail, near, bounds.userData.gardenSpots, (x, z) => insideBuilding(x, z, 1.2));
+  root.add(gardens);
+  occluders.push(...gardens.userData.occluders);
   root.add(buildRealFurniture(rail, near, assets));
   root.add(buildProps(rail, rng, assets));
   root.add(buildCover(rail, rng));
+  root.add(buildParkedVehicles(rail));
 
   const sky = buildSky();
   sky.userData.dynamic = true;   // never batched; it tracks the camera

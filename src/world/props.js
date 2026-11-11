@@ -31,7 +31,9 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
     // Against the cadastre a lamp at "half the street width" can land inside
     // a building on a lane that narrows; skip those rather than embed them.
     if (insideBuilding(lx, lz, 0.4)) continue;
-    const lamp = assets.instance('street_lamp') ?? buildStreetLamp();
+    // Procedural, not the Blender model: that one is the swan-neck design with
+    // an amber lantern, and the lamps on this route are lantern-on-post.
+    const lamp = buildStreetLamp();
     lamp.position.copy(p).addScaledVector(right, side * off);
     lamp.position.y = p.y + 0.16;
     lamp.rotation.y = Math.atan2(right.x * -side, right.z * -side);
@@ -62,39 +64,37 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
 }
 
 export function buildStreetLamp() {
+  // The Montmartre lantern: a black cast-iron post with the lantern ON TOP,
+  // as in every survey photograph on the route (rue Girardon, Place Dalida,
+  // rue Lepic). The first version was a swan-neck with an amber box, which is
+  // a different street furniture family altogether and read as orange.
   const g = new THREE.Group();
-  const iron = flat(PALETTE.ironwork, { roughness: 0.45, metalness: 0.4 });
+  const iron = flat(new THREE.Color('#232527'), { roughness: 0.5, metalness: 0.2 });
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.26, 0.5, 8), iron);
-  base.position.y = 0.25;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.6, 8), iron);
+  base.position.y = 0.3;
   base.castShadow = true;
   g.add(base);
-
-  const column = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.12, 3.9, 8), iron);
-  column.position.y = 2.4;
+  const column = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 3.2, 8), iron);
+  column.position.y = 2.2;
   column.castShadow = true;
   g.add(column);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.18, 8), iron);
+  collar.position.y = 3.85;
+  g.add(collar);
 
-  // The swan neck.
-  const neck = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.055, 6, 10, Math.PI / 2), iron);
-  neck.position.set(0, 4.32, 0.42);
-  neck.rotation.set(0, Math.PI / 2, Math.PI / 2);
-  g.add(neck);
-
-  const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.25, 0.5, 6),
-    // It is late afternoon, not night. The lanterns are unlit glass catching
-    // the low sun, so this is a faint sheen and not a light source. At 0.25 it
-    // bloomed into a white blob that owned the frame.
-    flat(PALETTE.guimardAmber, {
-      roughness: 0.2, emissive: PALETTE.guimardAmber, emissiveIntensity: 0.06,
-    }));
-  lantern.position.set(0, 4.12, 0.84);
+  // Clear glass, so: pale and faintly warm, not a coloured light.
+  const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.17, 0.62, 6),
+    flat(new THREE.Color('#E6E2D6'), { roughness: 0.15, emissive: new THREE.Color('#FFF4DC'), emissiveIntensity: 0.05 }));
+  lantern.position.y = 4.25;
   lantern.castShadow = true;
   g.add(lantern);
-
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 6), iron);
-  cap.position.set(0, 4.44, 0.84);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 6), iron);
+  cap.position.y = 4.7;
   g.add(cap);
+  const finial = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), iron);
+  finial.position.y = 4.9;
+  g.add(finial);
   return g;
 }
 

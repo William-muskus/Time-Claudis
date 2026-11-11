@@ -4,6 +4,7 @@ import { ViewModel } from './render/viewmodel.js';
 import { Rail } from './core/spline.js';
 import { railPoints, WAYPOINTS, LANDMARKS, geoToLocal } from './data/route.js';
 import { buildWorld } from './world/index.js';
+import { groundAt } from './world/geo.js';
 import { AssetRegistry } from './world/assets.js';
 import { RailCamera } from './rail/camera.js';
 import { Game } from './gameplay/game.js';
@@ -385,6 +386,33 @@ window.__tour = {
   },
 
   places: () => [...WAYPOINTS.map((w) => w.id), ...LANDMARKS.map((l) => l.id)],
+
+  /**
+   * Stand exactly where a reference photograph was taken.
+   *
+   * tools/verify/compare.mjs uses this to put the game camera at a Panoramax
+   * picture's own position, heading and lens, so the render and the photo can
+   * be laid side by side and disagree only about the world. Heading is a
+   * compass bearing (0 = north, 90 = east); the field of view is horizontal,
+   * as the photo metadata gives it.
+   */
+  pose({ lat, lon, eye = 2.2, heading = 0, pitch = 0, hfov = 95 }) {
+    const p = geoToLocal(lat, lon);
+    const y = (groundAt(p.x, p.z) ?? 0) + eye;
+    const cam = renderer.camera;
+    cam.position.set(p.x, y, p.z);
+    const h = THREE.MathUtils.degToRad(heading), pt = THREE.MathUtils.degToRad(pitch);
+    cam.lookAt(p.x + Math.sin(h) * Math.cos(pt), y + Math.sin(pt), p.z - Math.cos(h) * Math.cos(pt));
+    const half = THREE.MathUtils.degToRad(hfov / 2);
+    cam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / cam.aspect));
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld(true);
+    // A photograph has no gun in it and no HUD over it.
+    if (renderer.viewmodelPass) renderer.viewmodelPass.enabled = false;
+    const hudEl = document.getElementById('hud');
+    if (hudEl) hudEl.style.display = 'none';
+    return { x: p.x, y, z: p.z };
+  },
 };
 window.__frozen = false;
 

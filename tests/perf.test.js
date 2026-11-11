@@ -69,22 +69,29 @@ test('the world still submits in a couple of hundred draw calls', () => {
     `${c.tris.toLocaleString()} triangles is no longer a low-poly scene`);
 });
 
-test('nothing in the world needs a texture upload', () => {
-  // Every surface is vertex-coloured. That is what lets 23,000 meshes merge
-  // into 66 batches in the first place, and it is also why the game has no
-  // texture memory to speak of. A map slipping in would break both.
+test('the only textures in the world are the shared ground patterns', () => {
+  // Every surface is vertex-coloured, which is what lets thousands of meshes
+  // merge into a few dozen batches and keeps texture memory near zero. The
+  // one exception is the ground: granite setts cannot be said in flat colour,
+  // and in the survey photos they are the most recognisable thing on the
+  // lanes. So the street surfaces carry ONE of the few small procedural
+  // patterns from src/render/textures.js, shared by every mesh that uses it,
+  // and nothing else may carry a map at all.
   const rail = new Rail(railPoints());
   const { root } = buildWorld(rail, 0xBADA55);
-  const textured = [];
+  const textures = new Set();
+  const stray = [];
   root.traverse((o) => {
     if (!o.isMesh) return;
     for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
       if (!m) continue;
       for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
-        if (m[slot]) textured.push(`${o.name || '(unnamed)'}.${slot}`);
+        if (!m[slot]) continue;
+        if (slot === 'map' && m.map.isDataTexture && m.map.image.width <= 256) textures.add(m.map);
+        else stray.push(`${o.name || '(unnamed)'}.${slot}`);
       }
     }
   });
-  assert.deepEqual(textured, [],
-    `these carry textures in a vertex-coloured scene: ${textured.slice(0, 5).join(', ')}`);
+  assert.deepEqual(stray, [], `these carry textures they should not: ${stray.slice(0, 5).join(', ')}`);
+  assert.ok(textures.size <= 4, `${textures.size} distinct ground textures; they are meant to be shared`);
 });
