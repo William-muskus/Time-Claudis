@@ -58,52 +58,64 @@ def bearing(a, b):
     return (math.degrees(math.atan2(dx, dy)) + 360) % 360
 
 
+VIEWS = (("", 0), ("~back", 180), ("~left", -90), ("~right", 90))
+
+
+def pick(feats, w, want, seen, strict, maxd):
+    """Best frame near waypoint w looking along bearing `want`, or None."""
+    best = None
+    for f in feats:
+        p = f["properties"]
+        io = p.get("pers:interior_orientation") or {}
+        az, fov = p.get("view:azimuth"), io.get("field_of_view")
+        if az is None or fov is None or fov >= 180 or fov < 60 or f["id"] in seen:
+            continue
+        lon, lat = f["geometry"]["coordinates"]
+        dist = math.hypot((lon - w["lon"]) * M_LON, (lat - w["lat"]) * M_LAT)
+        dang = abs((az - want + 180) % 360 - 180)
+        if dist > maxd or (strict and dang > 35):
+            continue
+        score = dist + (dang * 0.35 if strict else 0) + (0 if p.get("geovisio:producer") == "immergis" else 15)
+        if best is None or score < best[0]:
+            best = (score, f, dist, dang)
+    return best
+
+
 def main():
+    """
+    Four views per waypoint where the survey has them: along the route (the
+    name alone), back the way you came (~back), and to each side (~left,
+    ~right). The side views are what show the walls, gates and gardens
+    between the buildings, which a forward view sees only at a raking angle.
+    For the forward view only, a nearby frame facing any direction is
+    accepted when nothing faces along the route.
+    """
     wps = waypoints()
     refs, seen = [], set()
     for i, w in enumerate(wps):
         ahead = wps[min(i + 2, len(wps) - 1)]
-        want = bearing(w, ahead) if ahead is not w else bearing(wps[i - 1], w)
+        route = bearing(w, ahead) if ahead is not w else bearing(wps[i - 1], w)
         d = 0.00022
-        q = f"{API}/search?bbox={w['lon'] - d * 1.5},{w['lat'] - d},{w['lon'] + d * 1.5},{w['lat'] + d}&limit=200"
-        best = None
+        q = f"{API}/search?bbox={w['lon'] - d * 1.5},{w['lat'] - d},{w['lon'] + d * 1.5},{w['lat'] + d}&limit=300"
         feats = get(q)["features"]
-        # Two passes: along the route if possible, else the nearest frame facing
-        # anywhere. The game camera takes the photo's own heading, so a frame
-        # looking back up rue Ravignan compares just as well as one looking down.
-        for strict in (True, False):
-          if best:
-            break
-          for f in feats:
+        for suffix, off in VIEWS:
+            want = (route + off) % 360
+            best = pick(feats, w, want, seen, True, 24 if not suffix else 14)
+            if not best and not suffix:
+                best = pick(feats, w, want, seen, False, 16)
+            if not best:
+                continue
+            f = best[1]
             p = f["properties"]
-            io = p.get("pers:interior_orientation") or {}
-            az, fov = p.get("view:azimuth"), io.get("field_of_view")
-            if az is None or fov is None or fov >= 180 or fov < 60 or f["id"] in seen:
-                continue
+            seen.add(f["id"])
             lon, lat = f["geometry"]["coordinates"]
-            dist = math.hypot((lon - w["lon"]) * M_LON, (lat - w["lat"]) * M_LAT)
-            dang = abs((az - want + 180) % 360 - 180)
-            if strict and dang > 35:
-                continue
-            if not strict and dist > 16:
-                continue
-            score = dist + (dang * 0.35 if strict else 0) + (0 if p.get("geovisio:producer") == "immergis" else 15)
-            if best is None or score < best[0]:
-                best = (score, f, dist, dang)
-        if not best:
-            print(f"{w['id']:22s} -")
-            continue
-        f = best[1]
-        p = f["properties"]
-        seen.add(f["id"])
-        lon, lat = f["geometry"]["coordinates"]
-        refs.append(dict(
-            name=w["id"], picture=f["id"], lat=round(lat, 7), lon=round(lon, 7),
-            heading=p["view:azimuth"], hfov=p["pers:interior_orientation"]["field_of_view"],
-            taken=p.get("datetime", "")[:10], producer=p.get("geovisio:producer"),
-            licence="CC-BY-SA-4.0", sd=f["assets"]["sd"]["href"],
-            note=f"{best[2]:.0f} m from the waypoint, {best[3]:.0f} deg off the route heading"))
-        print(f"{w['id']:22s} {f['id']}  {refs[-1]['note']}")
+            refs.append(dict(
+                name=w["id"] + suffix, waypoint=w["id"], picture=f["id"], lat=round(lat, 7), lon=round(lon, 7),
+                heading=p["view:azimuth"], hfov=p["pers:interior_orientation"]["field_of_view"],
+                taken=p.get("datetime", "")[:10], producer=p.get("geovisio:producer"),
+                licence="CC-BY-SA-4.0", sd=f["assets"]["sd"]["href"],
+                note=f"{best[2]:.0f} m from the waypoint, {best[3]:.0f} deg off the wanted heading"))
+        print(f"{w['id']:22s} " + " ".join(r["name"][len(w["id"]):] or "fwd" for r in refs if r["waypoint"] == w["id"]))
     with open(OUT, "w") as fh:
         json.dump(dict(source="https://api.panoramax.xyz", references=refs), fh, indent=1)
     print(f"wrote {len(refs)} references to {OUT}")

@@ -108,6 +108,21 @@ for (const r of refs) {
   await sheet.screenshot({ path: file });
   console.log(`[compare] ${file}`);
 }
+// Contact sheets: six pairs to an image, photo over render, for scanning the
+// whole route at once. The full-size pairs above are for looking closely.
+const PER = 6;
+for (let k = 0; k < refs.length; k += PER) {
+  const cells = refs.slice(k, k + PER).map((r, j) => `
+    <div style="width:426px;display:inline-block;vertical-align:top;margin:0 1px 4px 0">
+      <div style="font:11px sans-serif;color:#ddd;padding:2px 4px">${k + j + 1} ${r.name}</div>
+      <img src="http://localhost:${port}/__out/ref/${r.name}.jpg" style="display:block;width:426px;height:225px;object-fit:fill">
+      <img src="http://localhost:${port}/__out/game/${r.name}.png?${Date.now()}" style="display:block;width:426px;height:225px">
+    </div>`).join('');
+  await sheet.setViewportSize({ width: 1282, height: 980 });
+  await sheet.setContent(`<html><body style="margin:0;background:#111">${cells}</body></html>`, { waitUntil: 'load' });
+  await sheet.screenshot({ path: join(OUT, `sheet_${String(k / PER + 1).padStart(2, '0')}.png`) });
+}
+
 await writeFile(join(OUT, 'manifest.json'), JSON.stringify({ errors, references: refs }, null, 2));
 if (errors.length) console.log('[compare] page errors:', errors.slice(0, 5));
 await browser.close();

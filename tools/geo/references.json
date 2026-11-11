@@ -3,6 +3,7 @@
  "references": [
   {
    "name": "lamarck_station",
+   "waypoint": "lamarck_station",
    "picture": "d73ac8dc-500b-4f52-a828-63c30c3c18fe",
    "lat": 48.8896801,
    "lon": 2.338687,
@@ -12,10 +13,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/d7/3a/c8/dc/500b-4f52-a828-63c30c3c18fe/sd.jpg",
-   "note": "15 m from the waypoint, 131 deg off the route heading"
+   "note": "15 m from the waypoint, 131 deg off the wanted heading"
   },
   {
    "name": "escalier_foot",
+   "waypoint": "escalier_foot",
    "picture": "339f92f2-8642-4c10-9d84-1bf485666482",
    "lat": 48.8895604,
    "lon": 2.3385871,
@@ -25,10 +27,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/33/9f/92/f2/8642-4c10-9d84-1bf485666482/sd.jpg",
-   "note": "23 m from the waypoint, 14 deg off the route heading"
+   "note": "23 m from the waypoint, 14 deg off the wanted heading"
   },
   {
    "name": "s_pierre_dac",
+   "waypoint": "s_pierre_dac",
    "picture": "809d6b5c-50a6-4b62-bce2-bbaed29783d6",
    "lat": 48.8895411,
    "lon": 2.3385572,
@@ -38,10 +41,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/80/9d/6b/5c/50a6-4b62-bce2-bbaed29783d6/sd.jpg",
-   "note": "15 m from the waypoint, 30 deg off the route heading"
+   "note": "15 m from the waypoint, 30 deg off the wanted heading"
+  },
+  {
+   "name": "s_pierre_dac~back",
+   "waypoint": "s_pierre_dac",
+   "picture": "30117026-8491-49c8-b856-ad0ca584ebc1",
+   "lat": 48.8895729,
+   "lon": 2.338467,
+   "heading": 28,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/30/11/70/26/8491-49c8-b856-ad0ca584ebc1/sd.jpg",
+   "note": "13 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "s_pierre_dac~left",
+   "waypoint": "s_pierre_dac",
+   "picture": "bf099f4d-f171-4866-8b00-3e414b0f3976",
+   "lat": 48.8896101,
+   "lon": 2.3385638,
+   "heading": 119,
+   "hfov": 95,
+   "taken": "2025-01-15",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/bf/09/9f/4d/f171-4866-8b00-3e414b0f3976/sd.jpg",
+   "note": "7 m from the waypoint, 3 deg off the wanted heading"
+  },
+  {
+   "name": "s_pierre_dac~right",
+   "waypoint": "s_pierre_dac",
+   "picture": "0e7574e4-134b-4297-b65f-790434c2ee93",
+   "lat": 48.8896211,
+   "lon": 2.3385859,
+   "heading": 270,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0e/75/74/e4/134b-4297-b65f-790434c2ee93/sd.jpg",
+   "note": "6 m from the waypoint, 26 deg off the wanted heading"
   },
   {
    "name": "escalier_top",
+   "waypoint": "escalier_top",
    "picture": "0ea06b62-94a9-41b7-bf92-7c2f2d835a57",
    "lat": 48.8896218,
    "lon": 2.3384829,
@@ -51,10 +97,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0e/a0/6b/62/94a9-41b7-bf92-7c2f2d835a57/sd.jpg",
-   "note": "1 m from the waypoint, 111 deg off the route heading"
+   "note": "1 m from the waypoint, 111 deg off the wanted heading"
+  },
+  {
+   "name": "escalier_top~back",
+   "waypoint": "escalier_top",
+   "picture": "9f350fed-645c-43cb-8d81-fe2f8a379e1b",
+   "lat": 48.8895265,
+   "lon": 2.3384382,
+   "heading": 20,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/9f/35/0f/ed/645c-43cb-8d81-fe2f8a379e1b/sd.jpg",
+   "note": "10 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "escalier_top~left",
+   "waypoint": "escalier_top",
+   "picture": "48e99d9a-008f-475d-9b7d-a952b6137e9e",
+   "lat": 48.8896202,
+   "lon": 2.3385248,
+   "heading": 97,
+   "hfov": 95,
+   "taken": "2025-01-15",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/48/e9/9d/9a/008f-475d-9b7d-a952b6137e9e/sd.jpg",
+   "note": "3 m from the waypoint, 12 deg off the wanted heading"
+  },
+  {
+   "name": "escalier_top~right",
+   "waypoint": "escalier_top",
+   "picture": "18b07753-0325-41d9-b85d-7a164be27ca6",
+   "lat": 48.8896184,
+   "lon": 2.3385176,
+   "heading": 270,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/18/b0/77/53/0325-41d9-b85d-7a164be27ca6/sd.jpg",
+   "note": "2 m from the waypoint, 19 deg off the wanted heading"
   },
   {
    "name": "s_caulaincourt",
+   "waypoint": "s_caulaincourt",
    "picture": "bc515112-ed53-41e4-9373-a72466cfa045",
    "lat": 48.8895112,
    "lon": 2.3384359,
@@ -64,10 +153,81 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/bc/51/51/12/ed53-41e4-9373-a72466cfa045/sd.jpg",
-   "note": "0 m from the waypoint, 161 deg off the route heading"
+   "note": "0 m from the waypoint, 161 deg off the wanted heading"
+  },
+  {
+   "name": "s_caulaincourt~back",
+   "waypoint": "s_caulaincourt",
+   "picture": "7859f039-dc13-4f8a-9663-bb66489b08ec",
+   "lat": 48.8895101,
+   "lon": 2.3384458,
+   "heading": 28,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/78/59/f0/39/dc13-4f8a-9663-bb66489b08ec/sd.jpg",
+   "note": "1 m from the waypoint, 9 deg off the wanted heading"
+  },
+  {
+   "name": "s_caulaincourt~left",
+   "waypoint": "s_caulaincourt",
+   "picture": "14d970b3-c945-4ff4-8288-b6e5c911c80f",
+   "lat": 48.8895776,
+   "lon": 2.3384134,
+   "heading": 108,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/14/d9/70/b3/c945-4ff4-8288-b6e5c911c80f/sd.jpg",
+   "note": "7 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "s_caulaincourt~right",
+   "waypoint": "s_caulaincourt",
+   "picture": "dfb73df8-c72f-4f0e-bf8f-7b9fa7079a45",
+   "lat": 48.8895418,
+   "lon": 2.3384393,
+   "heading": 288,
+   "hfov": 95,
+   "taken": "2025-01-15",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/df/b7/3d/f8/c72f-4f0e-bf8f-7b9fa7079a45/sd.jpg",
+   "note": "3 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "constantin_pecqueur",
+   "waypoint": "constantin_pecqueur",
+   "picture": "08a33926-d5f9-4ca9-addf-9ecc815d32dd",
+   "lat": 48.8893059,
+   "lon": 2.338316,
+   "heading": 19,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/08/a3/39/26/d5f9-4ca9-addf-9ecc815d32dd/sd.jpg",
+   "note": "1 m from the waypoint, 177 deg off the wanted heading"
+  },
+  {
+   "name": "constantin_pecqueur~back",
+   "waypoint": "constantin_pecqueur",
+   "picture": "1e5ddc02-7f1b-41c8-9830-b88a45103cf9",
+   "lat": 48.8893107,
+   "lon": 2.3383362,
+   "heading": 19,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/1e/5d/dc/02/7f1b-41c8-9830-b88a45103cf9/sd.jpg",
+   "note": "1 m from the waypoint, 3 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur",
+   "waypoint": "s_pecqueur",
    "picture": "c7600c54-e55f-461c-a45b-18bfd77113e6",
    "lat": 48.8890847,
    "lon": 2.3379996,
@@ -77,23 +237,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/c7/60/0c/54/e55f-461c-a45b-18bfd77113e6/sd.jpg",
-   "note": "34 m from the waypoint, 30 deg off the route heading"
+   "note": "15 m from the waypoint, 32 deg off the wanted heading"
   },
   {
-   "name": "s_pecqueur",
-   "picture": "3c5c05dd-1584-4157-b85b-7ee7611974ce",
-   "lat": 48.889127,
-   "lon": 2.3379884,
-   "heading": 174,
+   "name": "s_pecqueur~back",
+   "waypoint": "s_pecqueur",
+   "picture": "697243a2-64d1-44d4-b39e-a3f6d22d6b60",
+   "lat": 48.8890597,
+   "lon": 2.338221,
+   "heading": 24,
    "hfov": 95,
    "taken": "2025-08-13",
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
-   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/3c/5c/05/dd/1584-4157-b85b-7ee7611974ce/sd.jpg",
-   "note": "17 m from the waypoint, 30 deg off the route heading"
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/69/72/43/a2/64d1-44d4-b39e-a3f6d22d6b60/sd.jpg",
+   "note": "1 m from the waypoint, 0 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur~left",
+   "waypoint": "s_pecqueur",
+   "picture": "5d4d4a93-ec89-4221-bda5-d480d1a43a8e",
+   "lat": 48.8890019,
+   "lon": 2.3381122,
+   "heading": 108,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/5d/4d/4a/93/ec89-4221-bda5-d480d1a43a8e/sd.jpg",
+   "note": "10 m from the waypoint, 6 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur~right",
+   "waypoint": "s_pecqueur",
+   "picture": "58ff4d74-bf96-421e-9f02-72e472647aef",
+   "lat": 48.8889648,
+   "lon": 2.3382505,
+   "heading": 320,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/58/ff/4d/74/bf96-421e-9f02-72e472647aef/sd.jpg",
+   "note": "12 m from the waypoint, 26 deg off the wanted heading"
   },
   {
    "name": "s_pecqueur_2",
+   "waypoint": "s_pecqueur_2",
    "picture": "7db56e93-8378-4c7a-af3f-1498f89222ba",
    "lat": 48.8890418,
    "lon": 2.3380205,
@@ -103,10 +293,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/7d/b5/6e/93/8378-4c7a-af3f-1498f89222ba/sd.jpg",
-   "note": "12 m from the waypoint, 26 deg off the route heading"
+   "note": "12 m from the waypoint, 26 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur_2~back",
+   "waypoint": "s_pecqueur_2",
+   "picture": "4553db54-8eb1-4170-82a4-3355c9b7630b",
+   "lat": 48.8889902,
+   "lon": 2.3381807,
+   "heading": 353,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/45/53/db/54/8eb1-4170-82a4-3355c9b7630b/sd.jpg",
+   "note": "7 m from the waypoint, 13 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur_2~left",
+   "waypoint": "s_pecqueur_2",
+   "picture": "2d1ea28a-3f75-4bb0-8d31-28938bf52ac4",
+   "lat": 48.8890015,
+   "lon": 2.3381296,
+   "heading": 98,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/2d/1e/a2/8a/3f75-4bb0-8d31-28938bf52ac4/sd.jpg",
+   "note": "6 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "s_pecqueur_2~right",
+   "waypoint": "s_pecqueur_2",
+   "picture": "2329abca-5b42-4b53-96a2-ba56af731d87",
+   "lat": 48.8889216,
+   "lon": 2.3382295,
+   "heading": 308,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/23/29/ab/ca/5b42-4b53-96a2-ba56af731d87/sd.jpg",
+   "note": "9 m from the waypoint, 32 deg off the wanted heading"
   },
   {
    "name": "girardon_steps",
+   "waypoint": "girardon_steps",
    "picture": "0bf5a0cc-c7f1-4b78-8dc9-1c3b2ce986fe",
    "lat": 48.8890114,
    "lon": 2.3380648,
@@ -116,10 +349,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0b/f5/a0/cc/c7f1-4b78-8dc9-1c3b2ce986fe/sd.jpg",
-   "note": "23 m from the waypoint, 33 deg off the route heading"
+   "note": "23 m from the waypoint, 33 deg off the wanted heading"
   },
   {
    "name": "s_girardon_steps",
+   "waypoint": "s_girardon_steps",
    "picture": "b36e14c8-26b3-414c-b3a7-1744853b4dff",
    "lat": 48.8884757,
    "lon": 2.3380565,
@@ -129,10 +363,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/b3/6e/14/c8/26b3-414c-b3a7-1744853b4dff/sd.jpg",
-   "note": "19 m from the waypoint, 29 deg off the route heading"
+   "note": "19 m from the waypoint, 29 deg off the wanted heading"
   },
   {
    "name": "place_dalida",
+   "waypoint": "place_dalida",
    "picture": "920dd26d-9ad7-497e-8672-e4a84f14cae5",
    "lat": 48.8884416,
    "lon": 2.3380721,
@@ -142,10 +377,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/92/0d/d2/6d/9ad7-497e-8672-e4a84f14cae5/sd.jpg",
-   "note": "11 m from the waypoint, 7 deg off the route heading"
+   "note": "11 m from the waypoint, 7 deg off the wanted heading"
+  },
+  {
+   "name": "place_dalida~right",
+   "waypoint": "place_dalida",
+   "picture": "2a207638-d3fd-42e6-9694-aa55fe5a02fc",
+   "lat": 48.8885346,
+   "lon": 2.3381931,
+   "heading": 289,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/2a/20/76/38/d3fd-42e6-9694-aa55fe5a02fc/sd.jpg",
+   "note": "4 m from the waypoint, 5 deg off the wanted heading"
   },
   {
    "name": "s_girardon_1",
+   "waypoint": "s_girardon_1",
    "picture": "71f8b10e-eaca-4f84-8d1a-6ee5968f461f",
    "lat": 48.8884313,
    "lon": 2.338034,
@@ -155,10 +405,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/71/f8/b1/0e/eaca-4f84-8d1a-6ee5968f461f/sd.jpg",
-   "note": "2 m from the waypoint, 2 deg off the route heading"
+   "note": "2 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "s_girardon_1~right",
+   "waypoint": "s_girardon_1",
+   "picture": "45115410-fb4e-407c-b20b-94138abcd197",
+   "lat": 48.8885105,
+   "lon": 2.3381714,
+   "heading": 282,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/45/11/54/10/fb4e-407c-b20b-94138abcd197/sd.jpg",
+   "note": "12 m from the waypoint, 11 deg off the wanted heading"
   },
   {
    "name": "girardon_climb",
+   "waypoint": "girardon_climb",
    "picture": "8bb1bc55-8be0-40d9-996d-3e997851eae6",
    "lat": 48.8882524,
    "lon": 2.3379517,
@@ -168,10 +433,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/8b/b1/bc/55/8be0-40d9-996d-3e997851eae6/sd.jpg",
-   "note": "2 m from the waypoint, 4 deg off the route heading"
+   "note": "2 m from the waypoint, 4 deg off the wanted heading"
   },
   {
    "name": "s_girardon_2",
+   "waypoint": "s_girardon_2",
    "picture": "4769d4c8-1169-461e-aa38-cf6b02bfecac",
    "lat": 48.8881305,
    "lon": 2.3378567,
@@ -181,10 +447,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/47/69/d4/c8/1169-461e-aa38-cf6b02bfecac/sd.jpg",
-   "note": "2 m from the waypoint, 8 deg off the route heading"
+   "note": "2 m from the waypoint, 8 deg off the wanted heading"
   },
   {
    "name": "s_girardon_3",
+   "waypoint": "s_girardon_3",
    "picture": "52fb0c51-8cb0-46c1-92b8-5fda48bc0309",
    "lat": 48.8879707,
    "lon": 2.3377296,
@@ -194,10 +461,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/52/fb/0c/51/8cb0-46c1-92b8-5fda48bc0309/sd.jpg",
-   "note": "1 m from the waypoint, 5 deg off the route heading"
+   "note": "1 m from the waypoint, 5 deg off the wanted heading"
   },
   {
    "name": "marcel_ayme",
+   "waypoint": "marcel_ayme",
    "picture": "14a2b476-01b7-4cc4-8333-fad93d7cea58",
    "lat": 48.8877576,
    "lon": 2.3375804,
@@ -207,10 +475,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/14/a2/b4/76/01b7-4cc4-8333-fad93d7cea58/sd.jpg",
-   "note": "2 m from the waypoint, 1 deg off the route heading"
+   "note": "2 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "marcel_ayme~left",
+   "waypoint": "marcel_ayme",
+   "picture": "be5923d1-226a-4071-a077-033177a6d2b0",
+   "lat": 48.8876217,
+   "lon": 2.3375447,
+   "heading": 152,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/be/59/23/d1/226a-4071-a077-033177a6d2b0/sd.jpg",
+   "note": "14 m from the waypoint, 35 deg off the wanted heading"
   },
   {
    "name": "s_girardon_4",
+   "waypoint": "s_girardon_4",
    "picture": "f7751e27-559b-4b07-a367-f98c98aaac79",
    "lat": 48.8875873,
    "lon": 2.3374611,
@@ -220,10 +503,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/f7/75/1e/27/559b-4b07-a367-f98c98aaac79/sd.jpg",
-   "note": "1 m from the waypoint, 11 deg off the route heading"
+   "note": "1 m from the waypoint, 11 deg off the wanted heading"
+  },
+  {
+   "name": "s_girardon_4~back",
+   "waypoint": "s_girardon_4",
+   "picture": "e928a7db-4f0a-4588-8f38-8429142adf7f",
+   "lat": 48.8875585,
+   "lon": 2.3374752,
+   "heading": 23,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/e9/28/a7/db/4f0a-4588-8f38-8429142adf7f/sd.jpg",
+   "note": "5 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "s_girardon_4~left",
+   "waypoint": "s_girardon_4",
+   "picture": "22f186c5-ab95-4e01-905c-508f741ca896",
+   "lat": 48.8875947,
+   "lon": 2.3376037,
+   "heading": 124,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/22/f1/86/c5/ab95-4e01-905c-508f741ca896/sd.jpg",
+   "note": "10 m from the waypoint, 9 deg off the wanted heading"
+  },
+  {
+   "name": "s_girardon_4~right",
+   "waypoint": "s_girardon_4",
+   "picture": "0e3c1152-05ec-43c2-a921-df757822c563",
+   "lat": 48.8876983,
+   "lon": 2.3373509,
+   "heading": 299,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0e/3c/11/52/05ec-43c2-a921-df757822c563/sd.jpg",
+   "note": "14 m from the waypoint, 4 deg off the wanted heading"
   },
   {
    "name": "s_girardon_5",
+   "waypoint": "s_girardon_5",
    "picture": "99114f2a-edeb-48e9-b0c4-91a2067a7126",
    "lat": 48.8874664,
    "lon": 2.3373665,
@@ -233,10 +559,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/99/11/4f/2a/edeb-48e9-b0c4-91a2067a7126/sd.jpg",
-   "note": "2 m from the waypoint, 17 deg off the route heading"
+   "note": "2 m from the waypoint, 17 deg off the wanted heading"
+  },
+  {
+   "name": "s_girardon_5~back",
+   "waypoint": "s_girardon_5",
+   "picture": "e3e0b1ff-a7d8-4075-bd18-58b4eb534e77",
+   "lat": 48.8874409,
+   "lon": 2.3373891,
+   "heading": 29,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/e3/e0/b1/ff/a7d8-4075-bd18-58b4eb534e77/sd.jpg",
+   "note": "3 m from the waypoint, 18 deg off the wanted heading"
   },
   {
    "name": "moulin_galette",
+   "waypoint": "moulin_galette",
    "picture": "af2dcabf-ef84-4e9b-b6af-181026db03ee",
    "lat": 48.8873373,
    "lon": 2.3372648,
@@ -246,10 +587,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/af/2d/ca/bf/ef84-4e9b-b6af-181026db03ee/sd.jpg",
-   "note": "1 m from the waypoint, 0 deg off the route heading"
+   "note": "1 m from the waypoint, 0 deg off the wanted heading"
+  },
+  {
+   "name": "moulin_galette~back",
+   "waypoint": "moulin_galette",
+   "picture": "e82c881a-6f84-4d95-b6d9-ee28d84e619e",
+   "lat": 48.8873619,
+   "lon": 2.3373295,
+   "heading": 29,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/e8/2c/88/1a/6f84-4d95-b6d9-ee28d84e619e/sd.jpg",
+   "note": "5 m from the waypoint, 20 deg off the wanted heading"
+  },
+  {
+   "name": "moulin_galette~left",
+   "waypoint": "moulin_galette",
+   "picture": "64e15ff4-ef40-45e5-8455-e1eb07368aec",
+   "lat": 48.8872671,
+   "lon": 2.3372744,
+   "heading": 105,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/64/e1/5f/f4/ef40-45e5-8455-e1eb07368aec/sd.jpg",
+   "note": "7 m from the waypoint, 6 deg off the wanted heading"
   },
   {
    "name": "lepic_orchampt",
+   "waypoint": "lepic_orchampt",
    "picture": "da2383ae-135c-46db-a13a-2884c0158cbb",
    "lat": 48.8873558,
    "lon": 2.3372831,
@@ -259,10 +629,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/da/23/83/ae/135c-46db-a13a-2884c0158cbb/sd.jpg",
-   "note": "15 m from the waypoint, 1 deg off the route heading"
+   "note": "15 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "lepic_orchampt~back",
+   "waypoint": "lepic_orchampt",
+   "picture": "70fad262-7674-4d5b-9f46-33d12de5598a",
+   "lat": 48.8873222,
+   "lon": 2.3372963,
+   "heading": 42,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/70/fa/d2/62/7674-4d5b-9f46-33d12de5598a/sd.jpg",
+   "note": "11 m from the waypoint, 15 deg off the wanted heading"
+  },
+  {
+   "name": "lepic_orchampt~left",
+   "waypoint": "lepic_orchampt",
+   "picture": "0c0b8a02-cbce-417f-9f15-89a926ae206f",
+   "lat": 48.8872445,
+   "lon": 2.3373106,
+   "heading": 109,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0c/0b/8a/02/cbce-417f-9f15-89a926ae206f/sd.jpg",
+   "note": "3 m from the waypoint, 8 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_0",
+   "waypoint": "s_orchampt_0",
    "picture": "ec6a565e-6040-4ffc-b40f-a5c89db2f66f",
    "lat": 48.8873253,
    "lon": 2.3372577,
@@ -272,10 +671,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/ec/6a/56/5e/6040-4ffc-b40f-a5c89db2f66f/sd.jpg",
-   "note": "18 m from the waypoint, 15 deg off the route heading"
+   "note": "18 m from the waypoint, 15 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_0~left",
+   "waypoint": "s_orchampt_0",
+   "picture": "a26ea5f4-ae79-420c-b5c6-958735b46496",
+   "lat": 48.8872692,
+   "lon": 2.3372348,
+   "heading": 117,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/a2/6e/a5/f4/ae79-420c-b5c6-958735b46496/sd.jpg",
+   "note": "11 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_1",
+   "waypoint": "s_orchampt_1",
    "picture": "709dd335-abf1-4782-9790-d82dc62ddb15",
    "lat": 48.8872386,
    "lon": 2.3372621,
@@ -285,10 +699,11 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/70/9d/d3/35/abf1-4782-9790-d82dc62ddb15/sd.jpg",
-   "note": "16 m from the waypoint, 44 deg off the route heading"
+   "note": "16 m from the waypoint, 44 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_1b",
+   "waypoint": "s_orchampt_1b",
    "picture": "5ce379a1-a2ff-4592-a37b-2b50249a3d2c",
    "lat": 48.886931,
    "lon": 2.3370765,
@@ -298,10 +713,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/5c/e3/79/a1/a2ff-4592-a37b-2b50249a3d2c/sd.jpg",
-   "note": "13 m from the waypoint, 172 deg off the route heading"
+   "note": "13 m from the waypoint, 172 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_1b~back",
+   "waypoint": "s_orchampt_1b",
+   "picture": "92e601b5-4d32-48a9-bac8-038c73f2883a",
+   "lat": 48.8869289,
+   "lon": 2.337075,
+   "heading": 23,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/92/e6/01/b5/4d32-48a9-bac8-038c73f2883a/sd.jpg",
+   "note": "13 m from the waypoint, 9 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_1c",
+   "waypoint": "s_orchampt_1c",
    "picture": "75a3f86b-2a08-4134-a3e5-070d58d4718c",
    "lat": 48.8868181,
    "lon": 2.3371443,
@@ -311,10 +741,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/75/a3/f8/6b/2a08-4134-a3e5-070d58d4718c/sd.jpg",
-   "note": "20 m from the waypoint, 33 deg off the route heading"
+   "note": "20 m from the waypoint, 33 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_1c~back",
+   "waypoint": "s_orchampt_1c",
+   "picture": "2329581f-5ebf-4de5-b8f5-5c91322b16b4",
+   "lat": 48.8869021,
+   "lon": 2.3370593,
+   "heading": 7,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/23/29/58/1f/5ebf-4de5-b8f5-5c91322b16b4/sd.jpg",
+   "note": "11 m from the waypoint, 9 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_1c~left",
+   "waypoint": "s_orchampt_1c",
+   "picture": "dc2d23df-a035-4208-8b8f-d526856e3459",
+   "lat": 48.8868824,
+   "lon": 2.3370581,
+   "heading": 89,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/dc/2d/23/df/a035-4208-8b8f-d526856e3459/sd.jpg",
+   "note": "13 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "maison_dalida",
+   "waypoint": "maison_dalida",
    "picture": "15f3ee52-4779-4d87-baaa-9ffa9e6b145f",
    "lat": 48.8868544,
    "lon": 2.3371031,
@@ -324,10 +783,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/15/f3/ee/52/4779-4d87-baaa-9ffa9e6b145f/sd.jpg",
-   "note": "13 m from the waypoint, 5 deg off the route heading"
+   "note": "13 m from the waypoint, 5 deg off the wanted heading"
+  },
+  {
+   "name": "maison_dalida~back",
+   "waypoint": "maison_dalida",
+   "picture": "2aaf9c2b-9670-4479-8ef3-406936af08d8",
+   "lat": 48.8868611,
+   "lon": 2.3370626,
+   "heading": 326,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/2a/af/9c/2b/9670-4479-8ef3-406936af08d8/sd.jpg",
+   "note": "12 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "maison_dalida~left",
+   "waypoint": "maison_dalida",
+   "picture": "49b32228-35c3-4ba9-8f08-087931f7c246",
+   "lat": 48.8868928,
+   "lon": 2.3370643,
+   "heading": 54,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/49/b3/22/28/35c3-4ba9-8f08-087931f7c246/sd.jpg",
+   "note": "8 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_2",
+   "waypoint": "s_orchampt_2",
    "picture": "59fc07a9-a50c-40e6-aedd-37131cd107cb",
    "lat": 48.8867837,
    "lon": 2.3371883,
@@ -337,10 +825,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/59/fc/07/a9/a50c-40e6-aedd-37131cd107cb/sd.jpg",
-   "note": "11 m from the waypoint, 5 deg off the route heading"
+   "note": "11 m from the waypoint, 5 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_2~back",
+   "waypoint": "s_orchampt_2",
+   "picture": "0e63d2b1-4997-4025-873c-df92a795e9c5",
+   "lat": 48.8868325,
+   "lon": 2.337101,
+   "heading": 317,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0e/63/d2/b1/4997-4025-873c-df92a795e9c5/sd.jpg",
+   "note": "5 m from the waypoint, 0 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_2~left",
+   "waypoint": "s_orchampt_2",
+   "picture": "2a42d1c7-2556-46e1-bb0d-014d258bcd69",
+   "lat": 48.8868957,
+   "lon": 2.3370672,
+   "heading": 50,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/2a/42/d1/c7/2556-46e1-bb0d-014d258bcd69/sd.jpg",
+   "note": "4 m from the waypoint, 3 deg off the wanted heading"
   },
   {
    "name": "orchampt_bend",
+   "waypoint": "orchampt_bend",
    "picture": "d0ae0277-b943-4b82-91c5-2d8f974a4232",
    "lat": 48.8866889,
    "lon": 2.3373266,
@@ -350,10 +867,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/d0/ae/02/77/b943-4b82-91c5-2d8f974a4232/sd.jpg",
-   "note": "3 m from the waypoint, 2 deg off the route heading"
+   "note": "3 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "orchampt_bend~back",
+   "waypoint": "orchampt_bend",
+   "picture": "e1a0b630-c7af-4e40-85bd-736642cee645",
+   "lat": 48.886672,
+   "lon": 2.337341,
+   "heading": 319,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/e1/a0/b6/30/c7af-4e40-85bd-736642cee645/sd.jpg",
+   "note": "3 m from the waypoint, 2 deg off the wanted heading"
   },
   {
    "name": "s_orchampt_4",
+   "waypoint": "s_orchampt_4",
    "picture": "0e0042ca-4627-4b7d-b724-5a155ddd23ba",
    "lat": 48.8864967,
    "lon": 2.3376087,
@@ -363,10 +895,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0e/00/42/ca/4627-4b7d-b724-5a155ddd23ba/sd.jpg",
-   "note": "2 m from the waypoint, 4 deg off the route heading"
+   "note": "2 m from the waypoint, 4 deg off the wanted heading"
+  },
+  {
+   "name": "s_orchampt_4~back",
+   "waypoint": "s_orchampt_4",
+   "picture": "75efeb40-13aa-457f-8ff7-98501f3614f9",
+   "lat": 48.8865099,
+   "lon": 2.3375791,
+   "heading": 319,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/75/ef/eb/40/13aa-457f-8ff7-98501f3614f9/sd.jpg",
+   "note": "4 m from the waypoint, 6 deg off the wanted heading"
   },
   {
    "name": "orchampt_ravignan",
+   "waypoint": "orchampt_ravignan",
    "picture": "be21b056-d1db-4662-beda-0a926ff36f15",
    "lat": 48.886291,
    "lon": 2.3379229,
@@ -376,10 +923,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/be/21/b0/56/d1db-4662-beda-0a926ff36f15/sd.jpg",
-   "note": "2 m from the waypoint, 29 deg off the route heading"
+   "note": "2 m from the waypoint, 29 deg off the wanted heading"
+  },
+  {
+   "name": "orchampt_ravignan~back",
+   "waypoint": "orchampt_ravignan",
+   "picture": "5b79d089-7219-4ce4-abd4-7a1c10056406",
+   "lat": 48.8862882,
+   "lon": 2.337923,
+   "heading": 314,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/5b/79/d0/89/7219-4ce4-abd4-7a1c10056406/sd.jpg",
+   "note": "2 m from the waypoint, 33 deg off the wanted heading"
+  },
+  {
+   "name": "orchampt_ravignan~right",
+   "waypoint": "orchampt_ravignan",
+   "picture": "766db279-a738-4e2f-8795-0346bd9bd1a1",
+   "lat": 48.8862411,
+   "lon": 2.3380336,
+   "heading": 264,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/76/6d/b2/79/a738-4e2f-8795-0346bd9bd1a1/sd.jpg",
+   "note": "11 m from the waypoint, 7 deg off the wanted heading"
   },
   {
    "name": "s_goudeau_1",
+   "waypoint": "s_goudeau_1",
    "picture": "a306831d-907a-4d34-9dbc-e942ea375a37",
    "lat": 48.8862214,
    "lon": 2.3379984,
@@ -389,10 +965,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/a3/06/83/1d/907a-4d34-9dbc-e942ea375a37/sd.jpg",
-   "note": "5 m from the waypoint, 1 deg off the route heading"
+   "note": "5 m from the waypoint, 1 deg off the wanted heading"
+  },
+  {
+   "name": "s_goudeau_1~left",
+   "waypoint": "s_goudeau_1",
+   "picture": "5dddc208-d641-4a13-8fd3-d32640886efc",
+   "lat": 48.8860891,
+   "lon": 2.3381043,
+   "heading": 115,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/5d/dd/c2/08/d641-4a13-8fd3-d32640886efc/sd.jpg",
+   "note": "13 m from the waypoint, 31 deg off the wanted heading"
+  },
+  {
+   "name": "s_goudeau_1~right",
+   "waypoint": "s_goudeau_1",
+   "picture": "b6a5783c-a5cf-40e6-8d52-811e2d005c97",
+   "lat": 48.8862408,
+   "lon": 2.3380496,
+   "heading": 251,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/b6/a5/78/3c/a5cf-40e6-8d52-811e2d005c97/sd.jpg",
+   "note": "8 m from the waypoint, 13 deg off the wanted heading"
   },
   {
    "name": "emile_goudeau",
+   "waypoint": "emile_goudeau",
    "picture": "d6d42d2c-443d-4deb-88d9-18165d99e059",
    "lat": 48.8861514,
    "lon": 2.3379644,
@@ -402,10 +1007,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/d6/d4/2d/2c/443d-4deb-88d9-18165d99e059/sd.jpg",
-   "note": "13 m from the waypoint, 18 deg off the route heading"
+   "note": "13 m from the waypoint, 18 deg off the wanted heading"
+  },
+  {
+   "name": "emile_goudeau~left",
+   "waypoint": "emile_goudeau",
+   "picture": "ff10cd21-03c9-4dbe-8370-09a1d7e49078",
+   "lat": 48.886105,
+   "lon": 2.3380437,
+   "heading": 124,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/ff/10/cd/21/03c9-4dbe-8370-09a1d7e49078/sd.jpg",
+   "note": "8 m from the waypoint, 17 deg off the wanted heading"
   },
   {
    "name": "ravignan_stairs",
+   "waypoint": "ravignan_stairs",
    "picture": "cbbddee3-f256-4d03-b457-f18bc7ca321b",
    "lat": 48.8857385,
    "lon": 2.3378643,
@@ -415,10 +1035,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/cb/bd/de/e3/f256-4d03-b457-f18bc7ca321b/sd.jpg",
-   "note": "8 m from the waypoint, 113 deg off the route heading"
+   "note": "8 m from the waypoint, 113 deg off the wanted heading"
+  },
+  {
+   "name": "ravignan_stairs~back",
+   "waypoint": "ravignan_stairs",
+   "picture": "f28ff7f4-d86b-4f37-8527-f0c8b4f25409",
+   "lat": 48.8856849,
+   "lon": 2.3379335,
+   "heading": 334,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/f2/8f/f7/f4/d86b-4f37-8527-f0c8b4f25409/sd.jpg",
+   "note": "13 m from the waypoint, 26 deg off the wanted heading"
+  },
+  {
+   "name": "ravignan_stairs~right",
+   "waypoint": "ravignan_stairs",
+   "picture": "77d33683-38cb-4d96-bbdd-7175e4621c7f",
+   "lat": 48.8857521,
+   "lon": 2.3378153,
+   "heading": 294,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/77/d3/36/83/38cb-4d96-bbdd-7175e4621c7f/sd.jpg",
+   "note": "9 m from the waypoint, 24 deg off the wanted heading"
   },
   {
    "name": "trois_freres",
+   "waypoint": "trois_freres",
    "picture": "604995d7-81ab-4609-9b0c-990c89ecfacb",
    "lat": 48.8857077,
    "lon": 2.3379724,
@@ -428,10 +1077,39 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/60/49/95/d7/81ab-4609-9b0c-990c89ecfacb/sd.jpg",
-   "note": "2 m from the waypoint, 91 deg off the route heading"
+   "note": "2 m from the waypoint, 91 deg off the wanted heading"
+  },
+  {
+   "name": "trois_freres~back",
+   "waypoint": "trois_freres",
+   "picture": "8696e292-d81f-499f-a831-fe9ae025965e",
+   "lat": 48.8856423,
+   "lon": 2.337956,
+   "heading": 16,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/86/96/e2/92/d81f-499f-a831-fe9ae025965e/sd.jpg",
+   "note": "5 m from the waypoint, 7 deg off the wanted heading"
+  },
+  {
+   "name": "trois_freres~right",
+   "waypoint": "trois_freres",
+   "picture": "cda64a36-10a7-4d66-8252-49162a35d333",
+   "lat": 48.8856918,
+   "lon": 2.3380337,
+   "heading": 292,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/cd/a6/4a/36/10a7-4d66-8252-49162a35d333/sd.jpg",
+   "note": "5 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "s_ravignan_1",
+   "waypoint": "s_ravignan_1",
    "picture": "6d9d14d2-976e-497f-bc4b-830fc09474c8",
    "lat": 48.8855654,
    "lon": 2.3379136,
@@ -441,10 +1119,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/6d/9d/14/d2/976e-497f-bc4b-830fc09474c8/sd.jpg",
-   "note": "1 m from the waypoint, 180 deg off the route heading"
+   "note": "1 m from the waypoint, 180 deg off the wanted heading"
+  },
+  {
+   "name": "s_ravignan_1~back",
+   "waypoint": "s_ravignan_1",
+   "picture": "c0ec610c-d25b-43d7-8d7f-d61b5b7fec04",
+   "lat": 48.8856057,
+   "lon": 2.3379387,
+   "heading": 25,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/c0/ec/61/0c/d25b-43d7-8d7f-d61b5b7fec04/sd.jpg",
+   "note": "5 m from the waypoint, 0 deg off the wanted heading"
   },
   {
    "name": "ravignan_bas",
+   "waypoint": "ravignan_bas",
    "picture": "dd08aac3-392d-4ffd-8ebd-b32e667e92b7",
    "lat": 48.8853554,
    "lon": 2.3377844,
@@ -454,10 +1147,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/dd/08/aa/c3/392d-4ffd-8ebd-b32e667e92b7/sd.jpg",
-   "note": "2 m from the waypoint, 179 deg off the route heading"
+   "note": "2 m from the waypoint, 179 deg off the wanted heading"
+  },
+  {
+   "name": "ravignan_bas~back",
+   "waypoint": "ravignan_bas",
+   "picture": "d1f31288-500d-4e58-b570-a986b425ba78",
+   "lat": 48.8853977,
+   "lon": 2.3378101,
+   "heading": 25,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/d1/f3/12/88/500d-4e58-b570-a986b425ba78/sd.jpg",
+   "note": "5 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "s_ravignan_2",
+   "waypoint": "s_ravignan_2",
    "picture": "a861bc1b-3cd2-4d78-94a5-9c2231c39af8",
    "lat": 48.8851374,
    "lon": 2.3376447,
@@ -467,10 +1175,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/a8/61/bc/1b/3cd2-4d78-94a5-9c2231c39af8/sd.jpg",
-   "note": "4 m from the waypoint, 151 deg off the route heading"
+   "note": "4 m from the waypoint, 151 deg off the wanted heading"
+  },
+  {
+   "name": "s_ravignan_2~back",
+   "waypoint": "s_ravignan_2",
+   "picture": "0c0abedf-2113-4646-bdbd-1cd85c12a00a",
+   "lat": 48.8850958,
+   "lon": 2.3375456,
+   "heading": 355,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0c/0a/be/df/2113-4646-bdbd-1cd85c12a00a/sd.jpg",
+   "note": "5 m from the waypoint, 3 deg off the wanted heading"
   },
   {
    "name": "abbesses_corner",
+   "waypoint": "abbesses_corner",
    "picture": "25b04f25-0273-4eba-953a-e3a40af794bb",
    "lat": 48.8849125,
    "lon": 2.3373525,
@@ -480,23 +1203,67 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/25/b0/4f/25/0273-4eba-953a-e3a40af794bb/sd.jpg",
-   "note": "10 m from the waypoint, 15 deg off the route heading"
+   "note": "10 m from the waypoint, 15 deg off the wanted heading"
   },
   {
-   "name": "s_abbesses_1",
-   "picture": "7f64bc2e-94e3-4647-8b8a-f3116712995f",
-   "lat": 48.8849277,
-   "lon": 2.337314,
-   "heading": 126,
+   "name": "abbesses_corner~back",
+   "waypoint": "abbesses_corner",
+   "picture": "c2d6769b-b95e-4011-9112-c7273163edbb",
+   "lat": 48.8848818,
+   "lon": 2.3375373,
+   "heading": 320,
    "hfov": 95,
    "taken": "2025-08-13",
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
-   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/7f/64/bc/2e/94e3-4647-8b8a-f3116712995f/sd.jpg",
-   "note": "25 m from the waypoint, 3 deg off the route heading"
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/c2/d6/76/9b/b95e-4011-9112-c7273163edbb/sd.jpg",
+   "note": "8 m from the waypoint, 4 deg off the wanted heading"
+  },
+  {
+   "name": "abbesses_corner~left",
+   "waypoint": "abbesses_corner",
+   "picture": "ee4e27f3-2e53-4b4a-bc02-f20cf813aab6",
+   "lat": 48.8849493,
+   "lon": 2.3375009,
+   "heading": 44,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/ee/4e/27/f3/2e53-4b4a-bc02-f20cf813aab6/sd.jpg",
+   "note": "2 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "s_abbesses_1",
+   "waypoint": "s_abbesses_1",
+   "picture": "c69c393e-5b55-446c-9059-ac664b009180",
+   "lat": 48.8848144,
+   "lon": 2.3376143,
+   "heading": 303,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/c6/9c/39/3e/5b55-446c-9059-ac664b009180/sd.jpg",
+   "note": "1 m from the waypoint, 174 deg off the wanted heading"
+  },
+  {
+   "name": "s_abbesses_1~back",
+   "waypoint": "s_abbesses_1",
+   "picture": "53985833-f7d1-4f96-83af-ff0f224acbc0",
+   "lat": 48.8848268,
+   "lon": 2.3376393,
+   "heading": 310,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/53/98/58/33/f7d1-4f96-83af-ff0f224acbc0/sd.jpg",
+   "note": "3 m from the waypoint, 1 deg off the wanted heading"
   },
   {
    "name": "rue_abbesses",
+   "waypoint": "rue_abbesses",
    "picture": "a73ba2fe-c139-434d-9b40-00930b1adc1a",
    "lat": 48.884738,
    "lon": 2.3377879,
@@ -506,10 +1273,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/a7/3b/a2/fe/c139-434d-9b40-00930b1adc1a/sd.jpg",
-   "note": "1 m from the waypoint, 171 deg off the route heading"
+   "note": "1 m from the waypoint, 171 deg off the wanted heading"
+  },
+  {
+   "name": "rue_abbesses~back",
+   "waypoint": "rue_abbesses",
+   "picture": "dadd9140-6893-49c9-bbd6-5e0d4ac68a38",
+   "lat": 48.884748,
+   "lon": 2.3377992,
+   "heading": 313,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/da/dd/91/40/6893-49c9-bbd6-5e0d4ac68a38/sd.jpg",
+   "note": "3 m from the waypoint, 4 deg off the wanted heading"
+  },
+  {
+   "name": "rue_abbesses~left",
+   "waypoint": "rue_abbesses",
+   "picture": "633870db-5422-4418-9123-27c1ac5fff9b",
+   "lat": 48.884705,
+   "lon": 2.3379292,
+   "heading": 37,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/63/38/70/db/5422-4418-9123-27c1ac5fff9b/sd.jpg",
+   "note": "10 m from the waypoint, 2 deg off the wanted heading"
+  },
+  {
+   "name": "rue_abbesses~right",
+   "waypoint": "rue_abbesses",
+   "picture": "04516d2f-aba7-488f-8d55-f6bc25e6e86c",
+   "lat": 48.8847098,
+   "lon": 2.3379333,
+   "heading": 227,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/04/51/6d/2f/aba7-488f-8d55-f6bc25e6e86c/sd.jpg",
+   "note": "10 m from the waypoint, 8 deg off the wanted heading"
   },
   {
    "name": "s_abbesses_2",
+   "waypoint": "s_abbesses_2",
    "picture": "82a1de20-b792-475e-93e2-274f5e831001",
    "lat": 48.8846,
    "lon": 2.337976,
@@ -519,10 +1329,53 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/82/a1/de/20/b792-475e-93e2-274f5e831001/sd.jpg",
-   "note": "1 m from the waypoint, 144 deg off the route heading"
+   "note": "1 m from the waypoint, 144 deg off the wanted heading"
+  },
+  {
+   "name": "s_abbesses_2~back",
+   "waypoint": "s_abbesses_2",
+   "picture": "44f20252-4d55-407f-96d4-b327dc012985",
+   "lat": 48.884705,
+   "lon": 2.3378852,
+   "heading": 273,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/44/f2/02/52/4d55-407f-96d4-b327dc012985/sd.jpg",
+   "note": "13 m from the waypoint, 12 deg off the wanted heading"
+  },
+  {
+   "name": "s_abbesses_2~left",
+   "waypoint": "s_abbesses_2",
+   "picture": "980e8b3d-6ea5-494d-ac28-719055c2ff3c",
+   "lat": 48.8846844,
+   "lon": 2.3379074,
+   "heading": 12,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/98/0e/8b/3d/6ea5-494d-ac28-719055c2ff3c/sd.jpg",
+   "note": "10 m from the waypoint, 3 deg off the wanted heading"
+  },
+  {
+   "name": "s_abbesses_2~right",
+   "waypoint": "s_abbesses_2",
+   "picture": "2aeca89d-72ad-4d48-8a7d-3d31bb6aa684",
+   "lat": 48.8847254,
+   "lon": 2.3379562,
+   "heading": 224,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/2a/ec/a8/9d/72ad-4d48-8a7d-3d31bb6aa684/sd.jpg",
+   "note": "13 m from the waypoint, 29 deg off the wanted heading"
   },
   {
    "name": "s_place_1",
+   "waypoint": "s_place_1",
    "picture": "5e037674-03c1-47b6-89f5-d36ff96bb69f",
    "lat": 48.8844964,
    "lon": 2.3381142,
@@ -532,10 +1385,25 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/5e/03/76/74/03c1-47b6-89f5-d36ff96bb69f/sd.jpg",
-   "note": "5 m from the waypoint, 142 deg off the route heading"
+   "note": "5 m from the waypoint, 142 deg off the wanted heading"
+  },
+  {
+   "name": "s_place_1~back",
+   "waypoint": "s_place_1",
+   "picture": "0a290c15-e37b-4950-adc1-52d0e4891838",
+   "lat": 48.8844284,
+   "lon": 2.3382063,
+   "heading": 318,
+   "hfov": 95,
+   "taken": "2025-08-13",
+   "producer": "immergis",
+   "licence": "CC-BY-SA-4.0",
+   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/0a/29/0c/15/e37b-4950-adc1-52d0e4891838/sd.jpg",
+   "note": "13 m from the waypoint, 34 deg off the wanted heading"
   },
   {
    "name": "place_abbesses",
+   "waypoint": "place_abbesses",
    "picture": "c6fc59b8-51bd-4d97-a382-068759030779",
    "lat": 48.8844387,
    "lon": 2.3387733,
@@ -545,7 +1413,7 @@
    "producer": "immergis",
    "licence": "CC-BY-SA-4.0",
    "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/c6/fc/59/b8/51bd-4d97-a382-068759030779/sd.jpg",
-   "note": "15 m from the waypoint, 114 deg off the route heading"
+   "note": "15 m from the waypoint, 114 deg off the wanted heading"
   }
  ]
 }
