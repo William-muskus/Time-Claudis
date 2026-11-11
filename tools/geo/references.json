@@ -1290,20 +1290,6 @@
    "note": "3 m from the waypoint, 4 deg off the wanted heading"
   },
   {
-   "name": "rue_abbesses~left",
-   "waypoint": "rue_abbesses",
-   "picture": "633870db-5422-4418-9123-27c1ac5fff9b",
-   "lat": 48.884705,
-   "lon": 2.3379292,
-   "heading": 37,
-   "hfov": 95,
-   "taken": "2025-08-13",
-   "producer": "immergis",
-   "licence": "CC-BY-SA-4.0",
-   "sd": "https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net/derivates/63/38/70/db/5422-4418-9123-27c1ac5fff9b/sd.jpg",
-   "note": "10 m from the waypoint, 2 deg off the wanted heading"
-  },
-  {
    "name": "rue_abbesses~right",
    "waypoint": "rue_abbesses",
    "picture": "04516d2f-aba7-488f-8d55-f6bc25e6e86c",

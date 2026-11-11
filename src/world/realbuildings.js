@@ -49,7 +49,7 @@ const WALL = {
   // Montmartre's bare brick is the pale buff brick of the 1900-30 blocks
   // (the Pharmacie du Bateau-Lavoir's corner, rue Ravignan), not red; the
   // one red-brick building on the route is Saint-Jean.
-  brick: new THREE.Color('#CDB896'),
+  brick: new THREE.Color('#DDD2BC'),
   redbrick: new THREE.Color('#A0523E'),   // the 1920s brick-and-render blocks, faded
   wood: new THREE.Color('#9C7A5A'),
 };

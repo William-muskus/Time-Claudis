@@ -58,6 +58,9 @@ def bearing(a, b):
     return (math.degrees(math.atan2(dx, dy)) + 360) % 360
 
 
+# Frames whose spot is inside a mapped building (rue des Abbesses archway).
+INSIDE = {"633870db-5422-4418-9123-27c1ac5fff9b"}
+
 VIEWS = (("", 0), ("~back", 180), ("~left", -90), ("~right", 90))
 
 
@@ -108,6 +111,11 @@ def main():
             f = best[1]
             p = f["properties"]
             seen.add(f["id"])
+            # A frame taken under an archway or in a passage puts the game
+            # camera inside a building footprint and compares a wall with a
+            # street: skip it.
+            if f["id"] in INSIDE:
+                continue
             lon, lat = f["geometry"]["coordinates"]
             refs.append(dict(
                 name=w["id"] + suffix, waypoint=w["id"], picture=f["id"], lat=round(lat, 7), lon=round(lon, 7),
