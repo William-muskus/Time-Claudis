@@ -78,3 +78,25 @@ test('the terrain is under the whole walk and agrees with it', () => {
   }
   assert.ok(worst.err < 2.6, `the walk and the terrain disagree by ${worst.err.toFixed(2)} m at ${worst.d} m`);
 });
+
+test('the ground faces up', async () => {
+  // Every terrain face once pointed down. With single-sided materials that
+  // culled the whole Butte from above: the sky dome stood in for the ground in
+  // every frame, and slopes above eye level showed their undersides as black
+  // blades. Nothing failed, and the screenshots only looked a little flat.
+  const { buildTerrain } = await import('../src/world/terrain.js');
+  const { railIndex } = await import('../src/world/geo.js');
+  const rail = new Rail(railPoints());
+  const group = buildTerrain(rail, railIndex(rail));
+  for (const name of ['terrain', 'side_streets']) {
+    const p = group.children.find((c) => c.name === name).geometry.attributes.position.array;
+    let down = 0, faces = 0;
+    for (let i = 0; i < p.length; i += 9) {
+      const ux = p[i + 3] - p[i], uz = p[i + 5] - p[i + 2];
+      const vx = p[i + 6] - p[i], vz = p[i + 8] - p[i + 2];
+      if (uz * vx - ux * vz < 0) down++;
+      faces++;
+    }
+    assert.equal(down, 0, `${down} of ${faces} ${name} faces point down`);
+  }
+});

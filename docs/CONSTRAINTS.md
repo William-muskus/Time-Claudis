@@ -51,6 +51,14 @@ width or orientation as the map being wrong.
 
 ## 2. Map data, Street View, and the geometry of the route
 
+> **Resolved, October 2026.** The map sources below became reachable: IGN's
+> Géoplateforme (BD TOPO buildings and streets, RGE ALTI terrain), the Ville
+> de Paris tree inventory and the OpenStreetMap API. The world is now built
+> from them — see `tools/geo/` and `docs/ROUTE.md`. Street View and Google
+> imagery remain unavailable. The rest of this section is the history of how
+> the route was surveyed before that, kept because it explains the cross-checks
+> in `tests/route.test.js`.
+
 **Asked for:** an exact replica of Montmartre, geometry-wise — cross-referenced
 against Street View, Google Earth and photographs.
 
