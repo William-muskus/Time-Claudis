@@ -547,6 +547,80 @@
      "col": "#1F3A30"
     }
    ]
+  },
+  "245179943:1": {
+   "src": "s_goudeau_1~left",
+   "note": "Louvred house on rue Berthe off Place Emile-Goudeau",
+   "wall": "#E3D8C2",
+   "base": {
+    "h": 1.6,
+    "col": "#B5ADA2"
+   },
+   "floors": 2,
+   "groundH": 3.6,
+   "bays": [
+    0.1,
+    0.27,
+    0.42,
+    0.56,
+    0.7,
+    0.84
+   ],
+   "ww": 1.0,
+   "wh": 1.9,
+   "shutters": "#E6DFD0",
+   "dormers": [
+    0.1,
+    0.27,
+    0.42,
+    0.56,
+    0.7,
+    0.84
+   ],
+   "ground": [
+    {
+     "k": "cochere",
+     "t": 0.1,
+     "w": 1.8,
+     "h": 3.2,
+     "col": "#2B2826"
+    },
+    {
+     "k": "win",
+     "t": 0.27,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.42,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.56,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.7,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.84,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    }
+   ]
   }
  },
  "walls": {

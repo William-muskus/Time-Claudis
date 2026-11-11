@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PALETTE } from '../render/palette.js';
 import { GEO, groundAt, pairs, pointInRing, surfaceAt } from './geo.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * The ground of the Butte, from IGN's terrain model.
@@ -154,6 +155,10 @@ function buildSideStreets(rail, near) {
   // One mesher per surface, so each street wears its real paving (OSM
   // surface=*) with the shared ground textures; UVs in metres, U across.
   const meshers = new Map();
+  const bollards = [];
+  const BOLLARD = mergeGeometries([
+    new THREE.CylinderGeometry(0.075, 0.085, 0.95, 6).translate(0, 0.475, 0),
+    new THREE.SphereGeometry(0.1, 6, 4).translate(0, 1.0, 0)].map((g) => g.toNonIndexed()));
   const mesher = (k) => {
     if (!meshers.has(k)) meshers.set(k, new Mesher(true));
     return meshers.get(k);
@@ -178,6 +183,7 @@ function buildSideStreets(rail, near) {
         const al = Math.abs(((bx - ax) * tan.x + (bz - az) * tan.z) / len);
         if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && al > 0.6) continue;
       }
+      const nrSeg = near.nearest(mx, mz, 80);
       const raw = r.k === 'stairs' ? 'paving' : r.k === 'path' ? surfaceAt(mx, mz, { footway: true, fallback: 'gravel' })
         : surfaceAt(mx, mz, { fallback: 'asphalt' });
       const surf = r.k === 'road' && raw === 'paving' ? 'sett' : raw;
@@ -190,25 +196,51 @@ function buildSideStreets(rail, near) {
         const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
         const p1 = [ax + (bx - ax) * t1, az + (bz - az) * t1];
         const v0 = a0 + len * t0, v1 = a0 + len * t1;
-        const ribbon = (w, lift, kind, tint) => {
-          const Y = (x, z) => {
-            const g = groundAt(x, z);
-            const yc = ay + (by - ay) * ((t0 + t1) / 2);
-            return Math.max(g ?? yc, yc - 0.6) + lift;
-          };
-          const q = [
-            [p0[0] - rx * w, 0, p0[1] - rz * w], [p1[0] - rx * w, 0, p1[1] - rz * w],
-            [p1[0] + rx * w, 0, p1[1] + rz * w], [p0[0] + rx * w, 0, p0[1] + rz * w],
-          ];
-          for (const v of q) v[1] = Y(v[0], v[2]);
-          // Upward-facing: left-back, left-front, right-front, right-back.
-          mesher(kind).quad(q[0], q[3], q[2], q[1], tint, [[-w, v0], [w, v0], [w, v1], [-w, v1]]);
+        // One height per cross-section, from the centreline and the ground at
+        // the two outer edges, so the roadway is a single tilted plane and the
+        // pavements are their own strips beside it. Separate ribbons sampling
+        // the ground per vertex used to cross each other on every cross-slope
+        // and show as grey triangles through the setts (rue Berthe, rue
+        // Garreau in the survey comparison).
+        const yc = (t) => ay + (by - ay) * t;
+        const sideY = (px, pz, sx, t, w) => {
+          const g = groundAt(px + rx * w * sx, pz + rz * w * sx);
+          return Math.max(g ?? yc(t), yc(t) - 0.6);
         };
+        const P = [[p0, t0, v0], [p1, t1, v1]].map(([pp, t, v]) => {
+          const w = half + edge;
+          const yl = sideY(pp[0], pp[1], -1, t, w), yr = sideY(pp[0], pp[1], 1, t, w);
+          const lerp = (o) => yl + (yr - yl) * ((o + w) / (2 * w));
+          const pt = (o, lift) => [pp[0] + rx * o, lerp(o) + lift, pp[1] + rz * o];
+          return { pt, v };
+        });
+        const strip = (o0, o1, lift, kind, tint) => {
+          const a = P[0].pt(o0, lift), b = P[1].pt(o0, lift), c = P[1].pt(o1, lift), d = P[0].pt(o1, lift);
+          // Upward-facing: left-back, left-front, right-front, right-back.
+          mesher(kind).quad(a, d, c, b, tint, [[o0, P[0].v], [o1, P[0].v], [o1, P[1].v], [o0, P[1].v]]);
+        };
+        // Cast-iron potelets along both kerbs of the cobbled side streets near
+        // the walk, every 1.8 m, as the photos show them down rue Berthe and
+        // rue Garreau.
+        if (surf === 'sett' && edge && nrSeg && nrSeg.dist < 70) {
+          for (const sx of [-1, 1]) {
+            for (let a = Math.ceil(v0 / 2.8) * 2.8; a < v1; a += 2.8) {
+              const t = (a - a0) / len;
+              const x = ax + (bx - ax) * t + rx * (half + 0.3) * sx, z = az + (bz - az) * t + rz * (half + 0.3) * sx;
+              const yy = P[0].pt(sx * (half + 0.3), 0.2)[1] + (P[1].pt(sx * (half + 0.3), 0.2)[1] - P[0].pt(sx * (half + 0.3), 0.2)[1]) * ((a - v0) / (v1 - v0 || 1));
+              bollards.push(BOLLARD.clone().translate(x, yy, z));
+            }
+          }
+        }
         if (r.k === 'stairs') {
-          ribbon(half, 0.08, 'paving', k % 2 ? COL.stairs : COL.stairsDark);
+          strip(-half, half, 0.08, 'paving', k % 2 ? COL.stairs : COL.stairsDark);
         } else {
-          if (edge) ribbon(half + edge, 0.05, 'asphalt', SURFACE_TINT.asphalt.clone().multiplyScalar(1.12));
-          ribbon(half, 0.09, surf, SURFACE_TINT[surf] ?? SURFACE_TINT.asphalt);
+          strip(-half, half, 0.08, surf, SURFACE_TINT[surf] ?? SURFACE_TINT.asphalt);
+          if (edge) {
+            const pv = SURFACE_TINT.asphalt.clone().multiplyScalar(1.12);
+            strip(-half - edge, -half, 0.2, 'asphalt', pv);
+            strip(half, half + edge, 0.2, 'asphalt', pv);
+          }
         }
       }
     }
@@ -216,6 +248,12 @@ function buildSideStreets(rail, near) {
   const group = new THREE.Group();
   group.name = 'side_streets';
   for (const [k, m] of meshers) group.add(m.mesh(`side_streets_${k}`, { roughness: 0.92, map: surfaceTexture(k) }));
+  if (bollards.length) {
+    const bm = new THREE.Mesh(mergeGeometries(bollards), new THREE.MeshStandardMaterial({ color: '#2A2A2C', roughness: 0.5, metalness: 0.3, flatShading: true }));
+    bm.name = 'side_street_bollards';
+    bm.castShadow = true;
+    group.add(bm);
+  }
   return group;
 }
 

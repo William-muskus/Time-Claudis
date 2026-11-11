@@ -89,7 +89,7 @@ test('the ground faces up', async () => {
   const rail = new Rail(railPoints());
   const group = buildTerrain(rail, railIndex(rail));
   const meshes = [group.children.find((c) => c.name === 'terrain'),
-    ...group.children.find((c) => c.name === 'side_streets').children];
+    ...group.children.find((c) => c.name === 'side_streets').children.filter((c) => c.name.startsWith('side_streets_'))];
   for (const mesh of meshes) {
     const name = mesh.name;
     const p = mesh.geometry.attributes.position.array;
