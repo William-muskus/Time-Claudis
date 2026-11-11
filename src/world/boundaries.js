@@ -168,6 +168,7 @@ function wallAlong(pts, kind, height, M, seed) {
 function gateAt(x, z, ux, uz, width, M, seed) {
   const g = groundAt(x, z);
   if (g === null) return;
+  M.gates?.push({ x, y: g, z, ux, uz });
   const u = [ux, 0, uz], w = [-uz, 0, ux];
   const ph = 2.9, pw = 0.32;
   for (const s of [-1, 1]) {
@@ -208,6 +209,7 @@ export function buildBoundaries(rail, near) {
     iron: new Mesher(),
     hedge: new Mesher(),
     occluders: [],
+    gates: [],
   };
   const gardenSpots = [];
 
@@ -372,5 +374,6 @@ export function buildBoundaries(rail, near) {
   }
   group.userData.gardenSpots = gardenSpots;
   group.userData.occluders = M.occluders;
+  group.userData.gates = M.gates;
   return group;
 }

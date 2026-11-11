@@ -57,12 +57,21 @@ function oracle(game, camera) {
   const inbound = game.bullets.bullets.some((b) => b.active);
   const dry = s.rounds === 0;
 
+  // A bomber inside ten metres is the one thing worth standing up into fire
+  // for: it cannot be ducked, only shot. That is its whole design.
+  const bomber = !dry && enemies.find((e) => e.typeKey === 'BOMBER' &&
+    e.group.position.distanceTo(camera.position) < 10);
+
   // Duck to reload, or to survive. Reload takes priority: an empty gun cannot
   // clear a gate no matter how brave you are.
-  if (dry || threat || inbound) return { aim: { x: 0.5, y: 0.5 }, fired: false, gunUp: true, present: true };
+  if (!bomber && (dry || threat || inbound)) return { aim: { x: 0.5, y: 0.5 }, fired: false, gunUp: true, present: true };
 
-  // Prefer gating enemies; they are what actually ends the area.
-  const target = enemies.find((e) => e.isGating) ?? enemies[0];
+  // A bomber running in is shot first, as any player would: it is the one
+  // threat that does not telegraph and cannot be ducked. Then the gating
+  // enemies, which are what actually end the area.
+  const charging = enemies.find((e) => e.typeKey === 'BOMBER' &&
+    e.group.position.distanceTo(camera.position) < 16);
+  const target = charging ?? enemies.find((e) => e.isGating) ?? enemies[0];
   if (!target) return { aim: { x: 0.5, y: 0.5 }, fired: false, gunUp: false, present: true };
 
   const p = target.group.position.clone();

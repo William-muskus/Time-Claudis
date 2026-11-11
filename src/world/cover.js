@@ -57,7 +57,10 @@ export function buildCover(rail, rng = null) {
     // wandering off to one side.
     const kind = COVER_BY_AREA[enc.areaId] ?? 'stone_wall';
     const lateral = enc.node?.lateral ?? 0;
-    const AHEAD = 3.4;
+    // Closer for the fountain and benches on Place Émile-Goudeau: the
+    // square falls away toward the Ravignan steps, and at 3.4 m the bench
+    // back cut the standing player's line to everything below the square.
+    const AHEAD = kind === 'fountain_bench' ? 2.3 : 3.4;
     // A parked car or a row of scooters stands against the kerb on the side
     // the player is standing, so it fills that half of the foreground.
     const kerb = Math.sign(lateral || 1) * Math.max(Math.abs(lateral) + 0.9, rail.widthAt(d) / 2 - 1.6);

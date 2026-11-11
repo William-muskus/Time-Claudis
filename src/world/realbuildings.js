@@ -757,7 +757,7 @@ function sideOf(rail, sample, [x, z]) {
  * openings that are actually there.
  */
 export function sideStreetAnchors(rail, near, isBlocked = () => false) {
-  const MIN = 6.5, MAX = 13;
+  const MIN = 6.5, MAX = 18;
   const out = [];
   for (const r of GEO.roads) {
     const pts = [];
@@ -773,11 +773,13 @@ export function sideStreetAnchors(rail, near, isBlocked = () => false) {
         const tan = rail.tangentAt(nr.d);
         if (Math.abs(dx * tan.x + dz * tan.z) > 0.55) continue;
         // Above the walk is fine (a lane climbing away); more than a metre below
-        // it and the enemy is down a slope the player cannot see into
-        // (a bomber from the steps below Place Émile-Goudeau reached the
-        // player unseen from 1.6 m down).
+        // it and the enemy is down a slope the player cannot see into.
+        // (Half a metre was tried; it took away every visible alley around
+        // the crest at Place Dalida. The bomber that ran in unseen below
+        // Place Émile-Goudeau is fixed in enemy.js, where it now runs on the
+        // ground.)
         const gy = groundAt(x, z) ?? y;
-        if (gy - nr.y > 4 || gy < nr.y - 0.5) continue;
+        if (gy - nr.y > 4 || gy < nr.y - 1.0) continue;
         if (isBlocked(x, z)) continue;
         if (out.some((a) => (a.worldPos.x - x) ** 2 + (a.worldPos.z - z) ** 2 < 100)) continue;
         const toRail = new THREE.Vector3(nr.x - x, 0, nr.z - z).normalize();
