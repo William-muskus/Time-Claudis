@@ -316,6 +316,8 @@ def main():
                 or tg.get("memorial") in ("bust", "statue"):
             pois["art"].append([r1(x), y, r1(z), tg.get("name", "")])
 
+    height_capped = [0]
+
     buildings_out = []
     skipped = dict(windmill=0)
     for idx, (poly, p) in enumerate(polys):
@@ -432,6 +434,28 @@ def main():
                         doors.append([i, round(seg.project(Point(ex, ez), normalized=True), 2)])
                         break
 
+        # HEIGHT SEEN FROM THE STREET. BD TOPO's height is measured from the
+        # building's lowest ground, and on the Butte that is often a court or
+        # a lower street on the far side of the block: the house on rue Berthe
+        # by Place Emile-Goudeau is recorded at 18.2 m with two storeys, and
+        # the survey photograph shows two storeys and a mansard, about 9 m,
+        # from the street it faces. Where the recorded height is far more than
+        # the storey count allows above the highest street the building fronts,
+        # the storey count wins.
+        if street_edges and p.get("nombre_d_etages"):
+            fronts = []
+            for ei, _ in street_edges:
+                (ax, az), (bx, bz) = ring[ei], ring[(ei + 1) % n]
+                ys = [terrain.at(ax, az), terrain.at(bx, bz), terrain.at((ax + bx) / 2, (az + bz) / 2)]
+                ys = [y for y in ys if y is not None]
+                if ys:
+                    fronts.append(sum(ys) / len(ys))
+            if fronts:
+                top_front = max(fronts)
+                plausible = top_front + floors * 3.3 + 1.0
+                if eaves > plausible + 2.5:
+                    eaves = plausible
+                    height_capped[0] += 1
         seed = int(p.get("cleabs", "0")[-6:] or 0) if p.get("cleabs", "")[-6:].isdigit() else idx
         b = dict(
             id=p.get("cleabs", "")[-9:],
@@ -590,6 +614,7 @@ def main():
           f"doors {sum(len(b.get('dr', [])) for b in buildings_out)}")
     print(f"roads {len(roads_out)}, trees {len(trees)} ({osm_trees} from OSM), greens {len(greens)}, "
           f"walls {len(walls)}, surfaces {len(surfaces)}, barriers {len(barriers)}, gardens {len(gardens)}, pois " + ", ".join(f"{k} {len(v)}" for k, v in pois.items()))
+    print(f"heights capped to the storey count above the street: {height_capped[0]}")
     print(f"roofs: " + ", ".join(f"{k} {sum(1 for b in buildings_out if b['r'] == k)}"
                                   for k in ("mansard", "hip", "flat", "church")))
     print(f"wrote {OUT} ({os.path.getsize(OUT) / 1024:.0f} KB)")
