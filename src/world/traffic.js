@@ -3,6 +3,7 @@ import { ENCOUNTERS } from '../gameplay/encounters.js';
 import { parkedCar, scooters } from './cover.js';
 import { STAIR_SEGMENTS } from './street.js';
 import { GEO, insideBuilding, groundAt, pairs } from './geo.js';
+import FACADES from '../data/geo/facades.json' with { type: 'json' };
 
 /**
  * Parked cars and scooters along the kerbs.
@@ -132,6 +133,10 @@ export function buildTerraces(rail, near) {
   for (const b of GEO.buildings) {
     for (const [ei, t, kind] of b.sh ?? []) {
       if (!TERRACE_KINDS.has(kind)) continue;
+      // A wall recorded from a photograph has a terrace only if the photo
+      // shows one (Le Coq & Fils on rue Lepic has none).
+      const rec = FACADES.facades?.[`${b.id}:${ei}`];
+      if (rec && !rec.terrace) continue;
       const ring = pairs(b.o);
       const [ax, az] = ring[ei], [bx, bz] = ring[(ei + 1) % ring.length];
       const len = Math.hypot(bx - ax, bz - az);

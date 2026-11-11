@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
+import { groundAt } from '../world/geo.js';
 import {
   ENEMY_TYPES, TELEGRAPH_SPLIT, STAGGER_MS,
   CARRIER_MARK_COLOR, CARRIER_PULSE_HZ,
@@ -305,6 +306,11 @@ export class Enemy {
     }
     to.normalize();
     this.group.position.addScaledVector(to, this.type.speed * dt);
+    // Run ON the ground. A charge used to keep its spawn height, so a bomber
+    // out of an alley below Place Émile-Goudeau ran on under the raised
+    // terrace, unseen and unshootable, and went off at the player's feet.
+    const g = groundAt(this.group.position.x, this.group.position.z);
+    if (g !== null) this.group.position.y = Math.max(g, Math.min(this.group.position.y + 6 * dt, playerPos.y - 1.66));
     this.group.lookAt(playerPos.x, this.group.position.y, playerPos.z);
     // A hard pulse so a charging bomber is never a surprise.
     const pulse = 0.5 + 0.5 * Math.sin(this.aliveTime * 16);
