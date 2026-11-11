@@ -84,10 +84,10 @@ const SHOTS = [
     why: 'The finish. Guimard édicule in green iron and amber glass.' },
   { name: '15b_guimard_close',   at: 'place_abbesses', back: 3, look: 'edicule_abbesses', lookHeight: 2.2,
     why: 'The edicule itself: green cast iron, amber glass, the METROPOLITAIN panel.' },
-  { name: '16_st_jean',          at: 'rue_abbesses', look: 'st_jean', lookHeight: 10,
-    why: 'Saint-Jean-de-Montmartre in red brick on the square.' },
-  { name: '17_sacre_coeur',      at: 'emile_goudeau', back: 14, look: 'sacre_coeur', lookHeight: 46,
-    why: 'The dome over the rooftops. A glimpse, which is all the streets give you.' },
+  { name: '16_st_jean',          at: 'place_abbesses', look: 'st_jean', lookHeight: 14,
+    why: 'Saint-Jean-de-Montmartre in red brick, across the square from the finish.' },
+  { name: '17_sacre_coeur',      at: 'place_dalida', look: 'sacre_coeur', lookHeight: 40,
+    why: 'The dome over the roofs of rue de l Abreuvoir: one of the few places on the walk it shows.' },
   { name: '18_weapon_ready',     at: 'place_dalida', back: 6, ahead: 18, weapon: 'HANDGUN',
     why: 'Handgun at rest. Lower right, angled in, not covering the middle third.' },
   { name: '19_weapon_firing',    at: 'place_dalida', back: 6, ahead: 18, weapon: 'HANDGUN', fire: true,
@@ -228,7 +228,9 @@ for (const shot of SHOTS) {
       return `${e.type}:${e.stage}@${e.xPct},${e.yPct} ${e.dist}m${mark}`;
     }).join(' | ')}]`;
     const seen = live.filter((e) => e.visible).length;
-    if (!seen) console.log(`[tour] ${shot.name} WARNING: staged a fight and not one enemy is visible`);
+    // Ducked, the inverse is the test: cover that hides nobody is not cover.
+    if (shot.duck && seen) console.log(`[tour] ${shot.name} WARNING: ducked and ${seen} enemy still in the clear`);
+    if (!shot.duck && !seen) console.log(`[tour] ${shot.name} WARNING: staged a fight and not one enemy is visible`);
   } else if (shot.weapon) {
     const pos = await page.evaluate(() => window.__tour.weaponScreenPos());
     where = pos && pos.xPct !== undefined ? `  [gun at ${pos.xPct}%, ${pos.yPct}%]` : '';

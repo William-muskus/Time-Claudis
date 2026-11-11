@@ -115,10 +115,15 @@ export function buildTerrain(rail, near) {
         const green = isGreen(cx, cz);
         const alt = ((i + j) & 1) === 0;
         const col = green ? (alt ? COL.green : COL.greenAlt) : (alt ? COL.ground : COL.groundAlt);
-        // Wind each cell so its faces point up whichever way the grid's
-        // axes run (dz is negative: rows go north).
-        if (g.dz < 0) { m.tri(a, c, b, col); m.tri(a, d, c, col); }
-        else { m.tri(a, b, c, col); m.tri(a, c, d, col); }
+        // Wind each cell so its faces point UP whichever way the grid's axes
+        // run. (b - a) x (c - a) has a y component of -dx*dz, so with rows
+        // running north (dz < 0) a, b, c is the upward order. This test was
+        // once the other way round and every terrain face pointed down: the
+        // whole Butte was culled from above, the sky dome showed through as
+        // "ground", and the slopes above eye level showed their undersides
+        // as black blades. tests/world.test.js now checks it.
+        if (g.dx * g.dz < 0) { m.tri(a, b, c, col); m.tri(a, c, d, col); }
+        else { m.tri(a, c, b, col); m.tri(a, d, c, col); }
       }
     }
   });
@@ -209,15 +214,31 @@ function buildRetainingWalls() {
       const len = Math.hypot(bx - ax, bz - az);
       if (len < 0.3) continue;
       const rx = -(bz - az) / len, rz = (bx - ax) / len;
-      const side = (x, z, k) => groundAt(x + rx * k, z + rz * k);
-      const lo = Math.min(side(ax, az, 1.5) ?? 0, side(ax, az, -1.5) ?? 0, side(bx, bz, 1.5) ?? 0, side(bx, bz, -1.5) ?? 0) - 0.3;
-      const hi = Math.max(side(ax, az, 1.5) ?? 0, side(ax, az, -1.5) ?? 0, side(bx, bz, 1.5) ?? 0, side(bx, bz, -1.5) ?? 0) + 0.9;
+      // Each END is sized from the ground at that end, and long runs are cut
+      // into short pieces. One flat top per segment, set by the highest ground
+      // anywhere along it, left the downhill end of every wall on a sloping
+      // street standing metres proud — a dark shadowed slab, seen edge-on as
+      // a black wedge down rue de l'Abreuvoir.
+      const ends = (x, z) => {
+        const s1 = groundAt(x + rx * 1.5, z + rz * 1.5), s2 = groundAt(x - rx * 1.5, z - rz * 1.5);
+        const g = [s1, s2].filter((v) => v !== null);
+        if (!g.length) return null;
+        return { lo: Math.min(...g) - 0.3, hi: Math.max(...g) + 0.9 };
+      };
       const T = 0.3;
-      const A = [ax + rx * T, az + rz * T], B = [bx + rx * T, bz + rz * T];
-      const C = [bx - rx * T, bz - rz * T], D = [ax - rx * T, az - rz * T];
-      m.quad([A[0], lo, A[1]], [B[0], lo, B[1]], [B[0], hi, B[1]], [A[0], hi, A[1]], COL.wall);
-      m.quad([C[0], lo, C[1]], [D[0], lo, D[1]], [D[0], hi, D[1]], [C[0], hi, C[1]], COL.wall);
-      m.quad([A[0], hi, A[1]], [B[0], hi, B[1]], [C[0], hi, C[1]], [D[0], hi, D[1]], COL.wallCap);
+      const n = Math.max(1, Math.ceil(len / 2.5));
+      for (let k = 0; k < n; k++) {
+        const t0 = k / n, t1 = (k + 1) / n;
+        const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
+        const p1 = [ax + (bx - ax) * t1, az + (bz - az) * t1];
+        const e0 = ends(p0[0], p0[1]), e1 = ends(p1[0], p1[1]);
+        if (!e0 || !e1) continue;
+        const A = [p0[0] + rx * T, p0[1] + rz * T], B = [p1[0] + rx * T, p1[1] + rz * T];
+        const C = [p1[0] - rx * T, p1[1] - rz * T], D = [p0[0] - rx * T, p0[1] - rz * T];
+        m.quad([A[0], e0.lo, A[1]], [B[0], e1.lo, B[1]], [B[0], e1.hi, B[1]], [A[0], e0.hi, A[1]], COL.wall);
+        m.quad([C[0], e1.lo, C[1]], [D[0], e0.lo, D[1]], [D[0], e0.hi, D[1]], [C[0], e1.hi, C[1]], COL.wall);
+        m.quad([A[0], e0.hi, A[1]], [B[0], e1.hi, B[1]], [C[0], e1.hi, C[1]], [D[0], e0.hi, D[1]], COL.wallCap);
+      }
     }
   }
   return m.mesh('retaining_walls', { castShadow: true });

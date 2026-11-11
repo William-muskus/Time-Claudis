@@ -527,6 +527,11 @@ function buildSacreCoeur() {
   const spire = new THREE.Mesh(new THREE.ConeGeometry(3.6, 6, 10), stone);
   spire.position.set(-2, 42, -15);
   g.add(spire);
+  // Modelled at half size and scaled to the real thing: 83 m to the top of
+  // the lantern. At half size the dome sat below the roofline of rue de
+  // l'Abreuvoir, which is wrong — the dome over the Maison Rose's neighbours is
+  // the postcard view from Place Dalida.
+  g.scale.setScalar(2);
   return g;
 }
 
