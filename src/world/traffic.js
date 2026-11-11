@@ -24,48 +24,60 @@ function seeded(n) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
+/**
+ * What is parked where, read off the Ville de Paris survey photographs of each
+ * stretch (tools/geo/references.json). OpenStreetMap maps parking lanes only
+ * on rue Caulaincourt here, and a width rule put scooters along rue Lepic,
+ * which has kerb railings and no parking, and cars across the open junction at
+ * Abbesses. `both` parks both kerbs; otherwise the kerb alternates slowly.
+ */
+const PARKING = [
+  { from: 'lamarck_station', to: 'escalier_foot', kind: 'cars', both: false },           // rue Caulaincourt
+  { from: 's_caulaincourt', to: 'constantin_pecqueur', kind: 'cars', both: false },
+  { from: 's_pecqueur', to: 's_pecqueur_2', kind: 'cars', both: false },                 // vans and cars at the kerb
+  { from: 's_girardon_3', to: 's_girardon_4', kind: 'scooters', both: false },
+  { from: 's_orchampt_1c', to: 's_orchampt_2', kind: 'scooters', both: false },          // rue d'Orchampt, nose to the kerb
+  { from: 'orchampt_bend', to: 's_orchampt_4', kind: 'mixed', both: false },
+  { from: 'trois_freres', to: 'abbesses_corner', kind: 'cars', both: true },             // lower rue Ravignan, both kerbs
+  { from: 's_abbesses_1', to: 'rue_abbesses', kind: 'scooters', both: false },
+];
+
 export function buildParkedVehicles(rail) {
   const group = new THREE.Group();
   group.name = 'parked';
   const rnd = seeded(0x5CA7);
   const fights = ENCOUNTERS.map((e) => { try { return rail.distanceToWaypoint(e.waypoint); } catch { return -1e9; } });
-  const stairs = STAIR_SEGMENTS.map((s) => {
-    try { return [rail.distanceToWaypoint(s.from) - 4, rail.distanceToWaypoint(s.to) + 4]; } catch { return [0, -1]; }
-  });
-  // The open squares on the walk: Constantin-Pecqueur, Dalida, Marcel-Aymé,
-  // Émile-Goudeau and the Abbesses square itself.
-  const SQUARES = ['constantin_pecqueur', 'place_dalida', 'marcel_ayme', 'emile_goudeau', 'place_abbesses', 's_place_1', 's_place_2'];
-  const sq = SQUARES.map((id) => { try { return rail.distanceToWaypoint(id); } catch { return -1e9; } });
-  const inSquare = (d) => sq.some((q) => Math.abs(q - d) < 12);
-  let d = 8;
-  while (d < rail.length - 8) {
-    const width = rail.widthAt(d);
-    const nearFight = fights.some((f) => Math.abs(f - d) < 14);
-    const onStairs = stairs.some(([a, b]) => d >= a && d <= b);
-    // Survey widths are wall to wall and capped at 14 in the route, so a
-    // 14 m reading is a wide street (rue Ravignan, rue des Abbesses), not
-    // necessarily a square: only the waypoints that ARE squares are skipped.
-    if (width < 8.5 || inSquare(d) || nearFight || onStairs) { d += 2; continue; }
-    // Wide streets park on both sides, the way rue Ravignan does.
-    const both = width >= 11.5;
-    const side = both ? (Math.floor(d / 5.3) % 2 ? 1 : -1) : Math.floor(d / 43) % 2 ? 1 : -1;
-    const p = rail.positionAt(d);
-    const t = rail.tangentAt(d);
-    const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
-    // Same kerb line as street.js: the carriageway's half-width.
-    const pavement = Math.max(0.8, Math.min(2.4, width * 0.18));
-    const half = Math.max(1.5, width * 0.5 - pavement);
-    const r = rnd();
-    if (r < 0.22) { d += 3 + rnd() * 4; continue; }          // a gap: a gateway, a delivery bay
-    const isCar = r < 0.82;
-    const off = (half - (isCar ? 1.0 : 0.9)) * side;
-    const x = p.x + right.x * off, z = p.z + right.z * off;
-    if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
-    const v = isCar ? parkedCar(rnd) : scooters(rnd);
-    v.position.set(x, p.y + 0.02, z);
-    v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);
-    group.add(v);
-    d += (isCar ? 4.6 + rnd() * 1.4 : 4.4) / (both ? 2 : 1);
+  const at = (id) => { try { return rail.distanceToWaypoint(id); } catch { return null; } };
+  for (const stretch of PARKING) {
+    const d0 = at(stretch.from), d1 = at(stretch.to);
+    if (d0 === null || d1 === null) continue;
+    let d = Math.min(d0, d1) + 2;
+    let flip = 0;
+    while (d < Math.max(d0, d1)) {
+      const width = rail.widthAt(d);
+      if (width < 5 || fights.some((f) => Math.abs(f - d) < 14)) { d += 2; continue; }
+      const side = stretch.both ? (flip++ % 2 ? 1 : -1) : Math.floor(d / 60) % 2 ? 1 : -1;
+      const p = rail.positionAt(d);
+      const t = rail.tangentAt(d);
+      const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
+      const pavement = Math.max(0.8, Math.min(2.4, width * 0.18));
+      const half = Math.max(1.5, width * 0.5 - pavement);
+      const r = rnd();
+      if (r < 0.18) { d += 3 + rnd() * 4; continue; }       // a gap: a gateway, a delivery bay
+      const isCar = stretch.kind === 'cars' ? r < 0.9 : stretch.kind === 'mixed' ? r < 0.5 : false;
+      // A car needs the carriageway to stay drivable beside it.
+      if (isCar && half * 2 < 4.6) { d += 2; continue; }
+      // And anything parked must clear the camera's line by 1.3 m.
+      if (half - (isCar ? 1.0 : 0.9) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
+      const off = (half - (isCar ? 1.0 : 0.9)) * side;
+      const x = p.x + right.x * off, z = p.z + right.z * off;
+      if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
+      const v = isCar ? parkedCar(rnd) : scooters(rnd);
+      v.position.set(x, p.y + 0.02, z);
+      v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);
+      group.add(v);
+      d += (isCar ? 4.6 + rnd() * 1.4 : 4.4) / (stretch.both ? 2 : 1);
+    }
   }
   return group;
 }
@@ -90,11 +102,11 @@ export function buildTerraces(rail, near) {
   const marble = new THREE.MeshStandardMaterial({ color: new THREE.Color('#E8E4DC'), roughness: 0.4, flatShading: true });
   const cloth = [new THREE.Color('#E8E2D2'), new THREE.Color('#9E2F2C'), new THREE.Color('#2F4A3B'), new THREE.Color('#E8E2D2')]
     .map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true, side: THREE.DoubleSide }));
-  const topGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.04, 10);
-  const legGeo = new THREE.CylinderGeometry(0.03, 0.05, 0.72, 6);
+  const topGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.04, 7);
+  const legGeo = new THREE.BoxGeometry(0.06, 0.72, 0.06);
   const seatGeo = new THREE.BoxGeometry(0.42, 0.06, 0.42);
   const backGeo = new THREE.BoxGeometry(0.42, 0.42, 0.05);
-  const chairLeg = new THREE.BoxGeometry(0.04, 0.45, 0.04);
+  const chairLeg = new THREE.BoxGeometry(0.38, 0.45, 0.03);
   const rnd = seeded(0x7E77);
 
   const table = (x, y, z, yaw) => {
@@ -105,8 +117,9 @@ export function buildTerraces(rail, near) {
       const c = new THREE.Group();
       const seat = new THREE.Mesh(seatGeo, cane); seat.position.y = 0.46; c.add(seat);
       const back = new THREE.Mesh(backGeo, cane); back.position.set(0, 0.7, -0.2); c.add(back);
-      for (const lx of [-0.17, 0.17]) for (const lz of [-0.17, 0.17]) {
-        const l = new THREE.Mesh(chairLeg, black); l.position.set(lx, 0.22, lz); c.add(l);
+      // Two leg frames per chair: front pair and back pair as one flat panel each.
+      for (const lz of [-0.17, 0.17]) {
+        const l = new THREE.Mesh(chairLeg, black); l.position.set(0, 0.22, lz); c.add(l);
       }
       c.position.set(s * 0.55, 0, 0);
       c.rotation.y = s * Math.PI / 2 + (rnd() - 0.5) * 0.4;

@@ -234,7 +234,7 @@ export function parkedCar(rnd = Math.random) {
     g.add(tl);
   }
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 10), tyre);
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 7), tyre);
     w.rotation.z = Math.PI / 2;
     w.position.set(sx * (W / 2 - 0.06), 0.31, sz * (h - 0.68));
     g.add(w);
@@ -272,7 +272,7 @@ export function scooters(rnd = Math.random) {
     shield.rotation.x = -0.25;
     s.add(shield);
     for (const z of [-0.6, 0.6]) {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.13, 10), tyre);
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.13, 7), tyre);
       w.rotation.z = Math.PI / 2;
       w.position.set(0, 0.27, z);
       s.add(w);

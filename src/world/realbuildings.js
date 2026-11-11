@@ -388,7 +388,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
         // rhythm of every Haussmann-era front on rue Caulaincourt and rue
         // des Abbesses.
         if (detailed && stoneFace && f > 1) {
-          fam.trim.box(at(len / 2, y0 + 0.02, 0.06), u, up, w, len / 2, 0.06, 0.07, surround);
+          rect(fam.trim, len / 2, y0 + 0.02, len / 2, 0.06, 0.04, surround);
         }
         // French windows: tall and close, as on every street in the survey
         // photos. The first version's 1.2 x 1.85 m at a 3 m pitch read as a
@@ -418,7 +418,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
             const bw = stoneFace ? 0.14 : 0.1;
             rect(fam.trim, cx, wy + wh / 2 + bw / 2, ww / 2 + bw, bw / 2, 0.03, surround);
             for (const sx of [-1, 1]) rect(fam.trim, cx + sx * (ww / 2 + bw / 2), wy, bw / 2, wh / 2, 0.03, surround);
-            if (stoneFace) fam.trim.box(at(cx, wy + wh / 2 + 0.16, 0.06), u, up, w, 0.13, 0.17, 0.06, surround);
+            if (stoneFace) rect(fam.trim, cx, wy + wh / 2 + 0.16, 0.13, 0.17, 0.05, shade(surround, 1.03));
           }
           // White joinery: the frame and the glazing bar are what make a dark
           // rectangle read as a Paris window rather than a hole.
@@ -441,9 +441,9 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
             const louvre = shade(shutterCol, 0.72);
             for (const s of [-1, 1]) {
               const sx = cx + s * (ww / 2 + ww * 0.27);
-              fam.trim.box(at(sx, wy, 0.07), u, up, w, ww * 0.26, wh / 2, 0.04, shutterCol);
+              rect(fam.trim, sx, wy, ww * 0.26, wh / 2, 0.1, shutterCol);
               for (let k = 1; k <= 3; k++) {
-                rect(fam.trim, sx, wy - wh / 2 + (wh * k) / 4, ww * 0.22, 0.02, 0.115, louvre);
+                rect(fam.trim, sx, wy - wh / 2 + (wh * k) / 4, ww * 0.22, 0.02, 0.12, louvre);
               }
             }
           }
@@ -518,6 +518,24 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           const dv = DEVANTURE[Math.floor(hash(seed, 17 + Math.round(t * 50)) * DEVANTURE.length)];
           const D = 0.16;
           fam.trim.box(at(c, gy + gh + 0.34, D), u, up, w, sw / 2 + 0.22, 0.34, 0.08, dv);
+          // The shop's name on the fascia, as a pale band of "lettering": no
+          // text at this distance, but the band is what says sign.
+          const ink = dv.r + dv.g + dv.b > 1.8 ? new THREE.Color('#2A2A2C') : new THREE.Color('#E9E2CF');
+          rect(fam.trim, c, gy + gh + 0.34, Math.min(sw * 0.32, 1.6), 0.09, D + 0.085, ink);
+          // A projecting blade sign on one shop in three, and the green cross
+          // that every pharmacy hangs out.
+          if (kind === 'pharmacy' || hash(seed, 23 + Math.round(t * 50)) < 0.33) {
+            const sy = gy + gh + 1.05, sx = Math.max(0.5, c - sw / 2 - 0.1);
+            if (kind === 'pharmacy') {
+              const green = new THREE.Color('#1FA34A');
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.3, 0.1, 0.05, green);
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.1, 0.3, 0.05, green);
+            } else {
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.32, 0.24, 0.03, dv);
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.2, 0.06, 0.035, ink);
+            }
+            fam.iron.box(at(sx, sy + 0.3, 0.3), w, up, u, 0.3, 0.02, 0.02, IRON);
+          }
           for (const sx of [-1, 1]) fam.trim.box(at(c + sx * (sw / 2 + 0.1), streetY + (gh + 0.7) / 2, D), u, up, w, 0.12, (gh + 0.7) / 2, 0.08, dv);
           fam.trim.box(at(c, streetY + 0.3, D), u, up, w, sw / 2, 0.3, 0.06, dv);
           fam.glass.quad(at(c - sw / 2, gy + 0.25, 0.12), at(c + sw / 2, gy + 0.25, 0.12),
@@ -556,7 +574,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           const wy = streetY + groundH * 0.55;
           const shut = hash(seed, 200 + j) < 0.45;
           if (shut) {
-            fam.trim.box(at(cx, wy, 0.06), u, up, w, Math.min(0.6, bayW * 0.22), 0.85, 0.04, shutterCol);
+            rect(fam.trim, cx, wy, Math.min(0.6, bayW * 0.22), 0.85, 0.06, shutterCol);
           } else {
             fam.glass.quad(at(cx - 0.55, wy - 0.8, 0.04), at(cx + 0.55, wy - 0.8, 0.04),
               at(cx + 0.55, wy + 0.8, 0.04), at(cx - 0.55, wy + 0.8, 0.04), GLASS);

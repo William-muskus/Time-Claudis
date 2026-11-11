@@ -262,8 +262,9 @@ function buildBollards(rail, frames) {
   });
   const onStairs = (d) => stairs.some(([a, b]) => d >= a && d <= b);
   const iron = [], stone = [];
-  const potelet = new THREE.CylinderGeometry(0.055, 0.065, 0.9, 7).translate(0, 0.45, 0);
-  const ball = new THREE.SphereGeometry(0.075, 7, 5).translate(0, 0.93, 0);
+  let railMesh = null;
+  const potelet = new THREE.CylinderGeometry(0.075, 0.085, 0.95, 7).translate(0, 0.475, 0);
+  const ball = new THREE.SphereGeometry(0.1, 7, 5).translate(0, 1.0, 0);
   const borne = new THREE.BoxGeometry(0.26, 0.5, 0.26).translate(0, 0.25, 0);
   let last = { [-1]: -99, [1]: -99 };
   for (const f of frames) {
@@ -282,8 +283,40 @@ function buildBollards(rail, frames) {
       else { iron.push(potelet.clone().translate(x, y, z)); iron.push(ball.clone().translate(x, y, z)); }
     }
   }
+  // KERB RAILINGS on the steep cobbled stretches: black panels between the
+  // bollards, as all along rue Lepic and the top of rue Girardon in the
+  // survey photos. Grade over 7%, both kerbs, a two-metre panel with a gap
+  // every third one for crossing.
+  const rails = [];
+  const bar = new THREE.BoxGeometry(0.025, 0.8, 0.025);
+  const rl = new THREE.BoxGeometry(0.035, 0.04, 2.0);
+  for (let i = 2; i < frames.length - 2; i += 2) {
+    const f = frames[i], g0 = frames[i - 2], g1 = frames[i + 2];
+    if (f.surf !== 'sett' || onStairs(f.d)) continue;
+    const grade = Math.abs(g1.p.y - g0.p.y) / Math.max(0.1, g1.d - g0.d);
+    if (grade < 0.07 || (f.halfWidth + f.pavement) * 2 >= 12.5) continue;
+    if (Math.floor(f.d / 2) % 3 === 2) continue;
+    const yaw = Math.atan2(f.t.x, f.t.z);
+    const pitch = Math.atan2(g1.p.y - g0.p.y, g1.d - g0.d);
+    for (const side of [-1, 1]) {
+      const off = (f.halfWidth + 0.3) * side;
+      const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
+      const y = f.walkY?.[side] ?? f.p.y + 0.14;
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(-pitch, yaw, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
+      for (const ry of [0.92, 0.12]) rails.push(rl.clone().translate(0, ry, 0).applyMatrix4(m));
+      for (let k = -0.9; k <= 0.91; k += 0.2) rails.push(bar.clone().translate(0, 0.5, k).applyMatrix4(m));
+    }
+  }
+  if (rails.length) {
+    const m = new THREE.Mesh(mergeGeometries(rails), flat(new THREE.Color('#232425'), { roughness: 0.5, metalness: 0.3 }));
+    m.name = 'kerb_railings';
+    railMesh = m;
+  }
+
   const group = new THREE.Group();
   group.name = 'bollards';
+  if (railMesh) group.add(railMesh);
   if (iron.length) {
     const m = new THREE.Mesh(mergeGeometries(iron), flat(new THREE.Color('#2A2A2C'), { roughness: 0.5, metalness: 0.3 }));
     m.castShadow = true;
