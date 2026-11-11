@@ -25,9 +25,21 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  *   - the Moulin's sails, which turn
  */
 
+/**
+ * SPATIAL TILES. Batching everything into one buffer per material made the
+ * whole 700 m corridor one draw call per family: cheap to submit, but the
+ * GPU then shades every triangle of the city in every frame, and every shadow
+ * pass, though the player only ever sees a few streets of it. So batches are
+ * per material AND per tile, and three.js frustum-culls the tiles. Shadow
+ * passes cull against the shadow camera the same way.
+ */
+export const TILE_M = 100;
+const tileOf = (x, z) => `${Math.floor(x / TILE_M)},${Math.floor(z / TILE_M)}`;
+
 /** Coarse buckets so near-identical materials batch together. */
-function familyKey(mat, mesh) {
+function familyKey(mat, mesh, tile) {
   return [
+    tile,
     mat.type,
     Math.round((mat.roughness ?? 1) * 4),
     Math.round((mat.metalness ?? 0) * 4),
@@ -74,7 +86,8 @@ export function batchStatic(root) {
     before++;
     if (!isMergeable(o)) return;
 
-    const key = familyKey(o.material, o);
+    const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+    const key = familyKey(o.material, o, tileOf(c.x, c.z));
     if (!families.has(key)) families.set(key, { geos: [], mat: o.material, mesh: o });
 
     // Clone, bake colour to vertices, bake transform to positions.
@@ -136,6 +149,7 @@ export function batchStatic(root) {
     o.parent?.remove(o);
   }
   root.add(batched);
+  tileSplitAll(root);
 
   let after = 0;
   root.traverse((o) => { if (o.isMesh) after++; });
@@ -149,4 +163,60 @@ function applyColor(geo, color) {
     arr[i * 3] = color.r; arr[i * 3 + 1] = color.g; arr[i * 3 + 2] = color.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+}
+
+/**
+ * Split the big pre-merged, vertex-coloured meshes (the real city's families,
+ * the terrain, the side streets, the garden walls) into the same tiles, by
+ * triangle centroid. They are built as single corridor-wide meshes because
+ * that is how they are authored; drawn that way they could never be culled.
+ */
+function tileSplitAll(root) {
+  const victims = [];
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.dynamic || !o.material?.vertexColors) return;
+    const g = o.geometry;
+    if (g.index || !g.attributes.position || g.attributes.position.count < 3000) return;
+    g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (bb.max.x - bb.min.x < TILE_M * 1.2 && bb.max.z - bb.min.z < TILE_M * 1.2) return;
+    victims.push(o);
+  });
+  for (const o of victims) {
+    o.updateMatrixWorld(true);
+    const g = o.geometry;
+    const names = Object.keys(g.attributes);
+    const P = g.attributes.position;
+    const buckets = new Map();
+    const v = new THREE.Vector3();
+    for (let t = 0; t < P.count; t += 3) {
+      v.set((P.getX(t) + P.getX(t + 1) + P.getX(t + 2)) / 3, 0, (P.getZ(t) + P.getZ(t + 1) + P.getZ(t + 2)) / 3)
+        .applyMatrix4(o.matrixWorld);
+      const k = tileOf(v.x, v.z);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(t);
+    }
+    if (buckets.size < 2) continue;
+    const group = new THREE.Group();
+    group.name = o.name;
+    group.position.copy(o.position); group.rotation.copy(o.rotation); group.scale.copy(o.scale);
+    for (const [k, tris] of buckets) {
+      const ng = new THREE.BufferGeometry();
+      for (const name of names) {
+        const a = g.attributes[name], n = a.itemSize;
+        const out = new Float32Array(tris.length * 3 * n);
+        let w = 0;
+        for (const t of tris) for (let j = 0; j < 3; j++) for (let c = 0; c < n; c++) out[w++] = a.array[(t + j) * n + c];
+        ng.setAttribute(name, new THREE.BufferAttribute(out, n));
+      }
+      ng.computeBoundingSphere();
+      const m = new THREE.Mesh(ng, o.material);
+      m.name = `${o.name}@${k}`;
+      m.castShadow = o.castShadow; m.receiveShadow = o.receiveShadow;
+      group.add(m);
+    }
+    o.parent.add(group);
+    o.parent.remove(o);
+    g.dispose();
+  }
 }

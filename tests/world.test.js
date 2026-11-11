@@ -29,8 +29,11 @@ test('the whole of Montmartre batches into a handful of draw calls', () => {
   // thousands of meshes, so "substantial" is measured in real buildings.
   assert.ok(city.buildings > 900, `expected the corridor's ~1,000 real buildings, got ${city.buildings}`);
   assert.ok(city.triangles > 100000, `the city is suspiciously light: ${city.triangles} triangles`);
-  assert.ok(after < 120,
-    `${after} draw calls. Authoring wants one mesh per shutter; rendering does ` +
+  // Batched per material per 100 m tile (optimize.js), so the total grows
+  // with the map; what one view draws is checked in perf.test.js. Without
+  // batching this would be in the thousands.
+  assert.ok(after < 1500,
+    `${after} meshes. Authoring wants one mesh per shutter; rendering does ` +
     'not, and something has stopped batching.');
 });
 
