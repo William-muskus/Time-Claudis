@@ -186,3 +186,54 @@ function distToSeg([ax, az], [bx, bz], x, z) {
   const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
   return Math.hypot(x - ax - dx * t, z - az - dz * t);
 }
+
+/**
+ * Is (x, z) on the carriageway of a street OTHER than the walk (and other
+ * than `self`, a GEO.roads entry, when given)? `pad` widens the street.
+ *
+ * Junctions were built as if streets did not meet: the walk's pavement ran
+ * straight across the mouth of every side street, side streets were drawn
+ * across the walk and across each other with their raised pavements, and the
+ * kerb bollards of all of them marched through the middle of the crossing
+ * (rue Lepic at rue d'Orchampt, rue Ravignan at rue d'Orchampt). Everything
+ * that belongs to one street now asks this before it is put down.
+ */
+let _rIndex = null;
+export function onOtherStreet(x, z, { near = null, rail = null, self = null, pad = 0 } = {}) {
+  if (!_rIndex) {
+    _rIndex = new Map();
+    for (const r of GEO.roads ?? []) {
+      if (r.k === 'stairs' || r.k === 'path') continue;
+      const p = triples(r.p);
+      for (let i = 0; i < p.length - 1; i++) {
+        const seg = { r, a: [p[i][0], p[i][2]], b: [p[i + 1][0], p[i + 1][2]], h: r.w / 2 };
+        const x0 = Math.min(seg.a[0], seg.b[0]) - 10, x1 = Math.max(seg.a[0], seg.b[0]) + 10;
+        const z0 = Math.min(seg.a[1], seg.b[1]) - 10, z1 = Math.max(seg.a[1], seg.b[1]) + 10;
+        for (let ci = Math.floor(x0 / 20); ci <= Math.floor(x1 / 20); ci++) {
+          for (let cj = Math.floor(z0 / 20); cj <= Math.floor(z1 / 20); cj++) {
+            const k = `${ci},${cj}`;
+            if (!_rIndex.has(k)) _rIndex.set(k, []);
+            _rIndex.get(k).push(seg);
+          }
+        }
+      }
+    }
+  }
+  for (const seg of _rIndex.get(`${Math.floor(x / 20)},${Math.floor(z / 20)}`) ?? []) {
+    if (seg.r === self) continue;
+    if (distToSeg(seg.a, seg.b, x, z) > seg.h + pad) continue;
+    // A segment that runs along the walk IS the walk: not another street.
+    if (near && rail) {
+      const mx = (seg.a[0] + seg.b[0]) / 2, mz = (seg.a[1] + seg.b[1]) / 2;
+      const nr = near.nearest(mx, mz, 12);
+      if (nr) {
+        const L = Math.hypot(seg.b[0] - seg.a[0], seg.b[1] - seg.a[1]) || 1;
+        const t = rail.tangentAt(nr.d);
+        const along = Math.abs(((seg.b[0] - seg.a[0]) * t.x + (seg.b[1] - seg.a[1]) * t.z) / L);
+        if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && along > 0.6) continue;
+      }
+    }
+    return true;
+  }
+  return false;
+}

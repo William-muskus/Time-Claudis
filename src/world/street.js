@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
-import { surfaceAt } from './geo.js';
+import { surfaceAt, onOtherStreet, railIndex } from './geo.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
@@ -83,6 +83,17 @@ export function buildStreet(rail) {
   group.add(buildCarriageway(frames));
   // Pavements first: they record the walking surface that the kerbs and the
   // handrails both read back from.
+  // Where a side street opens off the walk, neither the pavement nor the kerb
+  // runs across its mouth: the side street's own carriageway comes up to the
+  // walk's kerb line instead (terrain.js), as at every real junction.
+  const near = railIndex(rail);
+  for (const f of frames) {
+    f.mouth = {};
+    for (const side of [-1, 1]) {
+      const o = (f.halfWidth + f.pavement * 0.5) * side;
+      f.mouth[side] = onOtherStreet(f.p.x + f.right.x * o, f.p.z + f.right.z * o, { near, rail, pad: 0.4 });
+    }
+  }
   group.add(buildPavement(frames, +1));
   group.add(buildPavement(frames, -1));
   group.add(buildKerb(frames, +1));
@@ -197,6 +208,7 @@ function buildPavement(frames, side) {
   const byKind = new Map();
   for (let i = 0; i < frames.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    if (frames[i].mouth?.[side] || frames[i + 1].mouth?.[side]) continue;
     if (!byKind.has(kinds[i])) byKind.set(kinds[i], []);
     // Same winding rule as the carriageway.
     if (side > 0) byKind.get(kinds[i]).push(a, b, c, b, d, c);
@@ -232,6 +244,7 @@ function buildKerb(frames, side) {
     pos.push(f.p.x + f.right.x * x2, top + 0.01, f.p.z + f.right.z * x2);
   }
   for (let i = 0; i < frames.length - 1; i++) {
+    if (frames[i].mouth?.[side] || frames[i + 1].mouth?.[side]) continue;
     const a = i * 3, b = a + 1, t = a + 2, c = a + 3, d = a + 4, t2 = a + 5;
     if (side > 0) idx.push(a, b, c, b, d, c, b, t, d, t, t2, d);
     else idx.push(a, c, b, b, c, d, b, d, t, t, d, t2);
@@ -257,6 +270,7 @@ function buildKerb(frames, side) {
  * not on the asphalt streets, not across squares.
  */
 function buildBollards(rail, frames) {
+  const near = railIndex(rail);
   const stairs = STAIR_SEGMENTS.map((s) => {
     try { return [rail.distanceToWaypoint(s.from) - 1, rail.distanceToWaypoint(s.to) + 1]; } catch { return [0, -1]; }
   });
@@ -272,12 +286,14 @@ function buildBollards(rail, frames) {
     const width = (f.halfWidth + f.pavement) * 2;
     if (width >= 12.5) continue;
     const lane = width < 8;
-    const gap = lane ? 2.4 : 1.6;
+    const gap = lane ? 3.2 : 2.0;
     for (const side of [-1, 1]) {
       if (f.d - last[side] < gap) continue;
       last[side] = f.d;
       const off = (f.halfWidth + 0.32) * side;
       const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
+      // Not across the mouth of a side street.
+      if (onOtherStreet(x, z, { near, rail, pad: 1.5 })) continue;
       const y = f.walkY?.[side] ?? f.p.y + 0.14;
       if (lane) stone.push(borne.clone().translate(x, y, z));
       else { iron.push(potelet.clone().translate(x, y, z)); iron.push(ball.clone().translate(x, y, z)); }

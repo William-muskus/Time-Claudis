@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from '../render/palette.js';
-import { GEO, groundAt, pairs, pointInRing, surfaceAt } from './geo.js';
+import { GEO, groundAt, pairs, pointInRing, surfaceAt, onOtherStreet } from './geo.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -28,8 +28,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 const COL = {
   // Bare ground between things in this city is paving, gravel and packed
   // earth: a neutral warm grey, not the brown it used to be.
-  ground: new THREE.Color('#A29C92'),
-  groundAlt: new THREE.Color('#9B958B'),
+  ground: new THREE.Color('#8F8C86'),
+  groundAlt: new THREE.Color('#8A8781'),
   green: new THREE.Color('#5F7440'),
   greenAlt: new THREE.Color('#566B3A'),
   road: PALETTE.cobbleCool,
@@ -190,7 +190,7 @@ function buildSideStreets(rail, near) {
       const ux = (bx - ax) / len, uz = (bz - az) / len;
       const rx = -uz, rz = ux;
       // Subdivide so a long segment follows the terrain rather than bridging it.
-      const n = Math.max(1, Math.ceil(len / 3));
+      const n = Math.max(1, Math.ceil(len / 1.5));
       for (let k = 0; k < n; k++) {
         const t0 = k / n, t1 = (k + 1) / n;
         const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
@@ -214,7 +214,20 @@ function buildSideStreets(rail, near) {
           const pt = (o, lift) => [pp[0] + rx * o, lerp(o) + lift, pp[1] + rz * o];
           return { pt, v };
         });
-        const strip = (o0, o1, lift, kind, tint) => {
+        // Where this street meets the walk it stops at the walk's kerb line:
+        // street.js draws the junction. Where it meets another side street,
+        // its raised pavement stops at that street's carriageway.
+        const inWalk = (x, z, pad) => {
+          const q = near.nearest(x, z, 14);
+          if (!q) return false;
+          const w = rail.widthAt(q.d);
+          return q.dist < Math.max(1.5, w * 0.5 - Math.max(0.8, Math.min(2.4, w * 0.18))) + pad;
+        };
+        const strip = (o0, o1, lift, kind, tint, pavementStrip = false) => {
+          const om = (o0 + o1) / 2;
+          const cx = (p0[0] + p1[0]) / 2 + rx * om, cz = (p0[1] + p1[1]) / 2 + rz * om;
+          if (inWalk(cx, cz, pavementStrip ? 1.6 : 0)) return;
+          if (pavementStrip && onOtherStreet(cx, cz, { near, rail, self: r, pad: 0.3 })) return;
           const a = P[0].pt(o0, lift), b = P[1].pt(o0, lift), c = P[1].pt(o1, lift), d = P[0].pt(o1, lift);
           // Upward-facing: left-back, left-front, right-front, right-back.
           mesher(kind).quad(a, d, c, b, tint, [[o0, P[0].v], [o1, P[0].v], [o1, P[1].v], [o0, P[1].v]]);
@@ -227,6 +240,8 @@ function buildSideStreets(rail, near) {
             for (let a = Math.ceil(v0 / 2.8) * 2.8; a < v1; a += 2.8) {
               const t = (a - a0) / len;
               const x = ax + (bx - ax) * t + rx * (half + 0.3) * sx, z = az + (bz - az) * t + rz * (half + 0.3) * sx;
+              // Not across a junction, and not out in the walk.
+              if (inWalk(x, z, 2.0) || onOtherStreet(x, z, { near, rail, self: r, pad: 1.2 })) continue;
               const yy = P[0].pt(sx * (half + 0.3), 0.2)[1] + (P[1].pt(sx * (half + 0.3), 0.2)[1] - P[0].pt(sx * (half + 0.3), 0.2)[1]) * ((a - v0) / (v1 - v0 || 1));
               bollards.push(BOLLARD.clone().translate(x, yy, z));
             }
@@ -238,8 +253,8 @@ function buildSideStreets(rail, near) {
           strip(-half, half, 0.08, surf, SURFACE_TINT[surf] ?? SURFACE_TINT.asphalt);
           if (edge) {
             const pv = SURFACE_TINT.asphalt.clone().multiplyScalar(1.12);
-            strip(-half - edge, -half, 0.2, 'asphalt', pv);
-            strip(half, half + edge, 0.2, 'asphalt', pv);
+            strip(-half - edge, -half, 0.2, 'asphalt', pv, true);
+            strip(half, half + edge, 0.2, 'asphalt', pv, true);
           }
         }
       }
