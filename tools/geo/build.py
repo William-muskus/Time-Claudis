@@ -552,6 +552,12 @@ def main():
     # setts at the Ravignan end in a clear one. OSM was right.)
     SURFACE_FROM_PHOTOS = {}
     surfaces, barriers, gardens, plazas = [], [], [], []
+    # Pavements and zebra crossings. Paris maps its pavements as their own
+    # lines (footway=sidewalk), drawn down the middle of each pavement: with
+    # the facade behind, that is the kerb. IGN's road line is the street's
+    # axis, not the carriageway, and on rue d'Orchampt or rue Ravignan the
+    # carriageway is nowhere near centred between the houses.
+    sidewalks, crossings = [], []
     GARDEN = {("leisure", "garden"): "garden", ("leisure", "park"): "park", ("landuse", "grass"): "grass",
               ("natural", "scrub"): "scrub", ("natural", "wood"): "wood", ("landuse", "vineyard"): "vineyard",
               ("landuse", "cemetery"): "cemetery"}
@@ -567,6 +573,12 @@ def main():
                 surf = SURFACE_FROM_PHOTOS[tg["name"]]
             surfaces.append(dict(s=surf, n=tg.get("name", ""), fw=1 if tg["highway"] in ("footway", "steps") else 0,
                                  p=[v for x, z in pts for v in (r1(x), r1(z))]))
+        if tg.get("highway") == "footway" and tg.get("footway") in ("sidewalk", "crossing"):
+            flat = [v for x, z in pts for v in (r1(x), r1(z))]
+            if tg["footway"] == "sidewalk":
+                sidewalks.append(dict(s=SURF.get(tg.get("surface"), ""), p=flat))
+            else:
+                crossings.append(dict(k=tg.get("crossing", ""), m=tg.get("crossing:markings", ""), p=flat))
         if tg.get("barrier") in ("wall", "fence", "retaining_wall", "gate", "hedge"):
             ys = [terrain.at(x, z) for x, z in pts]
             if any(y is None for y in ys):
@@ -620,6 +632,8 @@ def main():
         barriers=barriers,
         gardens=gardens,
         plazas=plazas,
+        sidewalks=sidewalks,
+        crossings=crossings,
         pois=pois,
     )
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

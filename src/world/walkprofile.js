@@ -1,4 +1,5 @@
 import { GEO, triples, insideBuilding, pairs, pointInRing } from './geo.js';
+import FACADES from '../data/geo/facades.json' with { type: 'json' };
 
 /**
  * The real cross-section of the street the walk runs down, every half metre.
@@ -48,15 +49,66 @@ function hitsBarrier(segs, ax, az, bx, bz) {
   return null;
 }
 
+function sidewalkSegs() {
+  const out = [];
+  for (const w of GEO.sidewalks ?? []) {
+    const p = pairs(w.p);
+    for (let i = 0; i < p.length - 1; i++) out.push([p[i][0], p[i][1], p[i + 1][0], p[i + 1][1]]);
+  }
+  return out;
+}
+
+/**
+ * Where a mapped pavement (OSM footway=sidewalk, drawn down the middle of the
+ * pavement) crosses the ray from the walk out to side `side`, running along
+ * the walk: its distance out, or null.
+ */
+function sidewalkAt(sw, p, t, side, reach) {
+  const rx = -t.z * side, rz = t.x * side;
+  let best = null;
+  for (const [ax, az, bx, bz] of sw) {
+    const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+    if (L < 0.2 || Math.abs((dx * t.x + dz * t.z) / L) < 0.85) continue;
+    const den = rx * dz - rz * dx;
+    if (Math.abs(den) < 1e-9) continue;
+    const k = ((ax - p.x) * dz - (az - p.z) * dx) / den;
+    const u = ((ax - p.x) * rz - (az - p.z) * rx) / den;
+    if (u < 0 || u > 1 || k < 0.3 || k > reach) continue;
+    if (best === null || k < best) best = k;
+  }
+  return best;
+}
+
+/**
+ * Stretches where the survey photographs and the aerial photograph show a
+ * cross-section the maps cannot: facades.json "streets", each a span of the
+ * walk (waypoint + metres) with the pavement widths as measured.
+ */
+export function recordedStreets(rail) {
+  const out = [];
+  for (const r of FACADES.streets ?? []) {
+    try {
+      const a = rail.distanceToWaypoint(r.from[0]) + (r.from[1] ?? 0);
+      const b = rail.distanceToWaypoint(r.to[0]) + (r.to[1] ?? 0);
+      out.push({ ...r, a: Math.min(a, b), b: Math.max(a, b) });
+    } catch { /* waypoint renamed: ignore the record */ }
+  }
+  return out;
+}
+
 export function walkProfile(rail) {
   if (cache?.rail === rail) return cache.at;
   const segs = barrierSegs();
+  const sw = sidewalkSegs();
+  const recorded = recordedStreets(rail);
   const roads = [];
   for (const r of GEO.roads ?? []) {
     if (r.k !== 'road') continue;
     const p = triples(r.p);
     for (let i = 0; i < p.length - 1; i++) roads.push({ w: r.w, a: [p[i][0], p[i][2]], b: [p[i + 1][0], p[i + 1][2]] });
   }
+  const plazas = (GEO.plazas ?? []).map((q) => pairs(q.o));
+  const inPlaza = (x, z) => plazas.some((r) => pointInRing(r, x, z));
   const REACH = 7;
   const n = Math.floor(rail.length / STEP) + 1;
   const raw = [];
@@ -93,6 +145,23 @@ export function walkProfile(rail) {
         if (wall === null || bk < wall) wall = bk;
       }
       out.wall[side] = wall;
+      // The kerb, from the mapped pavement: as far in front of its line as
+      // the facade is behind it.
+      out.kerb = out.kerb ?? {};
+      let k = sidewalkAt(sw, p, t, side, (wall ?? REACH) + 0.5);
+      // Inside a square the mapped footways criss-cross it; none is a kerb.
+      if (k !== null && inPlaza(p.x + rx * side * k, p.z + rz * side * k)) k = null;
+      if (k !== null && wall !== null && wall - k < 3) out.kerb[side] = Math.max(0.6, wall - Math.max(0.9, Math.min(5, 2 * (wall - k))));
+      else if (k !== null && wall === null) out.kerb[side] = Math.max(0.6, k - 1);
+      else out.kerb[side] = null;
+    }
+    // The carriageway between the kerbs the mapped pavements put there (both
+    // sides), or the IGN width off the one kerb that is mapped.
+    if (road) {
+      const kL = out.kerb[-1], kR = out.kerb[1];
+      if (kL !== null && kR !== null && kL + kR >= 3.2) { out.half = Math.min(6, (kL + kR) / 2); out.cen = (kR - kL) / 2; }
+      else if (kR !== null) out.cen = kR - out.half;
+      else if (kL !== null) out.cen = out.half - kL;
     }
     raw.push(out);
   }
@@ -105,9 +174,26 @@ export function walkProfile(rail) {
       if (raw[j].half !== null) { hs += raw[j].half; cs += raw[j].cen; hn++; }
       for (const s of [-1, 1]) if (raw[j].wall[s] !== null) { ws[s][0] += raw[j].wall[s]; ws[s][1]++; }
     }
-    const half = r.road && hn ? hs / hn : null;
-    // Never so far off that the camera is outside the carriageway.
-    const cen = half !== null ? Math.max(-(half - 0.6), Math.min(half - 0.6, cs / hn)) : 0;
+    let half = r.road && hn ? hs / hn : null;
+    let cen = half !== null ? cs / hn : 0;
+    if (half !== null) half = Math.max(1.6, Math.min(6, half));
+    // Recorded from the photographs: a pavement of a measured width on a side,
+    // the carriageway taking the rest up to the IGN width.
+    const rec = recorded.find((q) => i * STEP >= q.a && i * STEP <= q.b);
+    if (half !== null && rec) {
+      if (rec.w) half = rec.w / 2;
+      const wallAt = (s) => (r.wall[s] !== null && ws[s][1] ? ws[s][0] / ws[s][1] : null);
+      const want = { [-1]: rec.pav?.left, [1]: rec.pav?.right };
+      const kerb = { [-1]: null, [1]: null };
+      for (const s of [-1, 1]) if (want[s] !== undefined && wallAt(s) !== null) kerb[s] = wallAt(s) - want[s];
+      // Both pavements measured: the carriageway is what lies between them.
+      if (kerb[-1] !== null && kerb[1] !== null) { half = (kerb[-1] + kerb[1]) / 2; cen = (kerb[1] - kerb[-1]) / 2; }
+      // One: move the carriageway so that kerb is where it was measured.
+      else if (kerb[1] !== null) cen = kerb[1] - half;
+      else if (kerb[-1] !== null) cen = half - kerb[-1];
+    }
+    // The camera walks the pavement edge at worst, never the far side of it.
+    if (half !== null) cen = Math.max(-(half + 0.4), Math.min(half + 0.4, cen));
     const pav = {}, open = {};
     for (const s of [-1, 1]) {
       const wall = r.wall[s] !== null && ws[s][1] ? ws[s][0] / ws[s][1] : null;
@@ -116,14 +202,30 @@ export function walkProfile(rail) {
       pav[s] = Math.max(0.9, wall - (half + s * cen) - 0.05);
       open[s] = false;
     }
-    return { road: half !== null, half, cen, pav, open };
+    // Posts along a kerb unless the photographs show none there, which is
+    // wherever cars or scooters park against it.
+    const bollards = rec ? Object.fromEntries(['left', 'right'].map((k) => [k, rec.bollards?.[k] ?? (rec.park?.[k] ? false : true)])) : null;
+    return { road: half !== null, half, cen, pav, open, bollards };
   });
+  // Ease the kerbs over two metres either side, so a recorded stretch does
+  // not start with a step in the kerb line.
+  {
+    const E = Math.round(2 / STEP);
+    const hs = prof.map((q) => q.half), cs = prof.map((q) => q.cen);
+    prof.forEach((q, i) => {
+      if (!q.road) return;
+      let h = 0, c = 0, m = 0;
+      for (let j = Math.max(0, i - E); j <= Math.min(n - 1, i + E); j++) if (hs[j] !== null) { h += hs[j]; c += cs[j]; m++; }
+      const nh = h / m, nc = c / m;
+      // Keep each pavement reaching its facade: the kerb moves, the wall does not.
+      for (const s of [-1, 1]) if (!q.open[s]) q.pav[s] = Math.max(0.9, q.pav[s] + (q.half + s * q.cen) - (nh + s * nc));
+      q.half = nh; q.cen = nc;
+    });
+  }
   // Where a kerb would fall inside a square (an OSM pedestrian area), that
   // side has no kerb: the square is one flush surface (Place Dalida, where
   // the left kerb of rue Girardon starts at the square's edge and curves
   // away, instead of running on down to the steps).
-  const plazas = (GEO.plazas ?? []).map((q) => pairs(q.o));
-  const inPlaza = (x, z) => plazas.some((r) => pointInRing(r, x, z));
   prof.forEach((pr, i) => {
     pr.flush = { [-1]: false, [1]: false };
     if (!pr.road) return;
@@ -149,7 +251,7 @@ export function walkProfile(rail) {
  */
 export function streetAt(rail, d) {
   const p = walkProfile(rail)(d);
-  if (p.road) return { half: p.half, cen: p.cen, pav: p.pav, open: p.open, flush: p.flush, road: true };
+  if (p.road) return { half: p.half, cen: p.cen, pav: p.pav, open: p.open, flush: p.flush, road: true, bollards: p.bollards };
   const total = rail.widthAt(d);
   const pavement = Math.max(0.8, Math.min(2.4, total * 0.18));
   const half = Math.max(1.5, total * 0.5 - pavement);

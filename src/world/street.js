@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
-import { surfaceAt, onOtherStreet, railIndex } from './geo.js';
+import { GEO, pairs, surfaceAt, onOtherStreet, railIndex } from './geo.js';
 import { streetAt } from './walkprofile.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -74,7 +74,7 @@ export function buildStreet(rail) {
     // on rue des Abbesses is the same granite in the survey photos.
     const raw = surfaceAt(p.x, p.z);
     frames.push({
-      d, p, t, right, pavement, pav: prof.pav, onRoad: prof.road, cen: prof.cen, flush: prof.flush,
+      d, p, t, right, pavement, pav: prof.pav, onRoad: prof.road, cen: prof.cen, flush: prof.flush, posts: prof.bollards,
       halfWidth: prof.half,
       surf: raw === 'paving' ? 'sett' : raw,
     });
@@ -104,6 +104,7 @@ export function buildStreet(rail) {
   group.add(buildKerb(frames, -1));
   group.add(buildSlopeHandrails(frames));
   group.add(buildBollards(rail, frames));
+  group.add(buildCrossings(rail, frames, near));
   group.add(buildStairFlights(rail));
 
   return group;
@@ -171,6 +172,83 @@ function buildCarriageway(frames) {
     mesh.name = `carriageway_${kind}`;
     group.add(mesh);
   }
+  return group;
+}
+
+/**
+ * Zebra crossings ("passages piétons") where OpenStreetMap maps a marked
+ * crossing over the walk's carriageway: white bands half a metre wide, a
+ * metre apart, laid along the traffic, painted on the camber so they neither
+ * float nor sink. The survey photographs show them at every junction the walk
+ * crosses (Caulaincourt, rue des Abbesses, the foot of rue d'Orchampt) and the
+ * street had none.
+ */
+function buildCrossings(rail, frames, near) {
+  const step = rail.length / (frames.length - 1);
+  const surfaceY = (x, z) => {
+    const nr = near.nearest(x, z, 14);
+    if (!nr) return null;
+    let i = Math.round(nr.d / step), best = null, ba = Infinity;
+    for (let k = Math.max(0, i - 3); k <= Math.min(frames.length - 1, i + 3); k++) {
+      const f = frames[k], a = (x - f.p.x) * f.t.x + (z - f.p.z) * f.t.z;
+      if (Math.abs(a) < Math.abs(ba)) { ba = a; best = k; }
+    }
+    const f = frames[best];
+    if (!f.onRoad) return null;
+    const w = (x - f.p.x) * f.right.x + (z - f.p.z) * f.right.z;
+    const u = (w - f.cen) / (2 * f.halfWidth);
+    if (Math.abs(u) > 0.5 - 0.04 / f.halfWidth) return null;
+    const g = frames[Math.min(frames.length - 1, best + 1)], h = frames[Math.max(0, best - 1)];
+    const slope = (g.p.y - h.p.y) / Math.max(1e-3, g.d - h.d);
+    return f.p.y + ba * slope - Math.abs(u) * Math.abs(u) * 0.22 + 0.055 + 0.012;
+  };
+  const pos = [];
+  const BAND = 0.5, PITCH = 1.0, LEN = 3.0, SEG = 6;
+  for (const c of GEO.crossings ?? []) {
+    if (c.m === 'no' || c.k === 'unmarked') continue;
+    const p = pairs(c.p);
+    for (let q = 0; q < p.length - 1; q++) {
+      const [ax, az] = p[q], [bx, bz] = p[q + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      if (L < 1) continue;
+      const ux = (bx - ax) / L, uz = (bz - az) / L;   // across the street
+      const vx = -uz, vz = ux;                       // along the traffic
+      for (let s = PITCH / 2; s < L; s += PITCH) {
+        const cx = ax + ux * s, cz = az + uz * s;
+        // A band is drawn whole or not at all: only where all of it lies on
+        // the walk's carriageway.
+        const quad = [];
+        let ok = true;
+        for (let k = 0; k <= SEG && ok; k++) {
+          const t = (k / SEG - 0.5) * LEN;
+          for (const e of [-BAND / 2, BAND / 2]) {
+            const x = cx + ux * e + vx * t, z = cz + uz * e + vz * t;
+            const y = surfaceY(x, z);
+            if (y === null) { ok = false; break; }
+            quad.push([x, y, z]);
+          }
+        }
+        if (!ok) continue;
+        for (let k = 0; k < SEG; k++) {
+          const [a, b, c2, d] = [quad[2 * k], quad[2 * k + 1], quad[2 * k + 2], quad[2 * k + 3]];
+          // Upward-facing whichever way the crossing was drawn.
+          const up = ((b[0] - a[0]) * (c2[2] - a[2]) - (b[2] - a[2]) * (c2[0] - a[0])) < 0;
+          const tris = up ? [a, b, c2, b, d, c2] : [a, c2, b, b, c2, d];
+          for (const v of tris) pos.push(...v);
+        }
+      }
+    }
+  }
+  const group = new THREE.Group();
+  group.name = 'crossings';
+  if (!pos.length) return group;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, flat(new THREE.Color('#E4E2DA'), { roughness: 0.75 }));
+  m.name = 'zebra';
+  m.receiveShadow = true;
+  group.add(m);
   return group;
 }
 
@@ -295,11 +373,14 @@ function buildBollards(rail, frames) {
     if (!f.onRoad) continue;
     for (const side of [-1, 1]) {
       if (f.flush?.[side]) continue;
+      if (f.posts?.[side === -1 ? 'left' : 'right'] === false) continue;
       const lane = f.pav[side] < 1.3;
       const gap = lane ? 3.2 : 2.0;
       if (f.d - last[side] < gap) continue;
       last[side] = f.d;
       const off = f.cen + (f.halfWidth + 0.32) * side;
+      // Where the walk runs along a kerb, not in the camera's path.
+      if (Math.abs(off) < 0.8) continue;
       const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
       // Not across the mouth of a side street.
       if (onOtherStreet(x, z, { near, rail, pad: 1.5 })) continue;
@@ -330,6 +411,7 @@ function buildBollards(rail, frames) {
     const pitch = Math.atan2(g1.p.y - g0.p.y, g1.d - g0.d);
     for (const side of [-1, 1]) {
       const off = f.cen + (f.halfWidth + 0.3) * side;
+      if (Math.abs(off) < 0.8) continue;
       const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
       const y = f.walkY?.[side] ?? f.p.y + 0.14;
       const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z),

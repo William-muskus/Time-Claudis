@@ -627,7 +627,7 @@
   },
   "245180763:3": {
    "src": "s_pierre_dac~back",
-   "note": "White corner block over the caf\u00e9 at the Lamarck crossroads",
+   "note": "White corner block over the café at the Lamarck crossroads",
    "wall": "#EEEAE2",
    "guards": true,
    "balcony": [
@@ -666,7 +666,7 @@
   },
   "245180759:2": {
    "src": "s_caulaincourt~back",
-   "note": "Caf\u00e9 pavilion",
+   "note": "Café pavilion",
    "ground": [
     {
      "k": "shop",
@@ -741,7 +741,7 @@
   },
   "245180372:0": {
    "src": "s_pecqueur~back",
-   "note": "Librairie L'Attrape-C\u0153urs",
+   "note": "Librairie L'Attrape-Cœurs",
    "wall": "#E3D8C2",
    "guards": true,
    "balcony": [
@@ -1454,7 +1454,7 @@
   },
   "245179535:10": {
    "src": "s_ravignan_2~back",
-   "note": "Caf\u00e9-tabac on the corner of rue des Abbesses",
+   "note": "Café-tabac on the corner of rue des Abbesses",
    "wall": "#EFE8DA",
    "shutters": "#E6DFD2",
    "balcony": [
@@ -1475,7 +1475,7 @@
   },
   "245179535:8": {
    "src": "s_ravignan_2~back",
-   "note": "Caf\u00e9-tabac on the corner of rue des Abbesses",
+   "note": "Café-tabac on the corner of rue des Abbesses",
    "wall": "#EFE8DA",
    "shutters": "#E6DFD2",
    "balcony": [
@@ -1496,7 +1496,7 @@
   },
   "245179535:9": {
    "src": "s_ravignan_2~back",
-   "note": "Caf\u00e9-tabac on the corner of rue des Abbesses",
+   "note": "Café-tabac on the corner of rue des Abbesses",
    "wall": "#EFE8DA",
    "shutters": "#E6DFD2",
    "balcony": [
@@ -1778,12 +1778,124 @@
  "barriers": {
   "154690030": {
    "src": "place_dalida",
-   "note": "Ch\u00e2teau des Brouillards garden: rendered wall and a tall green bar fence",
+   "note": "Château des Brouillards garden: rendered wall and a tall green bar fence",
    "kind": "wallbars",
    "h": 2.1,
    "rail": 1.9,
    "col": "#2F4A3B",
    "gate": 0.3
   }
- }
+ },
+ "streets": [
+  {
+   "note": "rue Caulaincourt: cars along the kerb on the far side from the métro (survey photo s_caulaincourt~back).",
+   "from": [
+    "lamarck_station",
+    0
+   ],
+   "to": [
+    "constantin_pecqueur",
+    -10
+   ],
+   "park": {
+    "right": "cars"
+   }
+  },
+  {
+   "note": "rue Constantin-Pecqueur: no posts on either kerb; cars parked against the house side, the square's railing on the other (constantin_pecqueur).",
+   "from": [
+    "constantin_pecqueur",
+    -10
+   ],
+   "to": [
+    "s_pecqueur_2",
+    0
+   ],
+   "park": {
+    "left": "cars"
+   },
+   "bollards": {
+    "left": false,
+    "right": false
+   }
+  },
+  {
+   "note": "rue d'Orchampt, the wide stretch: the cobbled carriageway runs along the south-west houses behind a one-metre pavement lined with granite bornes; the north-east side is a four-metre paved strip where the scooters park (aerial photograph; survey photos s_orchampt_1c, orchampt_bend).",
+   "from": [
+    "s_orchampt_2",
+    4
+   ],
+   "to": [
+    "orchampt_bend",
+    18
+   ],
+   "pav": {
+    "right": 1.0
+   },
+   "w": 4.6,
+   "park": {
+    "left": "scooters@pavement"
+   },
+   "bollards": {
+    "left": false
+   }
+  },
+  {
+   "note": "rue d'Orchampt, lower stretch: narrow pavements both sides (aerial photograph), cars against the north-east kerb, bornes along the other (s_orchampt_4, s_orchampt_4~back).",
+   "from": [
+    "orchampt_bend",
+    18
+   ],
+   "to": [
+    "orchampt_ravignan",
+    -6
+   ],
+   "park": {
+    "left": "cars"
+   },
+   "bollards": {
+    "left": false
+   },
+   "pav": {
+    "left": 1.3,
+    "right": 1.2
+   }
+  },
+  {
+   "note": "lower rue Ravignan: cars and café decks along both kerbs, no posts (s_ravignan_1, ravignan_bas, s_ravignan_2).",
+   "from": [
+    "trois_freres",
+    4
+   ],
+   "to": [
+    "abbesses_corner",
+    -4
+   ],
+   "park": {
+    "left": "cars",
+    "right": "cars"
+   },
+   "bollards": {
+    "left": false,
+    "right": false
+   }
+  },
+  {
+   "note": "rue des Abbesses: scooters and a car against the south kerb, potelets along the square side (s_abbesses_1, rue_abbesses, s_abbesses_2).",
+   "from": [
+    "s_abbesses_1",
+    -4
+   ],
+   "to": [
+    "s_abbesses_2",
+    -4
+   ],
+   "park": {
+    "right": "mixed"
+   },
+   "bollards": {
+    "right": false
+   }
+  }
+ ]
 }

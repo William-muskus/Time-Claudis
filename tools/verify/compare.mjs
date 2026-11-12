@@ -12,7 +12,7 @@
  * street. Geometry was right; colour, ground, walls and greenery were all
  * wrong, and nothing in the harness looked at a real street to notice.
  *
- *   node tools/verify/compare.mjs [--out DIR] [--only NAME]
+ *   node tools/verify/compare.mjs [--out DIR] [--only NAME[,NAME...]]
  *
  * Photographs are downloaded on first use into DIR/ref (they are CC-BY-SA,
  * credited in references.json, and not committed). Requires `npm run build`.
@@ -38,7 +38,7 @@ const SHEETS_ONLY = argv.includes('--sheets-only');
 const EYE = Number(arg('eye', '2.3'));
 
 const { references } = JSON.parse(await readFile(join(ROOT, 'tools/geo/references.json'), 'utf8'));
-const refs = references.filter((r) => !ONLY || r.name.includes(ONLY));
+const refs = references.filter((r) => !ONLY || ONLY.split(',').some((o) => r.name.includes(o)));
 await mkdir(join(OUT, 'ref'), { recursive: true });
 await mkdir(join(OUT, 'game'), { recursive: true });
 

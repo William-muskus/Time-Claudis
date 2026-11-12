@@ -4,7 +4,7 @@ import { parkedCar, scooters } from './cover.js';
 import { STAIR_SEGMENTS } from './street.js';
 import { GEO, insideBuilding, groundAt, pairs } from './geo.js';
 import FACADES from '../data/geo/facades.json' with { type: 'json' };
-import { streetAt as profileAt } from './walkprofile.js';
+import { streetAt as profileAt, recordedStreets } from './walkprofile.js';
 
 /**
  * Parked cars and scooters along the kerbs.
@@ -15,11 +15,9 @@ import { streetAt as profileAt } from './walkprofile.js';
  * is the single most obviously artificial thing a game city can show, and
  * these are what fill it in Paris.
  *
- * Placement is a rule, not data (OSM's parking lanes are unmapped here): one
- * side of every street between 8.5 and 12.5 m wide, alternating side every
- * forty-odd metres, never on the stairs, and never within fourteen metres of a
- * fight, where the authored cover owns the foreground and a stray car would
- * decide which enemies you can see.
+ * Which kerb is recorded per stretch from the photographs; never within
+ * fourteen metres of a fight, where the authored cover owns the foreground
+ * and a stray car would decide which enemies you can see.
  */
 function seeded(n) {
   let s = n >>> 0;
@@ -27,56 +25,51 @@ function seeded(n) {
 }
 
 /**
- * What is parked where, read off the Ville de Paris survey photographs of each
- * stretch (tools/geo/references.json). OpenStreetMap maps parking lanes only
- * on rue Caulaincourt here, and a width rule put scooters along rue Lepic,
- * which has kerb railings and no parking, and cars across the open junction at
- * Abbesses. `both` parks both kerbs; otherwise the kerb alternates slowly.
+ * What is parked where, and against which kerb, read off the survey
+ * photographs of each stretch: facades.json "streets", shared with the
+ * bollards (none along a kerb where something parks) and the cross-section.
+ * OpenStreetMap maps parking lanes only on rue Caulaincourt here, and the old
+ * rule of alternating the kerb every sixty metres put the scooters of rue des
+ * Abbesses against the wrong kerb and out in the road.
+ *
+ * A kind ending "@pavement" parks up on the pavement itself, as the scooters
+ * on the wide paved strip of rue d'Orchampt do.
  */
-const PARKING = [
-  { from: 'lamarck_station', to: 'escalier_foot', kind: 'cars', both: false },           // rue Caulaincourt
-  { from: 's_caulaincourt', to: 'constantin_pecqueur', kind: 'cars', both: false },
-  { from: 's_pecqueur', to: 's_pecqueur_2', kind: 'cars', both: false },                 // vans and cars at the kerb
-  { from: 's_orchampt_1c', to: 's_orchampt_2', kind: 'scooters', both: false },          // rue d'Orchampt, nose to the kerb
-  { from: 'orchampt_bend', to: 's_orchampt_4', kind: 'mixed', both: false },
-  { from: 'trois_freres', to: 'abbesses_corner', kind: 'cars', both: true },             // lower rue Ravignan, both kerbs
-  { from: 's_abbesses_1', to: 'rue_abbesses', kind: 'scooters', both: false },
-];
-
 export function buildParkedVehicles(rail) {
   const group = new THREE.Group();
   group.name = 'parked';
   const rnd = seeded(0x5CA7);
   const fights = ENCOUNTERS.map((e) => { try { return rail.distanceToWaypoint(e.waypoint); } catch { return -1e9; } });
-  const at = (id) => { try { return rail.distanceToWaypoint(id); } catch { return null; } };
-  for (const stretch of PARKING) {
-    const d0 = at(stretch.from), d1 = at(stretch.to);
-    if (d0 === null || d1 === null) continue;
-    let d = Math.min(d0, d1) + 2;
-    let flip = 0;
-    while (d < Math.max(d0, d1)) {
-      const width = rail.widthAt(d);
-      if (width < 5 || fights.some((f) => Math.abs(f - d) < 14)) { d += 2; continue; }
-      const side = stretch.both ? (flip++ % 2 ? 1 : -1) : Math.floor(d / 60) % 2 ? 1 : -1;
-      const p = rail.positionAt(d);
-      const t = rail.tangentAt(d);
-      const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
-      const sp = profileAt(rail, d), half = sp.half;
-      const r = rnd();
-      if (r < 0.18) { d += 3 + rnd() * 4; continue; }       // a gap: a gateway, a delivery bay
-      const isCar = stretch.kind === 'cars' ? r < 0.9 : stretch.kind === 'mixed' ? r < 0.5 : false;
-      // A car needs the carriageway to stay drivable beside it.
-      if (isCar && half * 2 < 4.6) { d += 2; continue; }
-      // And anything parked must clear the camera's line by 1.3 m.
-      const off = sp.cen + (half - (isCar ? 1.0 : 0.9)) * side;
-      if (Math.abs(off) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
-      const x = p.x + right.x * off, z = p.z + right.z * off;
-      if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
-      const v = isCar ? parkedCar(rnd) : scooters(rnd);
-      v.position.set(x, p.y + 0.02, z);
-      v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);
-      group.add(v);
-      d += (isCar ? 4.6 + rnd() * 1.4 : 4.4) / (stretch.both ? 2 : 1);
+  for (const stretch of recordedStreets(rail)) {
+    for (const [key, side] of [['left', -1], ['right', 1]]) {
+      const spec = stretch.park?.[key];
+      if (!spec) continue;
+      const [kind, where] = spec.split('@');
+      let d = stretch.a + 2;
+      while (d < stretch.b - 1) {
+        if (fights.some((f) => Math.abs(f - d) < 14)) { d += 2; continue; }
+        const p = rail.positionAt(d);
+        const t = rail.tangentAt(d);
+        const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
+        const sp = profileAt(rail, d), half = sp.half;
+        const r = rnd();
+        if (r < 0.18) { d += 3 + rnd() * 4; continue; }       // a gap: a gateway, a delivery bay
+        const isCar = kind === 'cars' ? r < 0.9 : kind === 'mixed' ? r < 0.5 : false;
+        // A car needs the carriageway to stay drivable beside it.
+        if (isCar && half * 2 < 4.6) { d += 2; continue; }
+        const onPave = where === 'pavement';
+        const off = onPave ? sp.cen + (half + Math.min(1.4, sp.pav[side] * 0.5)) * side
+          : sp.cen + (half - (isCar ? 1.0 : 0.9)) * side;
+        // Anything parked must clear the camera's line by 1.3 m.
+        if (Math.abs(off) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
+        const x = p.x + right.x * off, z = p.z + right.z * off;
+        if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
+        const v = isCar ? parkedCar(rnd) : scooters(rnd);
+        v.position.set(x, p.y + 0.02 + (onPave ? 0.14 : 0), z);
+        v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);
+        group.add(v);
+        d += isCar ? 4.6 + rnd() * 1.4 : 4.4;
+      }
     }
   }
   return group;
