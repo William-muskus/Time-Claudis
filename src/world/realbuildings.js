@@ -228,7 +228,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
   const stats = { buildings: 0, facades: 0, detailed: 0, shops: 0 };
   const up = [0, 1, 0];
 
-  for (const b of GEO.buildings) {
+  for (let b of GEO.buildings) {
     if (skip(b)) continue;
     stats.buildings++;
     const ring = pairs(b.o);
@@ -241,7 +241,11 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
     const wallHex = recorded?.[1].wall ?? FACADES.walls?.[b.id];
     const wallCol = wallHex ? new THREE.Color(wallHex) : shade(WALL[b.s] ?? WALL.plaster, lightJit);
     const sideCol = shade(wallCol, 0.97);
-    const g = b.g, e = b.e;
+    // A building's height and roof as read off a survey photograph, where
+    // BD TOPO's is wrong (facades.json "buildings").
+    const bo = FACADES.buildings?.[b.id];
+    const g = b.g, e = bo?.eaves ?? b.e;
+    if (bo?.roof) b = { ...b, r: bo.roof, i: bo.inset ?? Math.max(b.i, 1.2) };
 
     // ---- body -----------------------------------------------------------
     // Walls rise from the building's lowest ground to its eaves, so a house

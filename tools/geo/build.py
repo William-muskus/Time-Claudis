@@ -551,7 +551,7 @@ def main():
     # (Empty: rue des Abbesses looked like asphalt in a dark frame and is
     # setts at the Ravignan end in a clear one. OSM was right.)
     SURFACE_FROM_PHOTOS = {}
-    surfaces, barriers, gardens = [], [], []
+    surfaces, barriers, gardens, plazas = [], [], [], []
     GARDEN = {("leisure", "garden"): "garden", ("leisure", "park"): "park", ("landuse", "grass"): "grass",
               ("natural", "scrub"): "scrub", ("natural", "wood"): "wood", ("landuse", "vineyard"): "vineyard",
               ("landuse", "cemetery"): "cemetery"}
@@ -576,9 +576,16 @@ def main():
                 h = float(h) if h else None
             except ValueError:
                 h = None
-            barriers.append(dict(k=tg["barrier"], m=tg.get("material") or tg.get("fence_type") or "",
+            barriers.append(dict(id=w.get("id"), k=tg["barrier"], m=tg.get("material") or tg.get("fence_type") or "",
                                  h=h, p=[v for (x, z), y in zip(pts, ys)
                                          for v in (r1(x), round(y - ORIGIN["elev"], 2), r1(z))]))
+        # Squares: OSM pedestrian areas. Inside one there is no kerb, no raised
+        # pavement and no bollard line, only one flush paved surface.
+        if tg.get("area") == "yes" and tg.get("highway") in ("pedestrian", "footway") and refs[0] == refs[-1] and len(refs) >= 4:
+            lp = Polygon(pts[:-1])
+            if lp.is_valid and lp.area >= 20:
+                plazas.append(dict(n=tg.get("name", ""), s=SURF.get(tg.get("surface"), "sett"),
+                                   o=[v for xz in list(lp.exterior.coords)[:-1] for v in (r1(xz[0]), r1(xz[1]))]))
         kind = next((v for (k, val), v in GARDEN.items() if tg.get(k) == val), None)
         if kind and refs[0] == refs[-1] and len(refs) >= 4:
             lp = Polygon(pts[:-1])
@@ -612,6 +619,7 @@ def main():
         surfaces=surfaces,
         barriers=barriers,
         gardens=gardens,
+        plazas=plazas,
         pois=pois,
     )
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

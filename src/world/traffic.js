@@ -4,6 +4,7 @@ import { parkedCar, scooters } from './cover.js';
 import { STAIR_SEGMENTS } from './street.js';
 import { GEO, insideBuilding, groundAt, pairs } from './geo.js';
 import FACADES from '../data/geo/facades.json' with { type: 'json' };
+import { streetAt as profileAt } from './walkprofile.js';
 
 /**
  * Parked cars and scooters along the kerbs.
@@ -60,16 +61,15 @@ export function buildParkedVehicles(rail) {
       const p = rail.positionAt(d);
       const t = rail.tangentAt(d);
       const right = new THREE.Vector3(-t.z, 0, t.x).normalize();
-      const pavement = Math.max(0.8, Math.min(2.4, width * 0.18));
-      const half = Math.max(1.5, width * 0.5 - pavement);
+      const sp = profileAt(rail, d), half = sp.half;
       const r = rnd();
       if (r < 0.18) { d += 3 + rnd() * 4; continue; }       // a gap: a gateway, a delivery bay
       const isCar = stretch.kind === 'cars' ? r < 0.9 : stretch.kind === 'mixed' ? r < 0.5 : false;
       // A car needs the carriageway to stay drivable beside it.
       if (isCar && half * 2 < 4.6) { d += 2; continue; }
       // And anything parked must clear the camera's line by 1.3 m.
-      if (half - (isCar ? 1.0 : 0.9) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
-      const off = (half - (isCar ? 1.0 : 0.9)) * side;
+      const off = sp.cen + (half - (isCar ? 1.0 : 0.9)) * side;
+      if (Math.abs(off) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
       const x = p.x + right.x * off, z = p.z + right.z * off;
       if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
       const v = isCar ? parkedCar(rnd) : scooters(rnd);
@@ -145,7 +145,7 @@ export function buildTerraces(rail, near) {
       const cx = ax + ux * t * len, cz = az + uz * t * len;
       const nr = near.nearest(cx, cz, 30);
       if (!nr) continue;
-      const room = nr.dist - (rail.widthAt(nr.d) * 0.5 - Math.max(0.8, Math.min(2.4, rail.widthAt(nr.d) * 0.18)));
+      const room = nr.dist - profileAt(rail, nr.d).half;
       // The pavement between the wall and the kerb must hold a table.
       const depth = Math.min(room - 0.3, 3.2);
       if (depth < 1.1) continue;

@@ -1685,11 +1685,105 @@
      "awning": "#2A2A2C"
     }
    ]
+  },
+  "245180388:4": {
+   "src": "place_dalida",
+   "wall": "#D2CCC0",
+   "floors": 2,
+   "groundH": 3.2,
+   "bays": [
+    0.2,
+    0.5,
+    0.8
+   ],
+   "ww": 1.1,
+   "wh": 1.9,
+   "shutters": null,
+   "guards": true,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2"
+   ],
+   "dormers": [
+    0.2,
+    0.5,
+    0.8
+   ],
+   "base": {
+    "h": 0.9,
+    "col": "#B7AB96"
+   },
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.2,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.8,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    }
+   ]
+  },
+  "245180388:3": {
+   "src": "place_dalida",
+   "wall": "#D2CCC0",
+   "floors": 2,
+   "groundH": 3.2,
+   "bays": [
+    0.3,
+    0.7
+   ],
+   "ww": 1.1,
+   "wh": 1.9,
+   "shutters": null,
+   "guards": true,
+   "dormers": [
+    0.5
+   ],
+   "base": {
+    "h": 0.9,
+    "col": "#B7AB96"
+   },
+   "ground": []
   }
  },
  "walls": {
   "245179479": "#ECE4D2",
   "245180507": "#DFD3B9",
   "245180366": "#C27552"
+ },
+ "buildings": {
+  "245180388": {
+   "src": "place_dalida",
+   "note": "Stone house at the top of the rue Girardon steps: two storeys and a mansard, not one",
+   "eaves": 6.8,
+   "roof": "mansard",
+   "inset": 1.3
+  }
+ },
+ "barriers": {
+  "154690030": {
+   "src": "place_dalida",
+   "note": "Ch\u00e2teau des Brouillards garden: rendered wall and a tall green bar fence",
+   "kind": "wallbars",
+   "h": 2.1,
+   "rail": 1.9,
+   "col": "#2F4A3B",
+   "gate": 0.3
+  }
  }
 }

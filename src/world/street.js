@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
 import { surfaceAt, onOtherStreet, railIndex } from './geo.js';
+import { streetAt } from './walkprofile.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
@@ -65,13 +66,16 @@ export function buildStreet(rail) {
     // Pavements narrow with the street, the way they really do — rue
     // d'Orchampt has barely a kerb, Place des Abbesses has a proper footway.
     const total = rail.widthAt(d);
-    const pavement = Math.max(0.8, Math.min(2.4, total * 0.18));
+    // The street's real cross-section where the walk is on a road (BD TOPO
+    // carriageway, pavements to the facade): see walkprofile.js.
+    const prof = streetAt(rail, d);
+    const pavement = (prof.pav[-1] + prof.pav[1]) / 2;
     // Paving stones under traffic are setts in Paris; OSM's "paving_stones"
     // on rue des Abbesses is the same granite in the survey photos.
     const raw = surfaceAt(p.x, p.z);
     frames.push({
-      d, p, t, right, pavement,
-      halfWidth: Math.max(1.5, total * 0.5 - pavement),
+      d, p, t, right, pavement, pav: prof.pav, onRoad: prof.road, cen: prof.cen, flush: prof.flush,
+      halfWidth: prof.half,
       surf: raw === 'paving' ? 'sett' : raw,
     });
   }
@@ -90,7 +94,7 @@ export function buildStreet(rail) {
   for (const f of frames) {
     f.mouth = {};
     for (const side of [-1, 1]) {
-      const o = (f.halfWidth + f.pavement * 0.5) * side;
+      const o = f.cen + (f.halfWidth + f.pav[side] * 0.5) * side;
       f.mouth[side] = onOtherStreet(f.p.x + f.right.x * o, f.p.z + f.right.z * o, { near, rail, pad: 0.4 });
     }
   }
@@ -123,7 +127,7 @@ function buildCarriageway(frames) {
     const f = frames[i];
     for (let s = 0; s <= STRIPS; s++) {
       const u = s / STRIPS - 0.5;
-      const w = f.halfWidth * 2 * u;
+      const w = f.cen + f.halfWidth * 2 * u;
       // Camber: Paris streets crown toward the centre and drain to the kerbs.
       const camber = -Math.abs(u) * Math.abs(u) * 0.22 + 0.055;
       pos.push(f.p.x + f.right.x * w, f.p.y + camber, f.p.z + f.right.z * w);
@@ -186,11 +190,11 @@ function buildPavement(frames, side) {
   const kinds = [];
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
-    const y = f.p.y + HEIGHT;
+    const y = f.p.y + (f.flush?.[side] ? 0.03 : HEIGHT);
     f.walkY = f.walkY ?? {};
     f.walkY[side] = y;
-    const inner = f.halfWidth * side;
-    const outer = (f.halfWidth + f.pavement) * side;
+    const inner = f.cen + f.halfWidth * side;
+    const outer = f.cen + (f.halfWidth + f.pav[side]) * side;
     const mid = (inner + outer) / 2;
     const own = surfaceAt(f.p.x + f.right.x * mid, f.p.z + f.right.z * mid, { footway: true, maxR: 4, fallback: null });
     const kind = own ?? (f.surf === 'sett' && f.halfWidth < 4.5 ? 'sett' : 'asphalt');
@@ -237,7 +241,7 @@ function buildKerb(frames, side) {
   const pos = [], idx = [];
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
-    const x = f.halfWidth * side, x2 = (f.halfWidth + 0.2) * side;
+    const x = f.cen + f.halfWidth * side, x2 = f.cen + (f.halfWidth + 0.2) * side;
     const top = f.walkY?.[side] ?? f.p.y + 0.14;
     pos.push(f.p.x + f.right.x * x, f.p.y, f.p.z + f.right.z * x);
     pos.push(f.p.x + f.right.x * x, top + 0.01, f.p.z + f.right.z * x);
@@ -245,6 +249,7 @@ function buildKerb(frames, side) {
   }
   for (let i = 0; i < frames.length - 1; i++) {
     if (frames[i].mouth?.[side] || frames[i + 1].mouth?.[side]) continue;
+    if (frames[i].flush?.[side] || frames[i + 1].flush?.[side]) continue;
     const a = i * 3, b = a + 1, t = a + 2, c = a + 3, d = a + 4, t2 = a + 5;
     if (side > 0) idx.push(a, b, c, b, d, c, b, t, d, t, t2, d);
     else idx.push(a, c, b, b, c, d, b, d, t, t, d, t2);
@@ -283,14 +288,18 @@ function buildBollards(rail, frames) {
   let last = { [-1]: -99, [1]: -99 };
   for (const f of frames) {
     if (f.surf !== 'sett' || onStairs(f.d)) continue;
-    const width = (f.halfWidth + f.pavement) * 2;
-    if (width >= 12.5) continue;
-    const lane = width < 8;
-    const gap = lane ? 3.2 : 2.0;
+    // Along every kerb of a cobbled road the walk follows, as the survey
+    // photographs show them (rue Girardon, rue Lepic, rue Ravignan): cast-iron
+    // potelets where the pavement is a real pavement, squat granite bornes
+    // where it is a strip under a metre wide (rue d'Orchampt).
+    if (!f.onRoad) continue;
     for (const side of [-1, 1]) {
+      if (f.flush?.[side]) continue;
+      const lane = f.pav[side] < 1.3;
+      const gap = lane ? 3.2 : 2.0;
       if (f.d - last[side] < gap) continue;
       last[side] = f.d;
-      const off = (f.halfWidth + 0.32) * side;
+      const off = f.cen + (f.halfWidth + 0.32) * side;
       const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
       // Not across the mouth of a side street.
       if (onOtherStreet(x, z, { near, rail, pad: 1.5 })) continue;
@@ -320,7 +329,7 @@ function buildBollards(rail, frames) {
     const yaw = Math.atan2(f.t.x, f.t.z);
     const pitch = Math.atan2(g1.p.y - g0.p.y, g1.d - g0.d);
     for (const side of [-1, 1]) {
-      const off = (f.halfWidth + 0.3) * side;
+      const off = f.cen + (f.halfWidth + 0.3) * side;
       const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
       const y = f.walkY?.[side] ?? f.p.y + 0.14;
       const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z),
@@ -482,10 +491,10 @@ function emitRun(group, run, side, mat, height, postEvery) {
   // steps a pedestrian is actually on.
   for (let i = 1; i < run.length; i++) {
     const a = run[i - 1], b = run[i];
-    const ax = a.p.x + a.right.x * (a.halfWidth + a.pavement * 0.82) * side;
-    const az = a.p.z + a.right.z * (a.halfWidth + a.pavement * 0.82) * side;
-    const bx = b.p.x + b.right.x * (b.halfWidth + b.pavement * 0.82) * side;
-    const bz = b.p.z + b.right.z * (b.halfWidth + b.pavement * 0.82) * side;
+    const ax = a.p.x + a.right.x * (a.cen + (a.halfWidth + a.pav[side] * 0.82) * side);
+    const az = a.p.z + a.right.z * (a.cen + (a.halfWidth + a.pav[side] * 0.82) * side);
+    const bx = b.p.x + b.right.x * (b.cen + (b.halfWidth + b.pav[side] * 0.82) * side);
+    const bz = b.p.z + b.right.z * (b.cen + (b.halfWidth + b.pav[side] * 0.82) * side);
     const ay = (a.walkY?.[side] ?? a.p.y) + height;
     const by = (b.walkY?.[side] ?? b.p.y) + height;
 
@@ -505,8 +514,8 @@ function emitRun(group, run, side, mat, height, postEvery) {
     since += 1.5;                       // frames are sampled every 1.5 m
     if (since < postEvery) continue;
     since = 0;
-    const x = f.p.x + f.right.x * (f.halfWidth + f.pavement * 0.82) * side;
-    const z = f.p.z + f.right.z * (f.halfWidth + f.pavement * 0.82) * side;
+    const x = f.p.x + f.right.x * (f.cen + (f.halfWidth + f.pav[side] * 0.82) * side);
+    const z = f.p.z + f.right.z * (f.cen + (f.halfWidth + f.pav[side] * 0.82) * side);
     const base = f.walkY?.[side] ?? f.p.y;
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, height, 0.05), mat);
     post.position.set(x, base + height / 2, z);

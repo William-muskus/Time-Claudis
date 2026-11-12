@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GEO, groundAt, pairs, triples, pointInRing, insideBuilding, surfaceAt, nearestWall } from './geo.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
+import { streetAt as profileAt } from './walkprofile.js';
 
 /**
  * The ground around the walk, as one surface.
@@ -187,10 +188,13 @@ export function buildGround(rail, near, { debug = null } = {}) {
   const walk = (x, z) => {
     const nr = foot(x, z, 16);
     if (!nr) return null;
-    const w = rail.widthAt(nr.d);
-    const pav = Math.max(0.8, Math.min(2.4, w * 0.18));
-    const half = Math.max(1.5, w * 0.5 - pav);
-    return { nr, inCarriage: nr.dist < half - 0.1, inCorridor: nr.dist < half + pav + 0.15 };
+    const sp = profileAt(rail, nr.d);
+    const t = rail.tangentAt(nr.d);
+    const side = ((x - nr.x) * -t.z + (z - nr.z) * t.x) >= 0 ? 1 : -1;
+    const lat = side * nr.dist - sp.cen;           // from the road's centreline
+    const sd = lat >= 0 ? 1 : -1;
+    const a = Math.abs(lat);
+    return { nr, inCarriage: a < sp.half - 0.1, inCorridor: a < sp.half + sp.pav[sd] + 0.15 };
   };
 
   /** Classify one point: { surf, lift, tint } or null for nothing drawn. */
@@ -324,9 +328,10 @@ export function buildGround(rail, near, { debug = null } = {}) {
       let best = null, bd = CELL * 0.6;
       const kp = streetAt.kerb(x, z, CELL * 0.6);
       if (kp) { best = kp; bd = Math.hypot(kp[0] - x, kp[1] - z); }
-      const w = rail.widthAt(nr.d);
-      const pav = Math.max(0.8, Math.min(2.4, w * 0.18));
-      const half = Math.max(1.5, w * 0.5 - pav);
+      const sp = profileAt(rail, nr.d);
+      const tg = rail.tangentAt(nr.d);
+      const sgn = ((x - nr.x) * -tg.z + (z - nr.z) * tg.x) >= 0 ? 1 : -1;
+      const half = sp.half + sgn * sp.cen, pav = sp.pav[sgn];
       if (Math.abs(nr.dist - half) < 1.5 || Math.abs(nr.dist - half - pav) < 1.5) {
         // Exact foot of the perpendicular on the rail, near the 2 m sample.
         let fd = nr.d, fdist = Infinity, fp = null;

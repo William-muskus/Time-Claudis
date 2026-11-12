@@ -3,6 +3,7 @@ import { PALETTE, flat } from '../render/palette.js';
 import { rubbleTexture } from '../render/textures.js';
 import { GEO, groundAt, pairs, triples, insideBuilding, pointInRing } from './geo.js';
 import { polyOccluder } from './occluders.js';
+import FACADES from '../data/geo/facades.json' with { type: 'json' };
 
 /**
  * The walls, railings and gates between the buildings.
@@ -89,7 +90,7 @@ class Mesher {
  * Heights follow the ground at every point, so a wall on a 15% street steps
  * down the hill with it rather than standing out of it.
  */
-function wallAlong(pts, kind, height, M, seed) {
+function wallAlong(pts, kind, height, M, seed, opts = {}) {
   const T = kind === 'hedge' ? 0.45 : 0.22;
   for (let s = 0; s < pts.length - 1; s++) {
     const [ax, az] = pts[s], [bx, bz] = pts[s + 1];
@@ -104,7 +105,7 @@ function wallAlong(pts, kind, height, M, seed) {
       const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
       const g0 = groundAt(x0, z0), g1 = groundAt(x1, z1);
       if (g0 === null || g1 === null) continue;
-      const base = kind === 'rubble' || kind === 'hedge' ? height : kind === 'render' ? height : 0.75;
+      const base = kind === 'rubble' || kind === 'hedge' || kind === 'render' || kind === 'wallbars' ? height : 0.75;
       const top0 = g0 + base, top1 = g1 + base;
       // Line of sight for the spawn director: everything solid in this piece,
       // which for a sheet-metal fence includes the panel. Open railings are
@@ -147,9 +148,15 @@ function wallAlong(pts, kind, height, M, seed) {
         const y0 = top0 + 0.1, y1 = top1 + 0.1;
         M.iron.quad([x0, y0, z0], [x1, y1, z1], [x1, y1 + fh, z1], [x0, y0 + fh, z0], FENCE_GREEN);
         M.iron.quad([x1, y1, z1], [x0, y0, z0], [x0, y0 + fh, z0], [x1, y1 + fh, z1], FENCE_GREEN);
-      } else if (kind === 'render' || kind === 'rail') {
+      } else if (kind === 'render' || kind === 'rail' || kind === 'wallbars') {
         // Open railing: a top rail and bars every 14 cm, as single quads.
-        const rh = kind === 'rail' ? Math.max(1.0, height - 0.85) : 0.9;
+        // 'wallbars' is a full-height rendered wall carrying a tall bar
+        // fence (the Château des Brouillards garden on rue Girardon).
+        const rh = kind === 'rail' ? Math.max(1.0, height - 0.85) : kind === 'wallbars' ? (opts.rail ?? 1.8) : 0.9;
+        if (kind === 'wallbars') {
+          const y0m = top0 + 0.1 + rh * 0.12, y1m = top1 + 0.1 + rh * 0.12;
+          M.iron.quad([x0, y0m, z0], [x1, y1m, z1], [x1, y1m + 0.05, z1], [x0, y0m + 0.05, z0], opts.col ?? FENCE_GREEN);
+        }
         const y0 = top0 + 0.1, y1 = top1 + 0.1;
         M.iron.quad([x0, y0 + rh - 0.05, z0], [x1, y1 + rh - 0.05, z1], [x1, y1 + rh, z1], [x0, y0 + rh, z0], FENCE_GREEN);
         const bars = Math.max(1, Math.round((len / n) / 0.14));
@@ -157,7 +164,8 @@ function wallAlong(pts, kind, height, M, seed) {
           const t = (b + 0.5) / bars;
           const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t;
           const hx = u[0] * 0.012, hz = u[2] * 0.012;
-          M.iron.quad([x - hx, y, z - hz], [x + hx, y, z + hz], [x + hx, y + rh + 0.06, z + hz], [x - hx, y + rh + 0.06, z - hz], FENCE_GREEN);
+          M.iron.quad([x - hx * (kind === 'wallbars' ? 1.6 : 1), y, z - hz * (kind === 'wallbars' ? 1.6 : 1)], [x + hx * (kind === 'wallbars' ? 1.6 : 1), y, z + hz * (kind === 'wallbars' ? 1.6 : 1)],
+            [x + hx * (kind === 'wallbars' ? 1.6 : 1), y + rh + 0.06, z + hz * (kind === 'wallbars' ? 1.6 : 1)], [x - hx * (kind === 'wallbars' ? 1.6 : 1), y + rh + 0.06, z - hz * (kind === 'wallbars' ? 1.6 : 1)], opts.col ?? FENCE_GREEN);
         }
       }
     }
@@ -252,6 +260,23 @@ export function buildBoundaries(rail, near) {
     if (b.k === 'hedge') { wallAlong(pts, 'hedge', b.h ?? 1.6, M, i); continue; }
     if (b.k === 'gate') continue;
     if (b.k === 'retaining_wall') { wallAlong(pts, 'rubble', b.h ?? 1.1, M, i); continue; }
+    // A barrier recorded from a survey photograph (facades.json "barriers",
+    // keyed by OSM way id) is drawn as recorded.
+    const rec = FACADES.barriers?.[b.id];
+    if (rec) {
+      wallAlong(pts, rec.kind, rec.h, M, i, { rail: rec.rail, col: rec.col ? new THREE.Color(rec.col) : null });
+      if (rec.gate !== undefined) {
+        // gate at fraction along the polyline
+        let L = 0; const acc = [0];
+        for (let k = 0; k < pts.length - 1; k++) { L += Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]); acc.push(L); }
+        const tgt = rec.gate * L;
+        let k = 0; while (k < pts.length - 2 && acc[k + 1] < tgt) k++;
+        const sl = acc[k + 1] - acc[k] || 1, f = (tgt - acc[k]) / sl;
+        const ux = (pts[k + 1][0] - pts[k][0]) / sl, uz = (pts[k + 1][1] - pts[k][1]) / sl;
+        gateAt(pts[k][0] + ux * sl * f, pts[k][1] + uz * sl * f, ux, uz, 2.4, M, i);
+      }
+      continue;
+    }
     const fenceKind = /chain|wire|mesh/.test(b.m) ? 'rail' : hash(i, 1) < 0.55 ? 'rail' : 'fence';
     // A long mapped garden wall beside the walk has its gate, at the middle:
     // the gardens of rue Girardon are entered through them, and they are the
