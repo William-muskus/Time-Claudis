@@ -11,6 +11,7 @@ import { buildSky } from '../render/sky.js';
 import { railIndex, insideBuilding, pairs } from './geo.js';
 import { buildRealCity, sideStreetAnchors } from './realbuildings.js';
 import { buildTerrain } from './terrain.js';
+import { buildGround } from './ground.js';
 import { buildRealTrees, buildRealFurniture, buildGardenTrees } from './realtrees.js';
 import { buildBoundaries } from './boundaries.js';
 import { buildParkedVehicles, buildTerraces } from './traffic.js';
@@ -55,6 +56,7 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   anchors.push(...sideStreetAnchors(rail, near, (x, z) => insideBuilding(x, z, 0.3)));
 
   root.add(buildTerrain(rail, near));
+  root.add(buildGround(rail, near));
   const trees = buildRealTrees(rail, near, (x, z) => insideBuilding(x, z));
   root.add(trees);
   occluders.push(...trees.userData.occluders);

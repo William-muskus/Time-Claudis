@@ -237,3 +237,48 @@ export function onOtherStreet(x, z, { near = null, rail = null, self = null, pad
   }
   return false;
 }
+
+/**
+ * The nearest building wall to (x, z) within maxR: the closest point on it
+ * and the distance. For laying pavements along facades.
+ */
+let _wIndex = null;
+export function nearestWall(x, z, maxR = 4) {
+  // Wall segments in 4 m cells: the pavement builder asks this for every
+  // vertex near the walk, and walking whole footprints per query was most of
+  // the world build.
+  if (!_wIndex) {
+    _wIndex = new Map();
+    for (const b of GEO.buildings) {
+      const r = pairs(b.o);
+      for (let k = 0; k < r.length; k++) {
+        const [ax, az] = r[k], [bx, bz] = r[(k + 1) % r.length];
+        const seg = [ax, az, bx, bz];
+        for (let i = Math.floor(Math.min(ax, bx) / 4); i <= Math.floor(Math.max(ax, bx) / 4); i++) {
+          for (let j = Math.floor(Math.min(az, bz) / 4); j <= Math.floor(Math.max(az, bz) / 4); j++) {
+            const key = i * 100003 + j;
+            if (!_wIndex.has(key)) _wIndex.set(key, []);
+            _wIndex.get(key).push(seg);
+          }
+        }
+      }
+    }
+  }
+  let best = null, bd = maxR;
+  const r = Math.ceil(maxR / 4);
+  const ci = Math.floor(x / 4), cj = Math.floor(z / 4);
+  for (let i = ci - r; i <= ci + r; i++) {
+    for (let j = cj - r; j <= cj + r; j++) {
+      const list = _wIndex.get(i * 100003 + j);
+      if (!list) continue;
+      for (const [ax, az, bx, bz] of list) {
+        const dx = bx - ax, dz = bz - az;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+        const px = ax + dx * t, pz = az + dz * t;
+        const d = Math.hypot(x - px, z - pz);
+        if (d < bd) { bd = d; best = { x: px, z: pz, dist: d }; }
+      }
+    }
+  }
+  return best;
+}

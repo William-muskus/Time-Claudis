@@ -388,6 +388,27 @@ window.__tour = {
   places: () => [...WAYPOINTS.map((w) => w.id), ...LANDMARKS.map((l) => l.id)],
 
   /**
+   * Diagnostic: draw every mesh in a flat colour picked from its name, so the
+   * ground can be read layer by layer (which builder drew this patch, and is
+   * anything drawn twice). Returns the legend. Not reversible; reload after.
+   */
+  layerView() {
+    const legend = {};
+    const pal = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
+      '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#000075'];
+    renderer.scene.traverse((o) => {
+      if (!o.isMesh || o.parent?.name === 'sky' || o.name === 'sky') return;
+      const name = (o.name || o.parent?.name || 'mesh').split('@')[0].replace(/batch_.*/, 'batched');
+      if (!(name in legend)) {
+        const n = Object.keys(legend).length;
+        legend[name] = n < pal.length ? pal[n] : '#' + new THREE.Color().setHSL((n * 0.618) % 1, 0.7, 0.5).getHexString();
+      }
+      o.material = new THREE.MeshBasicMaterial({ color: legend[name], side: o.material?.side ?? THREE.FrontSide });
+    });
+    return legend;
+  },
+
+  /**
    * Stand exactly where a reference photograph was taken.
    *
    * tools/verify/compare.mjs uses this to put the game camera at a Panoramax

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from '../render/palette.js';
 import { GEO, groundAt, pairs, pointInRing, surfaceAt, onOtherStreet } from './geo.js';
+import { GROUND_R } from './ground.js';
 import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -118,6 +119,11 @@ export function buildTerrain(rail, near) {
       for (let j = 0; j < g.cols - 1; j++) {
         const a = V(i, j), b = V(i, j + 1), c = V(i + 1, j + 1), d = V(i + 1, j);
         const cx = (a[0] + c[0]) / 2, cz = (a[2] + c[2]) / 2;
+        // Near the walk the ground is ground.js's; this mesh is only the
+        // hillside beyond it, tucked a little lower where the two overlap.
+        const nz = near.nearest(cx, cz, GROUND_R + 12);
+        if (nz && nz.dist < GROUND_R - (coarse ? 8 : 2)) continue;
+        if (nz && nz.dist < GROUND_R + 2) { a[1] -= 0.15; b[1] -= 0.15; c[1] -= 0.15; d[1] -= 0.15; }
         if (coarse && fineBox &&
             cx > fineBox.x0 + g.dx && cx < fineBox.x1 - g.dx &&
             cz > fineBox.z0 + Math.abs(g.dz) && cz < fineBox.z1 - Math.abs(g.dz)) continue;
@@ -184,6 +190,9 @@ function buildSideStreets(rail, near) {
         if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && al > 0.6) continue;
       }
       const nrSeg = near.nearest(mx, mz, 80);
+      // Inside the ground zone the street is part of ground.js's surface;
+      // only its bollards are still placed from here.
+      const inGround = nrSeg && nrSeg.dist < GROUND_R - 1;
       const raw = r.k === 'stairs' ? 'paving' : r.k === 'path' ? surfaceAt(mx, mz, { footway: true, fallback: 'gravel' })
         : surfaceAt(mx, mz, { fallback: 'asphalt' });
       const surf = r.k === 'road' && raw === 'paving' ? 'sett' : raw;
@@ -224,6 +233,7 @@ function buildSideStreets(rail, near) {
           return q.dist < Math.max(1.5, w * 0.5 - Math.max(0.8, Math.min(2.4, w * 0.18))) + pad;
         };
         const strip = (o0, o1, lift, kind, tint, pavementStrip = false) => {
+          if (inGround) return;
           const om = (o0 + o1) / 2;
           const cx = (p0[0] + p1[0]) / 2 + rx * om, cz = (p0[1] + p1[1]) / 2 + rz * om;
           if (inWalk(cx, cz, pavementStrip ? 1.6 : 0)) return;
