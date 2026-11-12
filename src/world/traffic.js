@@ -40,6 +40,14 @@ export function buildParkedVehicles(rail) {
   group.name = 'parked';
   const rnd = seeded(0x5CA7);
   const fights = ENCOUNTERS.map((e) => { try { return rail.distanceToWaypoint(e.waypoint); } catch { return -1e9; } });
+  // Never on a zebra crossing, nor within a car's length of one.
+  const zebras = (GEO.crossings ?? []).filter((c) => c.m !== 'no' && c.k !== 'unmarked').map((c) => pairs(c.p));
+  const onZebra = (x, z) => zebras.some((pl) => pl.some(([ax, az], i) => {
+    if (i === pl.length - 1) return false;
+    const [bx, bz] = pl[i + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+    const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+    return Math.hypot(x - ax - dx * u, z - az - dz * u) < 4.5;
+  }));
   for (const stretch of recordedStreets(rail)) {
     for (const [key, side] of [['left', -1], ['right', 1]]) {
       const spec = stretch.park?.[key];
@@ -63,7 +71,7 @@ export function buildParkedVehicles(rail) {
         // Anything parked must clear the camera's line by 1.3 m.
         if (Math.abs(off) - (isCar ? 0.9 : 0.8) < 1.3) { d += 2; continue; }
         const x = p.x + right.x * off, z = p.z + right.z * off;
-        if (insideBuilding(x, z, 0.5)) { d += 2; continue; }
+        if (insideBuilding(x, z, 0.5) || onZebra(x, z)) { d += 2; continue; }
         const v = isCar ? parkedCar(rnd) : scooters(rnd);
         v.position.set(x, p.y + 0.02 + (onPave ? 0.14 : 0), z);
         v.rotation.y = Math.atan2(t.x, t.z) + (isCar && rnd() < 0.5 ? Math.PI : 0);

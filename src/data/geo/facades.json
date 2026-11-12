@@ -1808,8 +1808,8 @@
     -10
    ],
    "to": [
-    "s_pecqueur_2",
-    0
+    "constantin_pecqueur",
+    22
    ],
    "park": {
     "left": "cars"
@@ -1864,8 +1864,8 @@
   {
    "note": "lower rue Ravignan: cars and café decks along both kerbs, no posts (s_ravignan_1, ravignan_bas, s_ravignan_2).",
    "from": [
-    "trois_freres",
-    4
+    "s_ravignan_1",
+    6
    ],
    "to": [
     "abbesses_corner",
@@ -1887,8 +1887,8 @@
     -4
    ],
    "to": [
-    "s_abbesses_2",
-    -4
+    "rue_abbesses",
+    3
    ],
    "park": {
     "right": "mixed"
