@@ -3,6 +3,7 @@ import { PALETTE, flat } from '../render/palette.js';
 import { rubbleTexture } from '../render/textures.js';
 import { GEO, groundAt, pairs, triples, insideBuilding, pointInRing } from './geo.js';
 import { polyOccluder } from './occluders.js';
+import { streetAt } from './walkprofile.js';
 import FACADES from '../data/geo/facades.json' with { type: 'json' };
 
 /**
@@ -105,7 +106,7 @@ function wallAlong(pts, kind, height, M, seed, opts = {}) {
       const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
       const g0 = groundAt(x0, z0), g1 = groundAt(x1, z1);
       if (g0 === null || g1 === null) continue;
-      const base = kind === 'rubble' || kind === 'hedge' || kind === 'render' || kind === 'wallbars' ? height : 0.75;
+      const base = opts.base ?? (kind === 'rubble' || kind === 'hedge' || kind === 'render' || kind === 'wallbars' ? height : 0.75);
       const top0 = g0 + base, top1 = g1 + base;
       // Line of sight for the spawn director: everything solid in this piece,
       // which for a sheet-metal fence includes the panel. Open railings are
@@ -152,7 +153,36 @@ function wallAlong(pts, kind, height, M, seed, opts = {}) {
         // Open railing: a top rail and bars every 14 cm, as single quads.
         // 'wallbars' is a full-height rendered wall carrying a tall bar
         // fence (the Château des Brouillards garden on rue Girardon).
-        const rh = kind === 'rail' ? Math.max(1.0, height - 0.85) : kind === 'wallbars' ? (opts.rail ?? 1.8) : 0.9;
+        const rh = kind === 'rail' ? (opts.rail ?? Math.max(1.0, height - 0.85)) : kind === 'wallbars' ? (opts.rail ?? 1.8) : 0.9;
+        if (kind === 'wallbars' && opts.sheet) {
+          // Solid painted sheet panels with a pressed rib every half metre,
+          // spear-topped bars showing above: the Château des Brouillards
+          // garden screen on rue Girardon, which nothing can be seen through.
+          const c = opts.col ?? FENCE_GREEN, rib = c.clone().multiplyScalar(0.72);
+          const y0 = top0 + 0.1, y1 = top1 + 0.1, ph = rh - 0.18;
+          M.iron.quad([x0, y0, z0], [x1, y1, z1], [x1, y1 + ph, z1], [x0, y0 + ph, z0], c);
+          M.iron.quad([x1, y1, z1], [x0, y0, z0], [x0, y0 + ph, z0], [x1, y1 + ph, z1], c);
+          const ribs = Math.max(1, Math.round((len / n) / 0.5));
+          for (let b = 0; b < ribs; b++) {
+            const t = (b + 0.5) / ribs;
+            const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t;
+            const hx = u[0] * 0.02, hz = u[2] * 0.02;
+            for (const sgn of [1, -1]) {
+              const ox = w[0] * 0.015 * sgn, oz = w[2] * 0.015 * sgn;
+              const q = [[x - hx + ox, y, z - hz + oz], [x + hx + ox, y, z + hz + oz], [x + hx + ox, y + ph, z + hz + oz], [x - hx + ox, y + ph, z - hz + oz]];
+              if (sgn > 0) M.iron.quad(...q, rib); else M.iron.quad(q[1], q[0], q[3], q[2], rib);
+            }
+          }
+          M.iron.quad([x0, y0 + ph, z0], [x1, y1 + ph, z1], [x1, y1 + ph + 0.05, z1], [x0, y0 + ph + 0.05, z0], rib);
+          const spikes = Math.max(1, Math.round((len / n) / 0.12));
+          for (let b = 0; b < spikes; b++) {
+            const t = (b + 0.5) / spikes;
+            const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t + ph;
+            const hx = u[0] * 0.012, hz = u[2] * 0.012;
+            M.iron.quad([x - hx, y, z - hz], [x + hx, y, z + hz], [x, y + 0.22, z], [x, y + 0.22, z], c);
+          }
+          continue;
+        }
         if (kind === 'wallbars') {
           const y0m = top0 + 0.1 + rh * 0.12, y1m = top1 + 0.1 + rh * 0.12;
           M.iron.quad([x0, y0m, z0], [x1, y1m, z1], [x1, y1m + 0.05, z1], [x0, y0m + 0.05, z0], opts.col ?? FENCE_GREEN);
@@ -264,7 +294,7 @@ export function buildBoundaries(rail, near) {
     // keyed by OSM way id) is drawn as recorded.
     const rec = FACADES.barriers?.[b.id];
     if (rec) {
-      wallAlong(pts, rec.kind, rec.h, M, i, { rail: rec.rail, col: rec.col ? new THREE.Color(rec.col) : null });
+      wallAlong(pts, rec.kind, rec.h, M, i, { rail: rec.rail, sheet: rec.sheet, col: rec.col ? new THREE.Color(rec.col) : null });
       if (rec.gate !== undefined) {
         // gate at fraction along the polyline
         let L = 0; const acc = [0];
@@ -310,6 +340,36 @@ export function buildBoundaries(rail, near) {
       continue;
     }
     wallAlong(pts, hash(i, 2) < 0.75 ? 'rubble' : 'render', b.h ?? 2.3 + hash(i, 4) * 0.5, M, i);
+  }
+
+  // ---- 1b. walls and railings recorded from the survey photographs --------
+  // facades.json "edges": along one side of the walk, at the back of the
+  // pavement, where neither OpenStreetMap nor the cadastre draws them: the
+  // low railing in front of the stone house at Place Dalida and the rubble
+  // garden wall beyond it.
+  for (const [ri, e] of (FACADES.edges ?? []).entries()) {
+    let a, b;
+    try { a = rail.distanceToWaypoint(e.from[0]) + (e.from[1] ?? 0); b = rail.distanceToWaypoint(e.to[0]) + (e.to[1] ?? 0); } catch { continue; }
+    const side = e.side === 'left' ? -1 : 1;
+    const pts = [];
+    for (let d = Math.min(a, b); d <= Math.max(a, b) + 1e-6; d += 1) {
+      const p = rail.positionAt(d), t = rail.tangentAt(d), sp = streetAt(rail, d);
+      const off = sp.cen + (sp.half + sp.pav[side] + (e.back ?? 0.15)) * side;
+      pts.push([p.x - t.z * off, p.z + t.x * off]);
+    }
+    if (pts.length < 2) continue;
+    for (let k = 0; k < pts.length - 1; k++) mapped.push([pts[k], pts[k + 1]]);
+    wallAlong(pts, e.kind, e.h, M, 5000 + ri, { base: e.base, rail: e.rail, col: e.col ? new THREE.Color(e.col) : null });
+    if (e.pier) {
+      // A gate pier closing the run: square, rendered, coped.
+      const q = pts[e.pier === 'start' ? 0 : pts.length - 1], g = groundAt(q[0], q[1]);
+      const r2 = pts[e.pier === 'start' ? 1 : pts.length - 2];
+      const L = Math.hypot(q[0] - r2[0], q[1] - r2[1]) || 1, u = [(q[0] - r2[0]) / L, 0, (q[1] - r2[1]) / L];
+      if (g !== null) {
+        M.trim.box([q[0], g + 1.45, q[1]], u, [-u[2], 0, u[0]], 0.34, 1.65, 0.34, PIER);
+        M.trim.box([q[0], g + 3.18, q[1]], u, [-u[2], 0, u[0]], 0.4, 0.08, 0.4, COPING);
+      }
+    }
   }
 
   // ---- 2. the gaps along the walk ------------------------------------------

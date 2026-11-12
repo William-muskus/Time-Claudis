@@ -336,7 +336,15 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
     const doorCol = DOORS[Math.floor(hash(seed, 5) * DOORS.length)];
     const grand = b.s === 'stone' && b.f >= 5;
 
-    for (const [ei] of b.se) {
+    // Street-facing walls, plus any other wall recorded from a photograph
+    // (a gable seen across a garden: the brick-and-stone block above Place
+    // Dalida is all side wall from rue Girardon).
+    const edgeList = [...b.se.map(([ei]) => ei)];
+    for (const k of Object.keys(FACADES.facades ?? {})) {
+      const [id, e] = k.split(':');
+      if (id === b.id && !edgeList.includes(+e) && +e < ring.length) edgeList.push(+e);
+    }
+    for (const ei of edgeList) {
       const [ax, az] = ring[ei];
       const [bx, bz] = ring[(ei + 1) % ring.length];
       const len = Math.hypot(bx - ax, bz - az);
@@ -406,7 +414,11 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
         // String course at every floor of a cut-stone block: the horizontal
         // rhythm of every Haussmann-era front on rue Caulaincourt and rue
         // des Abbesses.
-        if (detailed && stoneFace && f > 1) {
+        if (fx?.bands) {
+          // Recorded: a broad pale stone band at every floor, as on the brick
+          // blocks of the 1900s (rue Girardon above Place Dalida).
+          rect(fam.trim, len / 2, y0 + 0.2, len / 2, 0.3, 0.04, new THREE.Color(fx.bands));
+        } else if (detailed && stoneFace && f > 1) {
           rect(fam.trim, len / 2, y0 + 0.02, len / 2, 0.06, 0.04, surround);
         }
         // French windows: tall and close, as on every street in the survey
@@ -434,9 +446,10 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           // The surround: a moulded stone architrave with a keystone on the
           // stone blocks, a flat painted band on the rendered houses.
           {
-            const bw = stoneFace ? 0.14 : 0.1;
-            rect(fam.trim, cx, wy + wh / 2 + bw / 2, ww / 2 + bw, bw / 2, 0.03, surround);
-            for (const sx of [-1, 1]) rect(fam.trim, cx + sx * (ww / 2 + bw / 2), wy, bw / 2, wh / 2, 0.03, surround);
+            const bw = fx?.surroundW ?? (stoneFace ? 0.14 : 0.1);
+            const sc = fx?.surround ? new THREE.Color(fx.surround) : surround;
+            rect(fam.trim, cx, wy + wh / 2 + bw / 2, ww / 2 + bw, bw / 2, 0.03, sc);
+            for (const sx of [-1, 1]) rect(fam.trim, cx + sx * (ww / 2 + bw / 2), wy, bw / 2, wh / 2, 0.03, sc);
             if (stoneFace) rect(fam.trim, cx, wy + wh / 2 + 0.16, 0.13, 0.17, 0.05, shade(surround, 1.03));
           }
           // White joinery: the frame and the glazing bar are what make a dark
@@ -456,7 +469,14 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           }
           const shutOn = fx ? !!fx.shutters : hasShutters && !grand;
           const shutterCol = fx?.shutters ? new THREE.Color(fx.shutters) : shutterColDefault;
-          if (shutOn) {
+          if (shutOn && fx?.shutterMode === 'closed') {
+            // Recorded closed: the louvred leaves shut across the opening,
+            // pale slats over the glass, as on the stone house at Place Dalida.
+            rect(fam.trim, cx, wy, ww / 2 - 0.05, wh / 2 - 0.05, 0.07, shutterCol);
+            const louvre = shade(shutterCol, 0.8);
+            for (let k = 1; k < Math.round(wh / 0.12); k++) rect(fam.trim, cx, wy - wh / 2 + k * 0.12, ww / 2 - 0.07, 0.012, 0.08, louvre);
+            rect(fam.trim, cx, wy, 0.015, wh / 2 - 0.05, 0.08, louvre);
+          } else if (shutOn) {
             // Persiennes: louvred, folded back against the wall. The slats
             // read as fine dark lines, three per leaf at this distance.
             const louvre = shade(shutterCol, 0.72);

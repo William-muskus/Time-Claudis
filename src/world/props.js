@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { insideBuilding } from './geo.js';
+import { insideBuilding, groundAt } from './geo.js';
+import { streetAt } from './walkprofile.js';
+import FACADES from '../data/geo/facades.json' with { type: 'json' };
 import { PALETTE, flat } from '../render/palette.js';
 import { EMPTY_REGISTRY } from './assets.js';
 
@@ -20,8 +22,27 @@ export function buildProps(rail, rng, assets = EMPTY_REGISTRY) {
   const group = new THREE.Group();
   group.name = 'props';
 
+  // Lamps recorded from the survey photographs (facades.json "lamps"), at
+  // the back of the pavement where the photograph has them; the 20 m rule
+  // fills in elsewhere but keeps clear of them.
+  const recordedAt = [];
+  for (const L of FACADES.lamps ?? []) {
+    let d;
+    try { d = rail.distanceToWaypoint(L.at[0]) + (L.at[1] ?? 0); } catch { continue; }
+    const side = L.side === 'left' ? -1 : 1;
+    const p = rail.positionAt(d), tan = rail.tangentAt(d), sp = streetAt(rail, d);
+    const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+    const off = sp.cen + (sp.half + (L.wall ? sp.pav[side] - 0.45 : 0.55)) * side;
+    const lamp = buildStreetLamp();
+    lamp.position.copy(p).addScaledVector(right, off);
+    lamp.position.y = (groundAt(lamp.position.x, lamp.position.z) ?? p.y) + 0.14;
+    lamp.rotation.y = Math.atan2(right.x * -side, right.z * -side);
+    group.add(lamp);
+    recordedAt.push(d);
+  }
   const LAMP_SPACING = 20;
   for (let d = 8; d < rail.length - 8; d += LAMP_SPACING) {
+    if (recordedAt.some((r) => Math.abs(r - d) < 15)) continue;
     const side = rng.chance(0.5) ? 1 : -1;
     const p = rail.positionAt(d);
     const tan = rail.tangentAt(d);

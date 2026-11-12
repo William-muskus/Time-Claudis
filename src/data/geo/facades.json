@@ -1698,7 +1698,7 @@
    ],
    "ww": 1.1,
    "wh": 1.9,
-   "shutters": null,
+   "shutters": "#E8E4DA",
    "guards": true,
    "balconettes": [
     "1:0",
@@ -1736,7 +1736,8 @@
      "h": 1.6,
      "bars": true
     }
-   ]
+   ],
+   "shutterMode": "closed"
   },
   "245180388:3": {
    "src": "place_dalida",
@@ -1749,7 +1750,7 @@
    ],
    "ww": 1.1,
    "wh": 1.9,
-   "shutters": null,
+   "shutters": "#E8E4DA",
    "guards": true,
    "dormers": [
     0.5
@@ -1758,13 +1759,30 @@
     "h": 0.9,
     "col": "#B7AB96"
    },
-   "ground": []
+   "ground": [],
+   "shutterMode": "closed"
+  },
+  "245180366:5": {
+   "src": "s_girardon_steps",
+   "note": "North gable over the garden, seen from Place Dalida: pale stone with red-brick window surrounds and stone bands",
+   "wall": "#E3DACB",
+   "bands": "#ECE6DA",
+   "surround": "#B9643F",
+   "surroundW": 0.3,
+   "floors": 6,
+   "groundH": 3.4,
+   "bays": [
+    0.3,
+    0.7
+   ],
+   "guards": true,
+   "shutters": null
   }
  },
  "walls": {
   "245179479": "#ECE4D2",
   "245180507": "#DFD3B9",
-  "245180366": "#C27552"
+  "245180366": "#E3DACB"
  },
  "buildings": {
   "245180388": {
@@ -1781,9 +1799,10 @@
    "note": "Château des Brouillards garden: rendered wall and a tall green bar fence",
    "kind": "wallbars",
    "h": 2.1,
-   "rail": 1.9,
+   "rail": 2.0,
    "col": "#2F4A3B",
-   "gate": 0.3
+   "gate": 0.3,
+   "sheet": true
   }
  },
  "streets": [
@@ -1896,6 +1915,60 @@
    "bollards": {
     "right": false
    }
+  }
+ ],
+ "edges": [
+  {
+   "note": "Place Dalida, rue Girardon east side: a low black railing on a stone curb along the back of the pavement, the stone house's light well behind it (survey photos place_dalida, s_girardon_steps, s_girardon_1).",
+   "side": "left",
+   "from": [
+    "place_dalida",
+    5
+   ],
+   "to": [
+    "place_dalida",
+    40
+   ],
+   "kind": "rail",
+   "h": 1.1,
+   "base": 0.3,
+   "rail": 1.0
+  },
+  {
+   "note": "…then the rubble-stone garden wall, trees above it, closed by a gate pier with a lantern standard (s_girardon_1).",
+   "side": "left",
+   "from": [
+    "place_dalida",
+    22
+   ],
+   "to": [
+    "place_dalida",
+    44
+   ],
+   "kind": "rubble",
+   "h": 3.3,
+   "pier": "end",
+   "back": 1.3
+  }
+ ],
+ "lamps": [
+  {
+   "note": "Paris lantern standard against the Château des Brouillards wall (place_dalida, s_girardon_1)",
+   "at": [
+    "place_dalida",
+    20
+   ],
+   "side": "right",
+   "wall": true
+  },
+  {
+   "note": "lantern standard at the gate pier above the stone house (s_girardon_steps, s_girardon_1)",
+   "at": [
+    "place_dalida",
+    43
+   ],
+   "side": "left",
+   "wall": true
   }
  ]
 }

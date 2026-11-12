@@ -239,8 +239,60 @@ function buildCrossings(rail, frames, near) {
       }
     }
   }
+  // Gutter grates: a cast-iron grille in the gutter against each kerb of a
+  // cobbled street every twenty-odd metres, in pairs (Place Dalida has two
+  // side by side at the foot of the left kerb).
+  const grate = [], grateCol = [];
+  const lastG = { [-1]: -99, [1]: -99 };
+  for (const f of frames) {
+    if (!f.onRoad || f.surf !== 'sett') continue;
+    for (const side of [-1, 1]) {
+      if (f.flush?.[side] || f.d - lastG[side] < 22 + (side > 0 ? 3 : 0)) continue;
+      const w = f.cen + (f.halfWidth - 0.3) * side;
+      if (Math.abs(w) < 0.8) continue;
+      const quads = [];
+      let ok = true;
+      for (const k of [0, 1]) {
+        const c = [f.p.x + f.right.x * w + f.t.x * k * 0.95, f.p.z + f.right.z * w + f.t.z * k * 0.95];
+        const corners = [[-0.42, -0.2], [0.42, -0.2], [0.42, 0.2], [-0.42, 0.2]].map(([a, b]) => {
+          const x = c[0] + f.t.x * a + f.right.x * b, z = c[1] + f.t.z * a + f.right.z * b;
+          const y = surfaceY(x, z);
+          return y === null ? null : [x, y + 0.004, z];
+        });
+        if (corners.some((q) => q === null)) { ok = false; break; }
+        quads.push(corners);
+      }
+      if (!ok) continue;
+      lastG[side] = f.d;
+      // Dark slot plate, then the frame and seven iron bars just above it.
+      const IRON_D = [0.11, 0.105, 0.1], IRON_L = [0.34, 0.33, 0.31];
+      const put = (a, b, c2, d, col) => {
+        const up = ((b[0] - a[0]) * (c2[2] - a[2]) - (b[2] - a[2]) * (c2[0] - a[0])) < 0;
+        for (const v of up ? [a, b, c2, a, c2, d] : [a, c2, b, a, d, c2]) { grate.push(...v); grateCol.push(...col); }
+      };
+      const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + 0, p[2] + (q[2] - p[2]) * t];
+      const lift = (v) => [v[0], v[1] + 0.006, v[2]];
+      for (const [a, b, c2, d] of quads) {
+        put(a, b, c2, d, IRON_D);
+        for (let k = 0; k <= 8; k++) {
+          const t0 = k / 8.6, t1 = t0 + 0.6 / 8.6 * (k === 0 || k === 8 ? 1.4 : 0.55);
+          put(lift(lerp(a, b, t0)), lift(lerp(a, b, Math.min(1, t1))), lift(lerp(d, c2, Math.min(1, t1))), lift(lerp(d, c2, t0)), IRON_L);
+        }
+      }
+    }
+  }
   const group = new THREE.Group();
   group.name = 'crossings';
+  if (grate.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(grate, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(grateCol, 3));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.3 }));
+    m.name = 'gutter_grates';
+    m.receiveShadow = true;
+    group.add(m);
+  }
   if (!pos.length) return group;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -262,6 +314,7 @@ function buildCrossings(rail, frames, near) {
  * kerb. Its surface comes from OSM where the pavement is mapped as a footway,
  * and otherwise matches the street: a sett lane has sett pavements.
  */
+const PAVE_SETT = new THREE.Color('#B2A99C');
 function buildPavement(frames, side) {
   const pos = [], uv = [], col = [];
   const HEIGHT = 0.14;
@@ -281,7 +334,10 @@ function buildPavement(frames, side) {
     for (const x of [inner, outer]) {
       pos.push(f.p.x + f.right.x * x, y, f.p.z + f.right.z * x);
       uv.push(x, f.d);
-      col.push(tint.r * 1.04, tint.g * 1.04, tint.b * 1.04);
+      // Pavement setts are paler and warmer than the carriageway's in every
+      // survey photograph: smaller, swept, never oiled by traffic.
+      const pt = kind === 'sett' ? PAVE_SETT : tint;
+      col.push(pt.r * 1.04, pt.g * 1.04, pt.b * 1.04);
     }
   }
   const P = new THREE.Float32BufferAttribute(pos, 3);
