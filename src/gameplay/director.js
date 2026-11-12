@@ -144,7 +144,11 @@ export class Director {
      * cannot be finished.
      */
     const passes = [
-      { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: true, sight: true },
+      // 0.62 is the edge of the frame: the camera sees about 49 degrees either
+      // side of its heading. At 0.15 the first passes happily picked anchors
+      // 80 degrees off to the side, alive and telegraphing off-screen.
+      { near: 5, far: 42, facing: 0.62, types: spawn.anchorTypes, respectSide: true, sight: true },
+      { near: 5, far: 42, facing: 0.62, types: spawn.anchorTypes, respectSide: false, sight: true },
       { near: 5, far: 42, facing: 0.15, types: spawn.anchorTypes, respectSide: false, sight: true },
       { near: 4, far: 58, facing: -0.1, types: spawn.anchorTypes, respectSide: false, sight: true },
       // Last resort: any opening a person could plausibly come out of, seen or
@@ -166,6 +170,11 @@ export class Director {
     ];
 
     for (const pass of passes) {
+      // A bomber runs at the player and cannot be ducked, only shot, so one
+      // that starts out of frame is unanswerable: it spawns in view or not at
+      // all. (One charged from a doorway off to the right of Place
+      // Émile-Goudeau, off-screen all the way in, on every retry.)
+      if (spawn.type === 'BOMBER' && pass.facing < 0.62) continue;
       const pick = this.#searchAnchors(spawn, cameraPos, cameraFwd, pass);
       if (pick) return pick;
     }
@@ -257,7 +266,15 @@ export class Director {
   }
 
   #spawn(spawn, cameraPos, cameraFwd) {
-    const anchor = this.#pickAnchor(spawn, cameraPos, cameraFwd);
+    // Choose from where the player STANDS, not where they are crouched: a
+    // wave released while the player is ducked must still appear where a
+    // standing player can see it, and judged from the crouch the player's own
+    // cover (an occluder since the Place Émile-Goudeau fix) blocked almost
+    // every anchor and the boss of area five could never spawn.
+    const standing = cameraPos.clone();
+    const base = this.railCamera?.rail?.positionAt?.(this.railCamera.distance);
+    if (base) standing.y = Math.max(standing.y, base.y + 1.66);
+    const anchor = this.#pickAnchor(spawn, standing, cameraFwd);
     if (!anchor) {
       // Loud on purpose. A silent spawn failure is how an area becomes
       // unclearable without anything appearing to go wrong.

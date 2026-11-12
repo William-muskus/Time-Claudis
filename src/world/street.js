@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
+import { surfaceTexture, SURFACE_TINT } from '../render/textures.js';
+import { GEO, pairs, surfaceAt, onOtherStreet, railIndex } from './geo.js';
+import { streetAt } from './walkprofile.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * The ground: carriageway, pavements, kerbs and the two staircases.
@@ -62,10 +66,17 @@ export function buildStreet(rail) {
     // Pavements narrow with the street, the way they really do — rue
     // d'Orchampt has barely a kerb, Place des Abbesses has a proper footway.
     const total = rail.widthAt(d);
-    const pavement = Math.max(0.8, Math.min(2.4, total * 0.18));
+    // The street's real cross-section where the walk is on a road (BD TOPO
+    // carriageway, pavements to the facade): see walkprofile.js.
+    const prof = streetAt(rail, d);
+    const pavement = (prof.pav[-1] + prof.pav[1]) / 2;
+    // Paving stones under traffic are setts in Paris; OSM's "paving_stones"
+    // on rue des Abbesses is the same granite in the survey photos.
+    const raw = surfaceAt(p.x, p.z);
     frames.push({
-      d, p, t, right, pavement,
-      halfWidth: Math.max(1.5, total * 0.5 - pavement),
+      d, p, t, right, pavement, pav: prof.pav, onRoad: prof.road, cen: prof.cen, flush: prof.flush, posts: prof.bollards,
+      halfWidth: prof.half,
+      surf: raw === 'paving' ? 'sett' : raw,
     });
   }
 
@@ -74,163 +85,417 @@ export function buildStreet(rail) {
   // the street was a ribbon hanging over nothing. The real terrain is under
   // everything now (terrain.js), so the street only has to be the street.
   group.add(buildCarriageway(frames));
-  // Pavements first: they compute the stepped walking surface that the kerbs
-  // and the handrails both read back from.
+  // Pavements first: they record the walking surface that the kerbs and the
+  // handrails both read back from.
+  // Where a side street opens off the walk, neither the pavement nor the kerb
+  // runs across its mouth: the side street's own carriageway comes up to the
+  // walk's kerb line instead (terrain.js), as at every real junction.
+  const near = railIndex(rail);
+  for (const f of frames) {
+    f.mouth = {};
+    for (const side of [-1, 1]) {
+      const o = f.cen + (f.halfWidth + f.pav[side] * 0.5) * side;
+      f.mouth[side] = onOtherStreet(f.p.x + f.right.x * o, f.p.z + f.right.z * o, { near, rail, pad: 0.4 });
+    }
+  }
   group.add(buildPavement(frames, +1));
   group.add(buildPavement(frames, -1));
   group.add(buildKerb(frames, +1));
   group.add(buildKerb(frames, -1));
   group.add(buildSlopeHandrails(frames));
+  group.add(buildBollards(rail, frames));
+  group.add(buildCrossings(rail, frames, near));
   group.add(buildStairFlights(rail));
 
   return group;
 }
 
-/** The cobbled roadway. Two-tone strips so the surface is not a dead plane. */
+/**
+ * The roadway, paved with what is really there.
+ *
+ * Each 1.5 m slice asks OpenStreetMap what the street is surfaced with
+ * (geo.js surfaceAt): granite setts on rue Girardon, rue d'Orchampt and the
+ * Ravignan descent, asphalt on the Caulaincourt side. Slices are grouped into
+ * one mesh per surface, each with its own texture; UVs are in metres, with U
+ * running ACROSS the street so the sett courses lie the way Paris lays them.
+ */
 function buildCarriageway(frames) {
-  const pos = [], idx = [], col = [];
-  const warm = PALETTE.cobbleWarm, cool = PALETTE.cobbleCool;
+  const pos = [], uv = [], col = [];
+  const byKind = new Map();
   const STRIPS = 6;
 
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
     for (let s = 0; s <= STRIPS; s++) {
       const u = s / STRIPS - 0.5;
-      const w = f.halfWidth * 2 * u;
+      const w = f.cen + f.halfWidth * 2 * u;
       // Camber: Paris streets crown toward the centre and drain to the kerbs.
       const camber = -Math.abs(u) * Math.abs(u) * 0.22 + 0.055;
       pos.push(f.p.x + f.right.x * w, f.p.y + camber, f.p.z + f.right.z * w);
-      const mix = ((i >> 1) + s) % 2 === 0 ? warm : cool;
-      col.push(mix.r, mix.g, mix.b);
+      uv.push(w, f.d);
+      // The tint lives in the vertex colour so one texture serves every
+      // street; a faint variation keeps long straights from looking printed.
+      const tint = SURFACE_TINT[f.surf] ?? SURFACE_TINT.asphalt;
+      const v = 0.96 + (((i * 7 + s * 3) % 5) / 5) * 0.06;
+      col.push(tint.r * v, tint.g * v, tint.b * v);
     }
   }
   const row = STRIPS + 1;
   for (let i = 0; i < frames.length - 1; i++) {
+    const kind = frames[i].surf;
+    if (!byKind.has(kind)) byKind.set(kind, []);
+    const idx = byKind.get(kind);
     for (let s = 0; s < STRIPS; s++) {
       const a = i * row + s, b = a + 1, c = a + row, d = c + 1;
-      // WINDING. Get this backwards and the road is lit from underneath.
-      //
-      // `right` is (-t.z, 0, t.x), so for a tangent of +Z it points at -X;
-      // the cross product of (a->c, forward) with (a->b, right) is then
-      // DOWN, not up. Every ground surface in this file had that winding:
-      // 2506 of the carriageway's normals, both pavements entirely, and 2860
-      // of the apron's 3024 pointed into the ground.
-      //
-      // Nothing looked obviously broken, which is why it survived so long —
-      // the materials are double-sided so the geometry still drew. It was
-      // just shaded by a sun that was always on the wrong side of it, so the
-      // bottom third of almost every frame came back a flat dead violet and
-      // read as "the foreground is in shadow". It is not in shadow. It is
-      // inside out.
+      // WINDING: `right` is (-t.z, 0, t.x), so (a, b, c) faces UP. Getting this
+      // backwards once left the road lit from underneath for months.
       idx.push(a, b, c, b, d, c);
     }
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  const m = flat(0xffffff, { roughness: 0.95 });
-  m.vertexColors = true;
-  const mesh = new THREE.Mesh(g, m);
-  mesh.receiveShadow = true;
-  mesh.name = 'carriageway';
-  return mesh;
+  const P = new THREE.Float32BufferAttribute(pos, 3);
+  const U = new THREE.Float32BufferAttribute(uv, 2);
+  const C = new THREE.Float32BufferAttribute(col, 3);
+  const group = new THREE.Group();
+  group.name = 'carriageway';
+  for (const [kind, idx] of byKind) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', P);
+    g.setAttribute('uv', U);
+    g.setAttribute('color', C);
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const m = new THREE.MeshStandardMaterial({
+      map: surfaceTexture(kind), vertexColors: true, roughness: kind === 'sett' ? 0.82 : 0.95, metalness: 0,
+    });
+    const mesh = new THREE.Mesh(g, m);
+    mesh.receiveShadow = true;
+    mesh.name = `carriageway_${kind}`;
+    group.add(mesh);
+  }
+  return group;
 }
 
 /**
- * Raised pavement on one side. side = +1 right, -1 left.
- *
- * STEPPED, NOT RAMPED, and this is the single thing that makes the hill
- * visible.
- *
- * Over half of this route exceeds an 8% grade and it touches 23% on the climb
- * up Girardon — genuinely steep, and the three-act climb-crest-descend profile
- * is supposed to be the level's spine. It was invisible in every screenshot,
- * because a pavement that ramps smoothly alongside a road that ramps smoothly
- * gives the eye nothing to measure the slope against: both surfaces recede
- * together and the frame reads as flat ground seen in perspective.
- *
- * Paris solves this in the street itself. Above roughly 8% the pavement stops
- * following the road and becomes a flight of long shallow steps — it holds
- * level for several metres, drops a riser, holds level again. The consequence
- * is that the KERB FACE breathes: tall immediately after a step, shrinking to
- * nothing just before the next one. That rising and falling band of shadow
- * running up the street is what tells you, instantly and without thinking
- * about it, that you are looking at a hill.
- *
- * The stepping needs no gradient threshold. It snaps whenever the ramp has
- * drifted more than three quarters of a riser from the current tread, so a
- * gentle slope simply produces very long treads and a flat street produces
- * none at all.
+ * Zebra crossings ("passages piétons") where OpenStreetMap maps a marked
+ * crossing over the walk's carriageway: white bands half a metre wide, a
+ * metre apart, laid along the traffic, painted on the camber so they neither
+ * float nor sink. The survey photographs show them at every junction the walk
+ * crosses (Caulaincourt, rue des Abbesses, the foot of rue d'Orchampt) and the
+ * street had none.
  */
-function buildPavement(frames, side) {
-  const pos = [], idx = [];
-  const HEIGHT = 0.16;
-  const RISER = 0.15;
+function buildCrossings(rail, frames, near) {
+  const step = rail.length / (frames.length - 1);
+  const surfaceY = (x, z) => {
+    const nr = near.nearest(x, z, 14);
+    if (!nr) return null;
+    let i = Math.round(nr.d / step), best = null, ba = Infinity;
+    for (let k = Math.max(0, i - 3); k <= Math.min(frames.length - 1, i + 3); k++) {
+      const f = frames[k], a = (x - f.p.x) * f.t.x + (z - f.p.z) * f.t.z;
+      if (Math.abs(a) < Math.abs(ba)) { ba = a; best = k; }
+    }
+    const f = frames[best];
+    if (!f.onRoad) return null;
+    const w = (x - f.p.x) * f.right.x + (z - f.p.z) * f.right.z;
+    const u = (w - f.cen) / (2 * f.halfWidth);
+    if (Math.abs(u) > 0.5 - 0.04 / f.halfWidth) return null;
+    const g = frames[Math.min(frames.length - 1, best + 1)], h = frames[Math.max(0, best - 1)];
+    const slope = (g.p.y - h.p.y) / Math.max(1e-3, g.d - h.d);
+    return f.p.y + ba * slope - Math.abs(u) * Math.abs(u) * 0.22 + 0.055 + 0.012;
+  };
+  const pos = [];
+  const BAND = 0.5, PITCH = 1.0, LEN = 3.0, SEG = 6;
+  for (const c of GEO.crossings ?? []) {
+    if (c.m === 'no' || c.k === 'unmarked') continue;
+    const p = pairs(c.p);
+    for (let q = 0; q < p.length - 1; q++) {
+      const [ax, az] = p[q], [bx, bz] = p[q + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      if (L < 1) continue;
+      const ux = (bx - ax) / L, uz = (bz - az) / L;   // across the street
+      const vx = -uz, vz = ux;                       // along the traffic
+      for (let s = PITCH / 2; s < L; s += PITCH) {
+        const cx = ax + ux * s, cz = az + uz * s;
+        // A band is drawn whole or not at all: only where all of it lies on
+        // the walk's carriageway.
+        const quad = [];
+        let ok = true;
+        for (let k = 0; k <= SEG && ok; k++) {
+          const t = (k / SEG - 0.5) * LEN;
+          for (const e of [-BAND / 2, BAND / 2]) {
+            const x = cx + ux * e + vx * t, z = cz + uz * e + vz * t;
+            const y = surfaceY(x, z);
+            if (y === null) { ok = false; break; }
+            quad.push([x, y, z]);
+          }
+        }
+        if (!ok) continue;
+        for (let k = 0; k < SEG; k++) {
+          const [a, b, c2, d] = [quad[2 * k], quad[2 * k + 1], quad[2 * k + 2], quad[2 * k + 3]];
+          // Upward-facing whichever way the crossing was drawn.
+          const up = ((b[0] - a[0]) * (c2[2] - a[2]) - (b[2] - a[2]) * (c2[0] - a[0])) < 0;
+          const tris = up ? [a, b, c2, b, d, c2] : [a, c2, b, b, c2, d];
+          for (const v of tris) pos.push(...v);
+        }
+      }
+    }
+  }
+  // Gutter grates: a cast-iron grille in the gutter against each kerb of a
+  // cobbled street every twenty-odd metres, in pairs (Place Dalida has two
+  // side by side at the foot of the left kerb).
+  const grate = [], grateCol = [];
+  const lastG = { [-1]: -99, [1]: -99 };
+  for (const f of frames) {
+    if (!f.onRoad || f.surf !== 'sett') continue;
+    for (const side of [-1, 1]) {
+      if (f.flush?.[side] || f.d - lastG[side] < 22 + (side > 0 ? 3 : 0)) continue;
+      const w = f.cen + (f.halfWidth - 0.3) * side;
+      if (Math.abs(w) < 0.8) continue;
+      const quads = [];
+      let ok = true;
+      for (const k of [0, 1]) {
+        const c = [f.p.x + f.right.x * w + f.t.x * k * 0.95, f.p.z + f.right.z * w + f.t.z * k * 0.95];
+        const corners = [[-0.42, -0.2], [0.42, -0.2], [0.42, 0.2], [-0.42, 0.2]].map(([a, b]) => {
+          const x = c[0] + f.t.x * a + f.right.x * b, z = c[1] + f.t.z * a + f.right.z * b;
+          const y = surfaceY(x, z);
+          return y === null ? null : [x, y + 0.004, z];
+        });
+        if (corners.some((q) => q === null)) { ok = false; break; }
+        quads.push(corners);
+      }
+      if (!ok) continue;
+      lastG[side] = f.d;
+      // Dark slot plate, then the frame and seven iron bars just above it.
+      const IRON_D = [0.11, 0.105, 0.1], IRON_L = [0.34, 0.33, 0.31];
+      const put = (a, b, c2, d, col) => {
+        const up = ((b[0] - a[0]) * (c2[2] - a[2]) - (b[2] - a[2]) * (c2[0] - a[0])) < 0;
+        for (const v of up ? [a, b, c2, a, c2, d] : [a, c2, b, a, d, c2]) { grate.push(...v); grateCol.push(...col); }
+      };
+      const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + 0, p[2] + (q[2] - p[2]) * t];
+      const lift = (v) => [v[0], v[1] + 0.006, v[2]];
+      for (const [a, b, c2, d] of quads) {
+        put(a, b, c2, d, IRON_D);
+        for (let k = 0; k <= 8; k++) {
+          const t0 = k / 8.6, t1 = t0 + 0.6 / 8.6 * (k === 0 || k === 8 ? 1.4 : 0.55);
+          put(lift(lerp(a, b, t0)), lift(lerp(a, b, Math.min(1, t1))), lift(lerp(d, c2, Math.min(1, t1))), lift(lerp(d, c2, t0)), IRON_L);
+        }
+      }
+    }
+  }
+  const group = new THREE.Group();
+  group.name = 'crossings';
+  if (grate.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(grate, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(grateCol, 3));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.3 }));
+    m.name = 'gutter_grates';
+    m.receiveShadow = true;
+    group.add(m);
+  }
+  if (!pos.length) return group;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, flat(new THREE.Color('#E4E2DA'), { roughness: 0.75 }));
+  m.name = 'zebra';
+  m.receiveShadow = true;
+  group.add(m);
+  return group;
+}
 
-  let stepY = frames[0].p.y + HEIGHT;
+/**
+ * The pavement on one side. side = +1 right, -1 left.
+ *
+ * It follows the road's slope. An earlier version stepped it in long shallow
+ * treads on every grade "the way Paris does", which Paris does not: in the
+ * survey photographs of rue Girardon and rue Ravignan the pavements are plain
+ * ramps, setts on the lanes and asphalt on the wider streets, with a granite
+ * kerb. Its surface comes from OSM where the pavement is mapped as a footway,
+ * and otherwise matches the street: a sett lane has sett pavements.
+ */
+const PAVE_SETT = new THREE.Color('#B2A99C');
+function buildPavement(frames, side) {
+  const pos = [], uv = [], col = [];
+  const HEIGHT = 0.14;
+  const kinds = [];
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
-    const target = f.p.y + HEIGHT;
-    let guard = 0;
-    while (target - stepY > RISER * 0.75 && guard++ < 40) stepY += RISER;
-    guard = 0;
-    while (stepY - target > RISER * 0.75 && guard++ < 40) stepY -= RISER;
-    // Record it so the kerb and the handrail agree with the pavement exactly.
+    const y = f.p.y + (f.flush?.[side] ? 0.03 : HEIGHT);
     f.walkY = f.walkY ?? {};
-    f.walkY[side] = stepY;
-
-    const inner = f.halfWidth * side;
-    const outer = (f.halfWidth + f.pavement) * side;
-    pos.push(f.p.x + f.right.x * inner, stepY, f.p.z + f.right.z * inner);
-    pos.push(f.p.x + f.right.x * outer, stepY, f.p.z + f.right.z * outer);
+    f.walkY[side] = y;
+    const inner = f.cen + f.halfWidth * side;
+    const outer = f.cen + (f.halfWidth + f.pav[side]) * side;
+    const mid = (inner + outer) / 2;
+    const own = surfaceAt(f.p.x + f.right.x * mid, f.p.z + f.right.z * mid, { footway: true, maxR: 4, fallback: null });
+    const kind = own ?? (f.surf === 'sett' && f.halfWidth < 4.5 ? 'sett' : 'asphalt');
+    kinds.push(kind);
+    const tint = SURFACE_TINT[kind] ?? SURFACE_TINT.asphalt;
+    for (const x of [inner, outer]) {
+      pos.push(f.p.x + f.right.x * x, y, f.p.z + f.right.z * x);
+      uv.push(x, f.d);
+      // Pavement setts are paler and warmer than the carriageway's in every
+      // survey photograph: smaller, swept, never oiled by traffic.
+      const pt = kind === 'sett' ? PAVE_SETT : tint;
+      col.push(pt.r * 1.04, pt.g * 1.04, pt.b * 1.04);
+    }
   }
+  const P = new THREE.Float32BufferAttribute(pos, 3);
+  const U = new THREE.Float32BufferAttribute(uv, 2);
+  const C = new THREE.Float32BufferAttribute(col, 3);
+  const byKind = new Map();
   for (let i = 0; i < frames.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    // Same flip as the carriageway; see the note there.
-    if (side > 0) idx.push(a, b, c, b, d, c);
-    else idx.push(a, c, b, b, c, d);
+    if (frames[i].mouth?.[side] || frames[i + 1].mouth?.[side]) continue;
+    if (!byKind.has(kinds[i])) byKind.set(kinds[i], []);
+    // Same winding rule as the carriageway.
+    if (side > 0) byKind.get(kinds[i]).push(a, b, c, b, d, c);
+    else byKind.get(kinds[i]).push(a, c, b, b, c, d);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, flat(PALETTE.pavement, { roughness: 0.93 }));
-  mesh.receiveShadow = true;
-  mesh.name = `pavement${side > 0 ? 'R' : 'L'}`;
-  return mesh;
+  const group = new THREE.Group();
+  group.name = `pavement${side > 0 ? 'R' : 'L'}`;
+  for (const [kind, idx] of byKind) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', P);
+    g.setAttribute('uv', U);
+    g.setAttribute('color', C);
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+      map: surfaceTexture(kind), vertexColors: true, roughness: 0.9, metalness: 0 }));
+    mesh.receiveShadow = true;
+    mesh.name = `${group.name}_${kind}`;
+    group.add(mesh);
+  }
+  return group;
 }
 
-/**
- * The kerb face — a thin vertical strip catching the low sun.
- *
- * Its top follows the STEPPED pavement and its bottom follows the ramped road,
- * so on a slope the face grows and shrinks between steps instead of holding a
- * constant 16 cm. That varying band is the slope cue; see buildPavement.
- */
+/** The granite kerb: a 14 cm face and a 20 cm top, pale grey. */
 function buildKerb(frames, side) {
   const pos = [], idx = [];
-  const MIN = 0.1;
   for (let i = 0; i < frames.length; i++) {
     const f = frames[i];
-    const x = f.halfWidth * side;
-    const top = Math.max(f.p.y + MIN, f.walkY?.[side] ?? f.p.y + 0.16);
+    const x = f.cen + f.halfWidth * side, x2 = f.cen + (f.halfWidth + 0.2) * side;
+    const top = f.walkY?.[side] ?? f.p.y + 0.14;
     pos.push(f.p.x + f.right.x * x, f.p.y, f.p.z + f.right.z * x);
-    pos.push(f.p.x + f.right.x * x, top, f.p.z + f.right.z * x);
+    pos.push(f.p.x + f.right.x * x, top + 0.01, f.p.z + f.right.z * x);
+    pos.push(f.p.x + f.right.x * x2, top + 0.01, f.p.z + f.right.z * x2);
   }
   for (let i = 0; i < frames.length - 1; i++) {
-    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    if (side > 0) idx.push(a, b, c, b, d, c);
-    else idx.push(a, c, b, b, c, d);
+    if (frames[i].mouth?.[side] || frames[i + 1].mouth?.[side]) continue;
+    if (frames[i].flush?.[side] || frames[i + 1].flush?.[side]) continue;
+    const a = i * 3, b = a + 1, t = a + 2, c = a + 3, d = a + 4, t2 = a + 5;
+    if (side > 0) idx.push(a, b, c, b, d, c, b, t, d, t, t2, d);
+    else idx.push(a, c, b, b, c, d, b, d, t, t, d, t2);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, flat(PALETTE.kerbStone, { roughness: 0.9 }));
+  const mesh = new THREE.Mesh(g, flat(PALETTE.kerbStone, { roughness: 0.85 }));
   mesh.receiveShadow = true;
+  mesh.name = `kerb${side > 0 ? 'R' : 'L'}`;
   return mesh;
+}
+
+/**
+ * Bollards along the kerbs.
+ *
+ * In every survey photograph of the cobbled streets on this route the kerb is
+ * lined with them: black cast-iron "potelets" with a ball top on rue Girardon
+ * and around Place Dalida, squat granite bornes in the narrow lane of rue
+ * d'Orchampt. They are the most repeated object on the walk and, after the
+ * setts, the clearest "this is Paris" cue at street level. Not on the stairs,
+ * not on the asphalt streets, not across squares.
+ */
+function buildBollards(rail, frames) {
+  const near = railIndex(rail);
+  const stairs = STAIR_SEGMENTS.map((s) => {
+    try { return [rail.distanceToWaypoint(s.from) - 1, rail.distanceToWaypoint(s.to) + 1]; } catch { return [0, -1]; }
+  });
+  const onStairs = (d) => stairs.some(([a, b]) => d >= a && d <= b);
+  const iron = [], stone = [];
+  let railMesh = null;
+  const potelet = new THREE.CylinderGeometry(0.075, 0.085, 0.95, 7).translate(0, 0.475, 0);
+  const ball = new THREE.SphereGeometry(0.1, 7, 5).translate(0, 1.0, 0);
+  const borne = new THREE.BoxGeometry(0.26, 0.5, 0.26).translate(0, 0.25, 0);
+  let last = { [-1]: -99, [1]: -99 };
+  for (const f of frames) {
+    if (f.surf !== 'sett' || onStairs(f.d)) continue;
+    // Along every kerb of a cobbled road the walk follows, as the survey
+    // photographs show them (rue Girardon, rue Lepic, rue Ravignan): cast-iron
+    // potelets where the pavement is a real pavement, squat granite bornes
+    // where it is a strip under a metre wide (rue d'Orchampt).
+    if (!f.onRoad) continue;
+    for (const side of [-1, 1]) {
+      if (f.flush?.[side]) continue;
+      if (f.posts?.[side === -1 ? 'left' : 'right'] === false) continue;
+      const lane = f.pav[side] < 1.3;
+      const gap = lane ? 3.2 : 2.0;
+      if (f.d - last[side] < gap) continue;
+      last[side] = f.d;
+      const off = f.cen + (f.halfWidth + 0.32) * side;
+      // Where the walk runs along a kerb, not in the camera's path.
+      if (Math.abs(off) < 0.8) continue;
+      const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
+      // Not across the mouth of a side street.
+      if (onOtherStreet(x, z, { near, rail, pad: 1.5 })) continue;
+      const y = f.walkY?.[side] ?? f.p.y + 0.14;
+      if (lane) stone.push(borne.clone().translate(x, y, z));
+      else { iron.push(potelet.clone().translate(x, y, z)); iron.push(ball.clone().translate(x, y, z)); }
+    }
+  }
+  // KERB RAILINGS on the steep cobbled stretches: black panels between the
+  // bollards, as all along rue Lepic and the top of rue Girardon in the
+  // survey photos. Grade over 7%, both kerbs, a two-metre panel with a gap
+  // every third one for crossing.
+  const rails = [];
+  const RAILED = [['s_girardon_3', 'moulin_galette']];
+  const spans = RAILED.map(([a, b]) => { try { return [rail.distanceToWaypoint(a), rail.distanceToWaypoint(b)]; } catch { return [0, -1]; } });
+  const railed = (d) => spans.some(([a, b]) => d >= Math.min(a, b) && d <= Math.max(a, b));
+  const bar = new THREE.BoxGeometry(0.025, 0.8, 0.025);
+  const rl = new THREE.BoxGeometry(0.035, 0.04, 2.0);
+  for (let i = 2; i < frames.length - 2; i += 2) {
+    const f = frames[i], g0 = frames[i - 2], g1 = frames[i + 2];
+    if (f.surf !== 'sett' || onStairs(f.d)) continue;
+    // Only where the survey photographs show them: rue Girardon above Place
+    // Marcel-Aymé and rue Lepic. A steepness rule also caught the mouth of
+    // rue d'Orchampt, which has none.
+    if (!railed(f.d)) continue;
+    if (Math.floor(f.d / 2) % 3 === 2) continue;
+    const yaw = Math.atan2(f.t.x, f.t.z);
+    const pitch = Math.atan2(g1.p.y - g0.p.y, g1.d - g0.d);
+    for (const side of [-1, 1]) {
+      const off = f.cen + (f.halfWidth + 0.3) * side;
+      if (Math.abs(off) < 0.8) continue;
+      const x = f.p.x + f.right.x * off, z = f.p.z + f.right.z * off;
+      const y = f.walkY?.[side] ?? f.p.y + 0.14;
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(-pitch, yaw, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
+      for (const ry of [0.92, 0.12]) rails.push(rl.clone().translate(0, ry, 0).applyMatrix4(m));
+      for (let k = -0.9; k <= 0.91; k += 0.2) rails.push(bar.clone().translate(0, 0.5, k).applyMatrix4(m));
+    }
+  }
+  if (rails.length) {
+    const m = new THREE.Mesh(mergeGeometries(rails), flat(new THREE.Color('#232425'), { roughness: 0.5, metalness: 0.3 }));
+    m.name = 'kerb_railings';
+    railMesh = m;
+  }
+
+  const group = new THREE.Group();
+  group.name = 'bollards';
+  if (railMesh) group.add(railMesh);
+  if (iron.length) {
+    const m = new THREE.Mesh(mergeGeometries(iron), flat(new THREE.Color('#2A2A2C'), { roughness: 0.5, metalness: 0.3 }));
+    m.castShadow = true;
+    group.add(m);
+  }
+  if (stone.length) {
+    const m = new THREE.Mesh(mergeGeometries(stone), flat(PALETTE.kerbStone, { roughness: 0.9 }));
+    m.castShadow = true;
+    group.add(m);
+  }
+  return group;
 }
 
 /**
@@ -364,10 +629,10 @@ function emitRun(group, run, side, mat, height, postEvery) {
   // steps a pedestrian is actually on.
   for (let i = 1; i < run.length; i++) {
     const a = run[i - 1], b = run[i];
-    const ax = a.p.x + a.right.x * (a.halfWidth + a.pavement * 0.82) * side;
-    const az = a.p.z + a.right.z * (a.halfWidth + a.pavement * 0.82) * side;
-    const bx = b.p.x + b.right.x * (b.halfWidth + b.pavement * 0.82) * side;
-    const bz = b.p.z + b.right.z * (b.halfWidth + b.pavement * 0.82) * side;
+    const ax = a.p.x + a.right.x * (a.cen + (a.halfWidth + a.pav[side] * 0.82) * side);
+    const az = a.p.z + a.right.z * (a.cen + (a.halfWidth + a.pav[side] * 0.82) * side);
+    const bx = b.p.x + b.right.x * (b.cen + (b.halfWidth + b.pav[side] * 0.82) * side);
+    const bz = b.p.z + b.right.z * (b.cen + (b.halfWidth + b.pav[side] * 0.82) * side);
     const ay = (a.walkY?.[side] ?? a.p.y) + height;
     const by = (b.walkY?.[side] ?? b.p.y) + height;
 
@@ -387,8 +652,8 @@ function emitRun(group, run, side, mat, height, postEvery) {
     since += 1.5;                       // frames are sampled every 1.5 m
     if (since < postEvery) continue;
     since = 0;
-    const x = f.p.x + f.right.x * (f.halfWidth + f.pavement * 0.82) * side;
-    const z = f.p.z + f.right.z * (f.halfWidth + f.pavement * 0.82) * side;
+    const x = f.p.x + f.right.x * (f.cen + (f.halfWidth + f.pav[side] * 0.82) * side);
+    const z = f.p.z + f.right.z * (f.cen + (f.halfWidth + f.pav[side] * 0.82) * side);
     const base = f.walkY?.[side] ?? f.p.y;
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, height, 0.05), mat);
     post.position.set(x, base + height / 2, z);

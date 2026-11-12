@@ -89,12 +89,16 @@ export function occluder(centre, forward, halfWidth, halfDepth, baseY, height) {
  * and the over-reporting direction is the one this whole module exists to
  * avoid. So real buildings are tested against their own polygon.
  *
- * The same permissive INSET applies, for the same reason: the footprint is
- * pulled in by half a metre so a grazing ray down a street wall does not clip
- * every facade it runs along.
+ * A smaller INSET than the boxes: the footprint is pulled in by 20 cm so a
+ * grazing ray down a street wall does not clip every facade it runs along.
+ * It was half a metre, which let sight lines pass through the protruding
+ * corner of the NEXT building and report as clear: the director picked
+ * anchors the rendered wall hid (measured on rue Girardon above Place
+ * Dalida). Every anchor stands at least 0.6 m out from its facade, so 20 cm
+ * never hides an anchor from its own street.
  */
 export function polyOccluder(ring, baseY, topY) {
-  const INSET = 0.5;
+  const INSET = 0.2;
   const pts = shrink(ring, INSET) ?? ring;
   let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
   for (const [x, z] of pts) {

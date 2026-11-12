@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PALETTE } from '../render/palette.js';
 import { GEO, groundAt, pairs } from './geo.js';
 import { polyOccluder } from './occluders.js';
+import FACADES from '../data/geo/facades.json' with { type: 'json' };
 
 /**
  * Every building on the route, from the cadastre.
@@ -46,19 +47,27 @@ const WALL = {
   grey: PALETTE.plasterGrey,
   stone: PALETTE.limestoneLit,
   meuliere: PALETTE.limestoneMid,
-  brick: PALETTE.chimneyTerra,
+  // Montmartre's bare brick is the pale buff brick of the 1900-30 blocks
+  // (the Pharmacie du Bateau-Lavoir's corner, rue Ravignan), not red; the
+  // one red-brick building on the route is Saint-Jean.
+  brick: new THREE.Color('#DDD2BC'),
+  redbrick: new THREE.Color('#A0523E'),   // the 1920s brick-and-render blocks, faded
   wood: new THREE.Color('#9C7A5A'),
 };
 const ROOF = {
   mansard: PALETTE.zincLit,
-  hip: new THREE.Color('#A3563F'),
-  flat: new THREE.Color('#8E8579'),
+  hip: new THREE.Color('#A0614A'),     // faded flat tile, on the small houses only
+  flat: new THREE.Color('#8F8F8B'),
   church: PALETTE.slateDark,
 };
-const SHUTTERS = [PALETTE.shutterGreen, PALETTE.shutterBlue, PALETTE.shutterGrey,
-  PALETTE.awningCream, new THREE.Color('#7A3B33'), PALETTE.shutterGreen];
-const DOORS = [new THREE.Color('#2F4A3A'), new THREE.Color('#6B2E2A'), new THREE.Color('#2E3A5C'),
-  new THREE.Color('#4A3A2E'), PALETTE.metroGreen];
+// Louvred shutters on these streets are overwhelmingly white, off-white and
+// pale grey (see the August 2025 survey frames on rue d'Orchampt and rue
+// Girardon); green and blue-grey are the exceptions, not the rule.
+const SHUTTERS = [new THREE.Color('#ECE9E2'), new THREE.Color('#E2DDD2'), PALETTE.shutterGrey,
+  new THREE.Color('#ECE9E2'), PALETTE.shutterGrey, new THREE.Color('#D6D2C8'), PALETTE.shutterGreen];
+const DOORS = [new THREE.Color('#2F4A3A'), new THREE.Color('#5F7A78'), new THREE.Color('#2E3A5C'),
+  new THREE.Color('#4A3A2E'), new THREE.Color('#5B2A28'), PALETTE.metroGreen];
+const FRAME = new THREE.Color('#F2EFE8');
 const AWNING = {
   cafe: [PALETTE.awningRed, PALETTE.awningGreen, PALETTE.awningRed],
   bar: [PALETTE.awningRed, new THREE.Color('#2E2E3E'), PALETTE.awningGreen],
@@ -69,8 +78,28 @@ const AWNING = {
   shop: [PALETTE.awningRed, PALETTE.awningGreen, PALETTE.awningCream, new THREE.Color('#2E3A5C'),
     PALETTE.plasterOchre, new THREE.Color('#5C2E4A')],
 };
-const GLASS = new THREE.Color('#2B3047');
-const GLASS_SHOP = new THREE.Color('#3A4258');
+// Window glass in daylight reflects the sky and the facade opposite: a mid
+// grey, not black. As near-black every window read as a slot cut through
+// the wall (compare.mjs, rue d'Orchampt and rue Lepic).
+const GLASS = new THREE.Color('#59626B');
+// Painted shopfronts ("devantures"), from the survey photos: navy, bottle
+// green, black, oxblood, varnished wood, and the odd cream.
+const DEVANTURE = [new THREE.Color('#24324A'), new THREE.Color('#233D30'), new THREE.Color('#1E1F21'),
+  new THREE.Color('#5A2124'), new THREE.Color('#6B4A32'), new THREE.Color('#24324A'), new THREE.Color('#D9D2C2')];
+const WOOD_DOOR = [new THREE.Color('#6B4A32'), new THREE.Color('#5A3B26'), new THREE.Color('#7A5638')];
+// Old houses on the Butte sit on a base of exposed rubble or dressed stone,
+// a metre or so high, darker than the render above it.
+const RUBBLE_BASE = new THREE.Color('#B4A487');
+const POT = new THREE.Color('#B0644A');   // terracotta chimney pots
+const ZINC_PIPE = new THREE.Color('#B4B6B4');   // weathered zinc reads pale grey, not blue
+const PLATE_BLUE = new THREE.Color('#1F3E7A');   // Paris street-name enamel
+const PLATE_WHITE = new THREE.Color('#F2F2EE');
+const FLOWERS = [new THREE.Color('#C8383A'), new THREE.Color('#D46A8C'), new THREE.Color('#E8E2D6'), new THREE.Color('#C8383A')];
+const BOX_GREEN = new THREE.Color('#3F5A30');
+const FOLIAGE_BOX = new THREE.Color('#557A3A');
+// Shop windows in daylight show the lit interior and reflections: a mid
+// warm grey. Darker read as a closed shutter across every ground floor.
+const GLASS_SHOP = new THREE.Color('#6E6A62');
 const TRIM = PALETTE.limestoneLit;
 const SOCLE = PALETTE.limestoneDeep;
 const IRON = PALETTE.ironwork;
@@ -190,7 +219,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
   const fam = {
     wall: new Family('wall', { roughness: 0.9 }),
     roof: new Family('roof', { roughness: 0.62, metalness: 0.15 }),
-    glass: new Family('glass', { roughness: 0.28, metalness: 0.2, castShadow: false }),
+    glass: new Family('glass', { roughness: 0.45, metalness: 0, castShadow: false }),
     trim: new Family('trim', { roughness: 0.85 }),
     iron: new Family('iron', { roughness: 0.5, metalness: 0.35, castShadow: false }),
   };
@@ -199,16 +228,24 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
   const stats = { buildings: 0, facades: 0, detailed: 0, shops: 0 };
   const up = [0, 1, 0];
 
-  for (const b of GEO.buildings) {
+  for (let b of GEO.buildings) {
     if (skip(b)) continue;
     stats.buildings++;
     const ring = pairs(b.o);
     const holes = (b.h ?? []).map(pairs);
     const seed = b.seed;
     const lightJit = 0.93 + hash(seed, 1) * 0.12;
-    const wallCol = shade(WALL[b.s] ?? WALL.plaster, lightJit);
+    // A facade recorded from a photograph (src/data/geo/facades.json) can
+    // set the building's own render colour.
+    const recorded = Object.entries(FACADES.facades ?? {}).find(([k, v]) => k.startsWith(b.id + ':') && v.wall);
+    const wallHex = recorded?.[1].wall ?? FACADES.walls?.[b.id];
+    const wallCol = wallHex ? new THREE.Color(wallHex) : shade(WALL[b.s] ?? WALL.plaster, lightJit);
     const sideCol = shade(wallCol, 0.97);
-    const g = b.g, e = b.e;
+    // A building's height and roof as read off a survey photograph, where
+    // BD TOPO's is wrong (facades.json "buildings").
+    const bo = FACADES.buildings?.[b.id];
+    const g = b.g, e = bo?.eaves ?? b.e;
+    if (bo?.roof) b = { ...b, r: bo.roof, i: bo.inset ?? Math.max(b.i, 1.2) };
 
     // ---- body -----------------------------------------------------------
     // Walls rise from the building's lowest ground to its eaves, so a house
@@ -246,6 +283,42 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
     }
     capPolygon(fam.roof, capRing, holes, capY, roofKind === 'mansard' ? shade(roofCol, 0.88) : roofCol);
 
+    // ---- chimney stacks ----------------------------------------------------
+    // The Paris roofline is chimneys: rendered stacks along the party walls,
+    // topped with rows of terracotta pots. In every survey photograph that
+    // shows a roof (rue d'Orchampt's bend, rue Lepic, Place des Abbesses)
+    // they are the strongest thing on the skyline, and a flat-capped block
+    // without them reads as a modern building.
+    {
+      const c0 = centroid(ring);
+      const nr0 = near.nearest(c0[0], c0[1], 140);
+      if (nr0 && nr0.dist < 80 && roofKind !== 'church') {
+        const streetEdges = new Set(b.se.map((e) => e[0]));
+        const topY = roofKind === 'flat' ? e : e + roofH;
+        let made = 0;
+        for (let i = 0; i < ring.length && made < 2; i++) {
+          if (streetEdges.has(i)) continue;
+          const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % ring.length];
+          const len = Math.hypot(bx - ax, bz - az);
+          if (len < 4 || hash(seed, 60 + i) < 0.35) continue;
+          const u = [(bx - ax) / len, 0, (bz - az) / len];
+          const w = [-u[2], 0, u[0]];
+          const inset = (roofKind === 'flat' ? 0.5 : b.i) + 0.25;
+          const cx = (ax + bx) / 2 - w[0] * inset, cz = (az + bz) / 2 - w[2] * inset;
+          const sw = Math.min(1.6, len * 0.22), sh = 1.0 + hash(seed, 61 + i) * 0.8;
+          const stackCol = shade(wallCol, 0.95);
+          fam.wall.box([cx, topY + sh / 2 - 0.3, cz], u, up, w, sw / 2, sh / 2 + 0.3, 0.3, stackCol);
+          fam.trim.box([cx, topY + sh + 0.05, cz], u, up, w, sw / 2 + 0.06, 0.06, 0.36, TRIM);
+          const pots = Math.min(3, Math.max(2, Math.round(sw / 0.4)));
+          for (let k = 0; k < pots; k++) {
+            const t = (k + 0.5) / pots - 0.5;
+            fam.roof.box([cx + u[0] * t * sw, topY + sh + 0.28, cz + u[2] * t * sw], u, up, w, 0.08, 0.18, 0.08, POT);
+          }
+          made++;
+        }
+      }
+    }
+
     // ---- facades onto streets -------------------------------------------
     const cent = centroid(ring);
     const nr = near.nearest(cent[0], cent[1], 140);
@@ -257,12 +330,21 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
     }
     const doorsByEdge = new Map();
     for (const d of b.dr ?? []) doorsByEdge.set(d[0], d[1]);
-    const shutterCol = SHUTTERS[Math.floor(hash(seed, 3) * SHUTTERS.length)];
+    const shutterColDefault = SHUTTERS[Math.floor(hash(seed, 3) * SHUTTERS.length)];
+    const shutterCol = shutterColDefault;
     const hasShutters = hash(seed, 4) < 0.72;
     const doorCol = DOORS[Math.floor(hash(seed, 5) * DOORS.length)];
     const grand = b.s === 'stone' && b.f >= 5;
 
-    for (const [ei] of b.se) {
+    // Street-facing walls, plus any other wall recorded from a photograph
+    // (a gable seen across a garden: the brick-and-stone block above Place
+    // Dalida is all side wall from rue Girardon).
+    const edgeList = [...b.se.map(([ei]) => ei)];
+    for (const k of Object.keys(FACADES.facades ?? {})) {
+      const [id, e] = k.split(':');
+      if (id === b.id && !edgeList.includes(+e) && +e < ring.length) edgeList.push(+e);
+    }
+    for (const ei of edgeList) {
       const [ax, az] = ring[ei];
       const [bx, bz] = ring[(ei + 1) % ring.length];
       const len = Math.hypot(bx - ax, bz - az);
@@ -272,7 +354,7 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       const mid = [(ax + bx) / 2, (az + bz) / 2];
       const nm = near.nearest(mid[0], mid[1], 140);
       const edgeDist = nm ? nm.dist : Infinity;
-      const detailed = edgeDist < NEAR_M;
+      const detailed = edgeDist < NEAR_M || !!FACADES.facades?.[`${b.id}:${ei}`];
       const anchored = edgeDist < ANCHOR_M;
       stats.facades++;
       if (detailed) stats.detailed++;
@@ -285,51 +367,139 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
       const H = e - streetY;
       if (H < 3) continue;
 
-      const shops = shopsByEdge.get(ei) ?? [];
-      const groundH = Math.min(H * 0.45, shops.length ? 4.0 : 3.4);
-      const upper = Math.max(0, Math.round((H - groundH - 0.6) / 3.0));
+      // RECORDED FACADE. Where this wall has been read off a survey
+      // photograph, its windows, doors and shops are where the photograph
+      // has them, as fractions of the wall between its two real corners.
+      const fx = FACADES.facades?.[`${b.id}:${ei}`] ?? null;
+      const shops = fx ? [] : shopsByEdge.get(ei) ?? [];
+      const groundH = fx?.groundH ?? Math.min(H * 0.45, shops.length ? 4.0 : 3.4);
+      const upper = fx?.floors ?? Math.max(0, Math.round((H - groundH - 0.6) / 3.0));
       const floorH = upper > 0 ? (H - groundH - 0.6) / upper : 0;
-      const nb = Math.max(1, Math.floor(len / 3.05));
+      const nb = fx?.bays?.length ?? Math.max(1, Math.floor(len / 3.05));
       const bayW = len / nb;
+      const bayX = (j, f = 0) => {
+        const row = fx?.rows?.[f] ?? fx?.bays;
+        return row ? row[j] * len : (j + 0.5) * bayW;
+      };
+      const baysOn = (f) => (fx?.rows?.[f] ?? fx?.bays)?.length ?? nb;
       const at = (t, y, out = 0) => [ax + u[0] * t + w[0] * out, y, az + u[2] * t + w[2] * out];
+      // A flat rectangle on the facade plane, facing the street: two
+      // triangles where a box costs twelve. Thin joinery and ironwork are
+      // only ever seen from the front.
+      const rect = (f, cx, cy, hw, hh, out, col) => f.quad(at(cx - hw, cy - hh, out), at(cx + hw, cy - hh, out),
+        at(cx + hw, cy + hh, out), at(cx - hw, cy + hh, out), col);
       const side = nm ? sideOf(rail, nm, mid) : 0;
-      const pushAnchor = (type, pos, k) => anchors.push({
+      const pushAnchor = (type, pos, k) => {
+        // A door more than 0.8 m below the walk is in a garden or a sunken
+        // court under the street: an enemy there is invisible from the rail.
+        // These only showed up once the terrain was drawn the right way up.
+        if (type === 'door' && pos[1] < nm.y - 0.8) return;
+        anchors.push({
         id: `b${b.id}_${ei}_${type}_${k}`, type,
         worldPos: new THREE.Vector3(pos[0], pos[1], pos[2]),
         railDistance: nm.d, side,
         facing: new THREE.Vector3(w[0], 0, w[2]),
-      });
+        });
+      };
 
       // Cornice: the strongest horizontal on any Paris street.
       fam.trim.box(at(len / 2, e - 0.18, 0.18), u, up, w, len / 2 + 0.25, 0.2, 0.32, TRIM);
 
       // Upper floors.
       let balconies = 0;
+      const stoneFace = b.s === 'stone';
+      const surround = shade(wallCol, stoneFace ? 1.06 : 1.04);
       for (let f = 1; f <= upper; f++) {
         const y0 = streetY + groundH + (f - 1) * floorH;
-        const wh = Math.min(1.85, floorH * 0.6);
-        const ww = Math.min(1.2, bayW * 0.44);
-        const wy = y0 + floorH * 0.24 + wh / 2;
-        const runBalcony = detailed && grand && (f === 2 || f === upper);
-        if (runBalcony) {
-          fam.iron.box(at(len / 2, y0 + floorH * 0.24 + 0.5, 0.55), u, up, w, len / 2 - 0.1, 0.5, 0.04, IRON);
-          fam.trim.box(at(len / 2, y0 + floorH * 0.24 - 0.06, 0.35), u, up, w, len / 2, 0.08, 0.35, TRIM);
+        // String course at every floor of a cut-stone block: the horizontal
+        // rhythm of every Haussmann-era front on rue Caulaincourt and rue
+        // des Abbesses.
+        if (fx?.bands) {
+          // Recorded: a broad pale stone band at every floor, as on the brick
+          // blocks of the 1900s (rue Girardon above Place Dalida).
+          rect(fam.trim, len / 2, y0 + 0.2, len / 2, 0.3, 0.04, new THREE.Color(fx.bands));
+        } else if (detailed && stoneFace && f > 1) {
+          rect(fam.trim, len / 2, y0 + 0.02, len / 2, 0.06, 0.04, surround);
         }
-        for (let j = 0; j < nb; j++) {
-          const cx = (j + 0.5) * bayW;
+        // French windows: tall and close, as on every street in the survey
+        // photos. The first version's 1.2 x 1.85 m at a 3 m pitch read as a
+        // prison block from twenty metres.
+        const wh = fx?.whRows?.[f] ?? fx?.wh ?? Math.min(2.15, floorH * 0.72);
+        const ww = fx?.ww ?? Math.min(1.2, bayW * 0.44);
+        const wy = y0 + floorH * 0.14 + wh / 2;
+        const runBalcony = fx ? (fx.balcony ?? []).includes(f) : detailed && grand && (f === 2 || f === upper);
+        if (runBalcony) {
+          // Open wrought iron: handrail, bottom rail and a baluster every
+          // 60 cm. As a solid plate it read as a black band across the block.
+          const by = y0 + floorH * 0.14;
+          fam.iron.box(at(len / 2, by + 0.95, 0.6), u, up, w, len / 2 - 0.1, 0.03, 0.04, IRON);
+          fam.iron.box(at(len / 2, by + 0.12, 0.6), u, up, w, len / 2 - 0.1, 0.02, 0.02, IRON);
+          for (let t = 0.3; t < len - 0.2; t += 0.6) rect(fam.iron, t, by + 0.54, 0.015, 0.41, 0.6, IRON);
+          fam.trim.box(at(len / 2, y0 + floorH * 0.14 - 0.06, 0.35), u, up, w, len / 2, 0.08, 0.35, TRIM);
+        }
+        for (let j = 0; j < baysOn(f); j++) {
+          const cx = bayX(j, f);
           fam.glass.quad(at(cx - ww / 2, wy - wh / 2, 0.04), at(cx + ww / 2, wy - wh / 2, 0.04),
             at(cx + ww / 2, wy + wh / 2, 0.04), at(cx - ww / 2, wy + wh / 2, 0.04), GLASS);
           if (!detailed) continue;
           fam.trim.box(at(cx, wy - wh / 2 - 0.07, 0.1), u, up, w, ww / 2 + 0.1, 0.07, 0.12, TRIM);
-          if (hasShutters && !grand) {
+          // The surround: a moulded stone architrave with a keystone on the
+          // stone blocks, a flat painted band on the rendered houses.
+          {
+            const bw = fx?.surroundW ?? (stoneFace ? 0.14 : 0.1);
+            const sc = fx?.surround ? new THREE.Color(fx.surround) : surround;
+            rect(fam.trim, cx, wy + wh / 2 + bw / 2, ww / 2 + bw, bw / 2, 0.03, sc);
+            for (const sx of [-1, 1]) rect(fam.trim, cx + sx * (ww / 2 + bw / 2), wy, bw / 2, wh / 2, 0.03, sc);
+            if (stoneFace) rect(fam.trim, cx, wy + wh / 2 + 0.16, 0.13, 0.17, 0.05, shade(surround, 1.03));
+          }
+          // White joinery: the frame and the glazing bar are what make a dark
+          // rectangle read as a Paris window rather than a hole.
+          rect(fam.trim, cx, wy + wh / 2 - 0.04, ww / 2, 0.05, 0.06, FRAME);
+          for (const s of [-1, 1]) rect(fam.trim, cx + s * (ww / 2 - 0.04), wy, 0.05, wh / 2, 0.06, FRAME);
+          rect(fam.trim, cx, wy, 0.03, wh / 2, 0.06, FRAME);
+          // Wrought-iron guard rail across the lower third of every French
+          // window on the stone buildings that do not have a running balcony.
+          // Open ironwork, not a plate: a solid box here read as a black bar
+          // across every window and turned the facades into rows of "H"s.
+          if ((fx ? fx.guards : grand) && !runBalcony) {
+            const ry = wy - wh / 2;
+            rect(fam.iron, cx, ry + 0.86, ww / 2 + 0.06, 0.025, 0.12, IRON);
+            rect(fam.iron, cx, ry + 0.22, ww / 2 + 0.06, 0.02, 0.12, IRON);
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * ww / 5, ry + 0.54, 0.012, 0.32, 0.12, IRON);
+          }
+          const shutOn = fx ? !!fx.shutters : hasShutters && !grand;
+          const shutterCol = fx?.shutters ? new THREE.Color(fx.shutters) : shutterColDefault;
+          if (shutOn && fx?.shutterMode === 'closed') {
+            // Recorded closed: the louvred leaves shut across the opening,
+            // pale slats over the glass, as on the stone house at Place Dalida.
+            rect(fam.trim, cx, wy, ww / 2 - 0.05, wh / 2 - 0.05, 0.07, shutterCol);
+            const louvre = shade(shutterCol, 0.8);
+            for (let k = 1; k < Math.round(wh / 0.12); k++) rect(fam.trim, cx, wy - wh / 2 + k * 0.12, ww / 2 - 0.07, 0.012, 0.08, louvre);
+            rect(fam.trim, cx, wy, 0.015, wh / 2 - 0.05, 0.08, louvre);
+          } else if (shutOn) {
+            // Persiennes: louvred, folded back against the wall. The slats
+            // read as fine dark lines, three per leaf at this distance.
+            const louvre = shade(shutterCol, 0.72);
             for (const s of [-1, 1]) {
-              fam.trim.box(at(cx + s * (ww / 2 + ww * 0.27), wy, 0.07), u, up, w,
-                ww * 0.26, wh / 2, 0.04, shutterCol);
+              const sx = cx + s * (ww / 2 + ww * 0.27);
+              rect(fam.trim, sx, wy, ww * 0.26, wh / 2, 0.1, shutterCol);
+              for (let k = 1; k <= 3; k++) {
+                rect(fam.trim, sx, wy - wh / 2 + (wh * k) / 4, ww * 0.22, 0.02, 0.12, louvre);
+              }
             }
           }
-          const ownBalcony = !runBalcony && hash(seed, 100 + f * 31 + j) < (grand ? 0.0 : 0.14);
+          // Window boxes with geraniums on the old houses, one window in five.
+          if (fx ? (fx.boxes ?? []).includes(`${f}:${j}`) : !grand && !stoneFace && f <= 2 && hash(seed, 300 + f * 17 + j) < 0.2) {
+            const by = wy - wh / 2;
+            fam.trim.box(at(cx, by + 0.09, 0.2), u, up, w, ww / 2, 0.09, 0.12, BOX_GREEN);
+            const fl = FLOWERS[Math.floor(hash(seed, 301 + j) * FLOWERS.length)];
+            for (let k = -1; k <= 1; k++) fam.trim.box(at(cx + k * ww / 3, by + 0.24, 0.22), u, up, w, ww / 7, 0.08, 0.1, k ? fl : FOLIAGE_BOX);
+          }
+          const ownBalcony = fx ? (fx.balconettes ?? []).includes(`${f}:${j}`) : !runBalcony && hash(seed, 100 + f * 31 + j) < (grand ? 0.0 : 0.14);
           if (ownBalcony) {
-            fam.iron.box(at(cx, wy - wh / 2 + 0.45, 0.42), u, up, w, ww / 2 + 0.15, 0.45, 0.03, IRON);
+            const by = wy - wh / 2;
+            fam.iron.box(at(cx, by + 0.9, 0.42), u, up, w, ww / 2 + 0.15, 0.03, 0.03, IRON);
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * (ww / 2 + 0.1) / 2, by + 0.45, 0.015, 0.45, 0.42, IRON);
             fam.trim.box(at(cx, wy - wh / 2 - 0.05, 0.22), u, up, w, ww / 2 + 0.2, 0.06, 0.24, TRIM);
           }
           if (anchored && (runBalcony || ownBalcony) && f <= 3 && balconies < 3) {
@@ -341,14 +511,42 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
 
       if (!detailed) continue;
 
-      // Socle and the band over the ground floor.
-      fam.trim.box(at(len / 2, streetY + 0.3, 0.05), u, up, w, len / 2, 0.32, 0.08, SOCLE);
+      // Socle and the band over the ground floor. Rendered houses (most of
+      // the old village) get the taller exposed-stone base they have in life.
+      const tallBase = fx?.base ? true : b.s !== 'stone' && hash(seed, 13) < 0.55;
+      const sh = fx?.base?.h ? fx.base.h / 2 : tallBase ? 0.55 + hash(seed, 14) * 0.45 : 0.32;
+      const baseCol = fx?.base?.col ? new THREE.Color(fx.base.col) : tallBase ? RUBBLE_BASE : SOCLE;
+      fam.trim.box(at(len / 2, streetY + sh - 0.02, 0.05), u, up, w, len / 2, sh, 0.08, baseCol);
+      // Rusticated ground floor on the stone blocks: horizontal channelled
+      // joints every half metre up to the first-floor band.
+      if (stoneFace && !shops.length) {
+        const joint = shade(wallCol, 0.82);
+        for (let y = streetY + sh + 0.45; y < streetY + groundH - 0.2; y += 0.5) rect(fam.trim, len / 2, y, len / 2, 0.025, 0.02, joint);
+      }
+      // A zinc downpipe at one end of every front, eaves to pavement.
+      {
+        const t = hash(seed, 20 + ei) < 0.5 ? 0.18 : len - 0.18;
+        fam.iron.box(at(t, (streetY + e) / 2, 0.1), u, up, w, 0.05, (e - streetY) / 2, 0.05, ZINC_PIPE);
+        fam.iron.box(at(t, e - 0.25, 0.22), u, up, w, 0.12, 0.12, 0.12, ZINC_PIPE);
+      }
+      // The blue enamel street plate, on corners: where the previous wall of
+      // this footprint faces a street too.
+      {
+        const prev = (ei - 1 + ring.length) % ring.length;
+        if (b.se.some((q) => q[0] === prev) && len > 3) {
+          const py = Math.min(streetY + groundH + 0.6, e - 1);
+          fam.trim.box(at(0.7, py, 0.05), u, up, w, 0.38, 0.14, 0.02, PLATE_WHITE);
+          fam.trim.box(at(0.7, py, 0.07), u, up, w, 0.35, 0.11, 0.02, PLATE_BLUE);
+        }
+      }
       if (upper > 0) {
         fam.trim.box(at(len / 2, streetY + groundH + 0.05, 0.1), u, up, w, len / 2 + 0.05, 0.1, 0.14, TRIM);
       }
 
-      // Ground floor: real shops where OSM has them, a door otherwise.
-      if (shops.length) {
+      // Ground floor: as recorded, else real shops where OSM has them, else a door.
+      if (fx?.ground) {
+        drawRecordedGround(fx.ground, { fam, at, rect, len, streetY, groundH, u, up, w, surround, shutterColDefault, pushAnchor, anchored, stats });
+      } else if (shops.length) {
         for (const [, t, kind] of shops) {
           stats.shops++;
           const sw = Math.min(len * 0.82, 5.6);
@@ -357,22 +555,49 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           const ac = pal[Math.floor(hash(seed, 7 + Math.round(t * 50)) * pal.length)];
           const gy = streetY + 0.35;
           const gh = groundH * 0.72;
-          fam.glass.quad(at(c - sw / 2, gy, 0.05), at(c + sw / 2, gy, 0.05),
-            at(c + sw / 2, gy + gh, 0.05), at(c - sw / 2, gy + gh, 0.05), GLASS_SHOP);
-          // Fascia with the shop's colour, then the awning sloping out over
-          // the pavement — the cue that reads "shop" at forty metres.
-          fam.trim.box(at(c, gy + gh + 0.32, 0.1), u, up, w, sw / 2 + 0.15, 0.3, 0.1, shade(ac, 0.8));
-          const out = Math.min(1.5, 0.9 + hash(seed, 9) * 0.6);
-          const yTop = gy + gh + 0.05, yBot = yTop - 0.55;
-          const p0 = at(c - sw / 2, yTop, 0.12), p1 = at(c + sw / 2, yTop, 0.12);
-          const p2 = at(c + sw / 2, yBot, out), p3 = at(c - sw / 2, yBot, out);
-          fam.trim.quad(p3, p2, p1, p0, ac);
-          fam.trim.quad(p0, p1, p2, p3, shade(ac, 0.7));
-          // The valance: bottom-left, bottom-right, top-right, top-left as
-          // seen from the street, or it is wound away from the viewer and
-          // simply does not render.
-          fam.trim.quad(at(c - sw / 2, yBot - 0.22, out), at(c + sw / 2, yBot - 0.22, out),
-            at(c + sw / 2, yBot, out), at(c - sw / 2, yBot, out), shade(ac, 0.9));
+          // The devanture: a painted timber shopfront proud of the wall, with
+          // pilasters, a deep fascia and a stall riser under the glass. This
+          // is what reads "shop" in Paris; the awning is optional and about
+          // half of the shops on the route have none.
+          const dv = DEVANTURE[Math.floor(hash(seed, 17 + Math.round(t * 50)) * DEVANTURE.length)];
+          const D = 0.16;
+          fam.trim.box(at(c, gy + gh + 0.34, D), u, up, w, sw / 2 + 0.22, 0.34, 0.08, dv);
+          // The shop's name on the fascia, as a pale band of "lettering": no
+          // text at this distance, but the band is what says sign.
+          const ink = dv.r + dv.g + dv.b > 1.8 ? new THREE.Color('#2A2A2C') : new THREE.Color('#E9E2CF');
+          rect(fam.trim, c, gy + gh + 0.34, Math.min(sw * 0.32, 1.6), 0.09, D + 0.085, ink);
+          // A projecting blade sign on one shop in three, and the green cross
+          // that every pharmacy hangs out.
+          if (kind === 'pharmacy' || hash(seed, 23 + Math.round(t * 50)) < 0.33) {
+            const sy = gy + gh + 1.05, sx = Math.max(0.5, c - sw / 2 - 0.1);
+            if (kind === 'pharmacy') {
+              const green = new THREE.Color('#1FA34A');
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.3, 0.1, 0.05, green);
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.1, 0.3, 0.05, green);
+            } else {
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.32, 0.24, 0.03, dv);
+              fam.trim.box(at(sx, sy, 0.45), w, up, u, 0.2, 0.06, 0.035, ink);
+            }
+            fam.iron.box(at(sx, sy + 0.3, 0.3), w, up, u, 0.3, 0.02, 0.02, IRON);
+          }
+          for (const sx of [-1, 1]) fam.trim.box(at(c + sx * (sw / 2 + 0.1), streetY + (gh + 0.7) / 2, D), u, up, w, 0.12, (gh + 0.7) / 2, 0.08, dv);
+          fam.trim.box(at(c, streetY + 0.3, D), u, up, w, sw / 2, 0.3, 0.06, dv);
+          fam.glass.quad(at(c - sw / 2, gy + 0.25, 0.12), at(c + sw / 2, gy + 0.25, 0.12),
+            at(c + sw / 2, gy + gh, 0.12), at(c - sw / 2, gy + gh, 0.12), GLASS_SHOP);
+          // Glazing bars dividing the window into the usual three lights.
+          for (const k of [-1, 1]) rect(fam.trim, c + k * sw / 6, gy + 0.25 + (gh - 0.25) / 2, 0.04, (gh - 0.25) / 2, 0.14, dv);
+          if (hash(seed, 19 + Math.round(t * 50)) < 0.5 || kind === 'cafe' || kind === 'restaurant' || kind === 'bar') {
+            const out = Math.min(1.5, 0.9 + hash(seed, 9) * 0.6);
+            const yTop = gy + gh + 0.05, yBot = yTop - 0.55;
+            const p0 = at(c - sw / 2, yTop, 0.24), p1 = at(c + sw / 2, yTop, 0.24);
+            const p2 = at(c + sw / 2, yBot, out), p3 = at(c - sw / 2, yBot, out);
+            fam.trim.quad(p3, p2, p1, p0, ac);
+            fam.trim.quad(p0, p1, p2, p3, shade(ac, 0.7));
+            // The valance: bottom-left, bottom-right, top-right, top-left as
+            // seen from the street, or it is wound away from the viewer.
+            fam.trim.quad(at(c - sw / 2, yBot - 0.22, out), at(c + sw / 2, yBot - 0.22, out),
+              at(c + sw / 2, yBot, out), at(c - sw / 2, yBot, out), shade(ac, 0.9));
+          }
           if (anchored) pushAnchor('door', at(c, streetY, 0.7), `s${Math.round(t * 100)}`);
         }
       } else if (len > 3.2) {
@@ -380,7 +605,10 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
         const cochere = len > 11 && H > 11 && hash(seed, 12 + ei) < 0.5;
         const dw = cochere ? 2.8 : 1.25, dh = Math.min(groundH - 0.2, cochere ? 3.6 : 2.55);
         const c = Math.min(len - dw / 2 - 0.3, Math.max(dw / 2 + 0.3, tDoor * len));
-        fam.trim.box(at(c, streetY + dh / 2, 0.06), u, up, w, dw / 2, dh / 2, 0.06, doorCol);
+        // Carriage doors are varnished or painted wood, nearly always.
+        const dc = cochere ? WOOD_DOOR[Math.floor(hash(seed, 15 + ei) * WOOD_DOOR.length)] : doorCol;
+        fam.trim.box(at(c, streetY + dh / 2, 0.06), u, up, w, dw / 2, dh / 2, 0.06, dc);
+        if (cochere) rect(fam.trim, c, streetY + dh / 2, 0.03, dh / 2 - 0.05, 0.13, shade(dc, 0.7));
         fam.trim.box(at(c, streetY + dh + 0.12, 0.09), u, up, w, dw / 2 + 0.18, 0.12, 0.1, TRIM);
         if (anchored) pushAnchor('door', at(c, streetY, 0.6), 'd');
         // Ground-floor windows either side of the door, shuttered or barred.
@@ -390,10 +618,13 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
           const wy = streetY + groundH * 0.55;
           const shut = hash(seed, 200 + j) < 0.45;
           if (shut) {
-            fam.trim.box(at(cx, wy, 0.06), u, up, w, Math.min(0.6, bayW * 0.22), 0.85, 0.04, shutterCol);
+            rect(fam.trim, cx, wy, Math.min(0.6, bayW * 0.22), 0.85, 0.06, shutterCol);
           } else {
             fam.glass.quad(at(cx - 0.55, wy - 0.8, 0.04), at(cx + 0.55, wy - 0.8, 0.04),
               at(cx + 0.55, wy + 0.8, 0.04), at(cx - 0.55, wy + 0.8, 0.04), GLASS);
+            // Street-level windows are barred all over the Butte.
+            for (let k = -2; k <= 2; k++) rect(fam.iron, cx + k * 0.22, wy, 0.015, 0.8, 0.1, IRON);
+            rect(fam.trim, cx, wy + 0.85, 0.65, 0.06, 0.05, surround);
           }
         }
       }
@@ -408,13 +639,14 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
         else pushAnchor('roof', at(len / 2, e + 0.05, -0.55), 'r');
         if (roofKind === 'mansard' && len > 5) {
           let dormers = 0;
-          for (let j = 1; j < nb; j += 2) {
-            const cx = (j + 0.5) * bayW;
+          const dormerXs = fx?.dormers ? fx.dormers.map((t) => t * len) : [];
+          if (!fx?.dormers) for (let j = 1; j < nb; j += 2) dormerXs.push((j + 0.5) * bayW);
+          for (const cx of dormerXs) {
             const dy = e + 1.1;
             fam.roof.box(at(cx, dy, -0.75), u, up, w, 0.6, 0.75, 0.55, shade(roofCol, 1.05));
             fam.glass.quad(at(cx - 0.38, dy - 0.5, -0.19), at(cx + 0.38, dy - 0.5, -0.19),
               at(cx + 0.38, dy + 0.45, -0.19), at(cx - 0.38, dy + 0.45, -0.19), GLASS);
-            if (dormers < 2) { pushAnchor('dormer', at(cx, dy - 0.75, 0.0), `m${j}`); dormers++; }
+            if (dormers < 2) { pushAnchor('dormer', at(cx, dy - 0.75, 0.0), `m${Math.round(cx * 10)}`); dormers++; }
           }
         }
       }
@@ -433,6 +665,73 @@ export function buildRealCity(rail, near, { skip = () => false } = {}) {
   }
   stats.triangles = Object.values(fam).reduce((s, f) => s + f.tris, 0);
   return { group, anchors, occluders, stats };
+}
+
+/**
+ * A ground floor exactly as recorded from a photograph. Positions are
+ * fractions of the wall from its first corner (`t`, or `t0`..`t1` for a
+ * run); sizes are metres.
+ *
+ *   door     { t, w=1.2, h=2.5, col }             a house door, with its transom
+ *   cochere  { t, w=2.8, h=3.6, col }             a carriage door
+ *   win      { t, w=1.1, h=1.6, bars, shut }      a window, barred and/or shuttered
+ *   shop     { t0, t1, col, awning, glass }       a painted shopfront
+ *   rolling  { t0, t1, h=3 }                      a closed metal roller shutter
+ */
+const ROLLER = new THREE.Color('#7D8085');
+function drawRecordedGround(items, ctx) {
+  const { fam, at, rect, len, streetY, groundH, u, up, w, surround, shutterColDefault, pushAnchor, anchored, stats } = ctx;
+  for (const [i, it] of items.entries()) {
+    const col = it.col ? new THREE.Color(it.col) : null;
+    if (it.k === 'door' || it.k === 'cochere') {
+      const big = it.k === 'cochere';
+      const dw = it.w ?? (big ? 2.8 : 1.2), dh = Math.min(groundH - 0.15, it.h ?? (big ? 3.6 : 2.5));
+      const c = it.t * len;
+      const dc = col ?? (big ? WOOD_DOOR[0] : DOORS[0]);
+      fam.trim.box(at(c, streetY + dh / 2, 0.06), u, up, w, dw / 2, dh / 2, 0.06, dc);
+      rect(fam.trim, c, streetY + dh / 2, 0.03, dh / 2 - 0.05, 0.13, shade(dc, 0.7));
+      if (!big) rect(fam.glass, c, streetY + dh - 0.25, dw / 2 - 0.1, 0.15, 0.13, GLASS);
+      fam.trim.box(at(c, streetY + dh + 0.12, 0.09), u, up, w, dw / 2 + 0.18, 0.12, 0.1, surround);
+      if (anchored) pushAnchor('door', at(c, streetY, 0.6), `r${i}`);
+    } else if (it.k === 'win') {
+      const ww = it.w ?? 1.1, wh = it.h ?? 1.6, c = it.t * len;
+      const wy = streetY + (it.y ?? groundH * 0.55);
+      rect(fam.glass, c, wy, ww / 2, wh / 2, 0.04, GLASS);
+      rect(fam.trim, c, wy + wh / 2 + 0.06, ww / 2 + 0.1, 0.06, 0.05, surround);
+      rect(fam.trim, c, wy - wh / 2 - 0.05, ww / 2 + 0.1, 0.05, 0.08, surround);
+      if (it.bars) for (let k = -2; k <= 2; k++) rect(fam.iron, c + k * ww / 5, wy, 0.015, wh / 2, 0.1, IRON);
+      if (it.shut) {
+        const sc = it.shut === true ? shutterColDefault : new THREE.Color(it.shut);
+        for (const sx of [-1, 1]) rect(fam.trim, c + sx * (ww / 2 + ww * 0.26), wy, ww * 0.25, wh / 2, 0.1, sc);
+      }
+    } else if (it.k === 'shop') {
+      stats.shops++;
+      const x0 = it.t0 * len, x1 = it.t1 * len, c = (x0 + x1) / 2, sw = x1 - x0;
+      const dv = col ?? DEVANTURE[0];
+      const gy = streetY + 0.35, gh = Math.min(groundH * 0.72, 2.8);
+      const D = 0.16;
+      fam.trim.box(at(c, gy + gh + 0.34, D), u, up, w, sw / 2 + 0.1, 0.34, 0.08, dv);
+      const ink = dv.r + dv.g + dv.b > 1.8 ? new THREE.Color('#2A2A2C') : new THREE.Color('#E9E2CF');
+      rect(fam.trim, c, gy + gh + 0.34, Math.min(sw * 0.32, 1.6), 0.09, D + 0.085, ink);
+      for (const sx of [-1, 1]) fam.trim.box(at(c + sx * (sw / 2 - 0.02), streetY + (gh + 0.7) / 2, D), u, up, w, 0.1, (gh + 0.7) / 2, 0.08, dv);
+      fam.trim.box(at(c, streetY + 0.3, D), u, up, w, sw / 2, 0.3, 0.06, dv);
+      rect(fam.glass, c, gy + 0.25 + (gh - 0.25) / 2, sw / 2 - 0.12, (gh - 0.25) / 2, 0.12, it.glass ? new THREE.Color(it.glass) : GLASS_SHOP);
+      if (it.awning) {
+        const ac = new THREE.Color(it.awning);
+        const out = 1.2, yTop = gy + gh + 0.05, yBot = yTop - 0.55;
+        const p0 = at(x0, yTop, 0.24), p1 = at(x1, yTop, 0.24), p2 = at(x1, yBot, out), p3 = at(x0, yBot, out);
+        fam.trim.quad(p3, p2, p1, p0, ac);
+        fam.trim.quad(p0, p1, p2, p3, shade(ac, 0.7));
+        fam.trim.quad(at(x0, yBot - 0.22, out), at(x1, yBot - 0.22, out), at(x1, yBot, out), at(x0, yBot, out), shade(ac, 0.9));
+      }
+      if (anchored) pushAnchor('door', at(c, streetY, 0.7), `rs${i}`);
+    } else if (it.k === 'rolling') {
+      const x0 = it.t0 * len, x1 = it.t1 * len, c = (x0 + x1) / 2, sw = x1 - x0, h = Math.min(groundH - 0.2, it.h ?? 3);
+      rect(fam.trim, c, streetY + h / 2, sw / 2, h / 2, 0.05, ROLLER);
+      for (let y = streetY + 0.25; y < streetY + h; y += 0.25) rect(fam.trim, c, y, sw / 2, 0.015, 0.06, shade(ROLLER, 0.8));
+      fam.trim.box(at(c, streetY + h + 0.15, 0.12), u, up, w, sw / 2 + 0.05, 0.15, 0.12, col ?? DEVANTURE[2]);
+    }
+  }
 }
 
 /**
@@ -482,7 +781,7 @@ function sideOf(rail, sample, [x, z]) {
  * openings that are actually there.
  */
 export function sideStreetAnchors(rail, near, isBlocked = () => false) {
-  const MIN = 6.5, MAX = 13;
+  const MIN = 6.5, MAX = 18;
   const out = [];
   for (const r of GEO.roads) {
     const pts = [];
@@ -497,7 +796,14 @@ export function sideStreetAnchors(rail, near, isBlocked = () => false) {
         if (!nr || nr.dist < MIN || nr.dist > MAX) continue;
         const tan = rail.tangentAt(nr.d);
         if (Math.abs(dx * tan.x + dz * tan.z) > 0.55) continue;
-        if (Math.abs(y - nr.y) > 4) continue;
+        // Above the walk is fine (a lane climbing away); more than a metre below
+        // it and the enemy is down a slope the player cannot see into.
+        // (Half a metre was tried; it took away every visible alley around
+        // the crest at Place Dalida. The bomber that ran in unseen below
+        // Place Émile-Goudeau is fixed in enemy.js, where it now runs on the
+        // ground.)
+        const gy = groundAt(x, z) ?? y;
+        if (gy - nr.y > 4 || gy < nr.y - 1.0) continue;
         if (isBlocked(x, z)) continue;
         if (out.some((a) => (a.worldPos.x - x) ** 2 + (a.worldPos.z - z) ** 2 < 100)) continue;
         const toRail = new THREE.Vector3(nr.x - x, 0, nr.z - z).normalize();
@@ -514,4 +820,24 @@ export function sideStreetAnchors(rail, near, isBlocked = () => false) {
     }
   }
   return out;
+}
+
+/**
+ * Which recorded-or-not wall is nearest a point: `{ id, edge, dist, t }`,
+ * with `t` the fraction along the wall. Used by tools/verify/whichwall.mjs to
+ * answer "which footprint is that facade in the photo" from the game's side.
+ */
+export function wallAt(x, z, maxD = 3) {
+  let best = null;
+  for (const b of GEO.buildings) {
+    const ring = pairs(b.o);
+    for (const [ei] of b.se) {
+      const [ax, az] = ring[ei], [bx, bz] = ring[(ei + 1) % ring.length];
+      const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      if (d < maxD && (!best || d < best.dist)) best = { id: b.id, edge: ei, dist: +d.toFixed(2), t: +t.toFixed(3), len: +Math.sqrt(L2).toFixed(1) };
+    }
+  }
+  return best;
 }

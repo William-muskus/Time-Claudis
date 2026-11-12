@@ -11,7 +11,10 @@ import { buildSky } from '../render/sky.js';
 import { railIndex, insideBuilding, pairs } from './geo.js';
 import { buildRealCity, sideStreetAnchors } from './realbuildings.js';
 import { buildTerrain } from './terrain.js';
-import { buildRealTrees, buildRealFurniture } from './realtrees.js';
+import { buildGround } from './ground.js';
+import { buildRealTrees, buildRealFurniture, buildGardenTrees } from './realtrees.js';
+import { buildBoundaries } from './boundaries.js';
+import { buildParkedVehicles, buildTerraces } from './traffic.js';
 
 /**
  * Assembles Montmartre from the survey.
@@ -53,10 +56,37 @@ export function buildWorld(rail, seed = 0x4D4F4E54 /* "MONT" */, assets = EMPTY_
   anchors.push(...sideStreetAnchors(rail, near, (x, z) => insideBuilding(x, z, 0.3)));
 
   root.add(buildTerrain(rail, near));
-  root.add(buildRealTrees(rail, near, (x, z) => insideBuilding(x, z)));
+  root.add(buildGround(rail, near));
+  const trees = buildRealTrees(rail, near, (x, z) => insideBuilding(x, z));
+  root.add(trees);
+  occluders.push(...trees.userData.occluders);
+  // The walls, railings and gates between the buildings, and the gardens'
+  // trees behind them: see boundaries.js for why the street was unrecognisable
+  // without them.
+  const bounds = buildBoundaries(rail, near);
+  root.add(bounds);
+  occluders.push(...bounds.userData.occluders);
+  // Garden gates are doors too: on the garden-lined stretches (rue Girardon
+  // above Place Dalida) they are the only openings anyone can come out of.
+  for (const [i, gt] of bounds.userData.gates.entries()) {
+    const nr = near.nearest(gt.x, gt.z, 40);
+    if (!nr || nr.dist < 2.5) continue;
+    const toRail = new THREE.Vector3(nr.x - gt.x, 0, nr.z - gt.z).normalize();
+    // Stand in the gateway, a step out toward the street.
+    const pos = new THREE.Vector3(gt.x + toRail.x * 0.6, gt.y, gt.z + toRail.z * 0.6);
+    const t = rail.tangentAt(nr.d);
+    const side = Math.sign((pos.x - nr.x) * -t.z + (pos.z - nr.z) * t.x) || 1;
+    anchors.push({ id: `gate_${i}`, type: 'door', worldPos: pos, railDistance: nr.d, side, facing: toRail });
+  }
+  const gardens = buildGardenTrees(rail, near, bounds.userData.gardenSpots, (x, z) => insideBuilding(x, z, 1.2));
+  root.add(gardens);
+  occluders.push(...gardens.userData.occluders);
   root.add(buildRealFurniture(rail, near, assets));
   root.add(buildProps(rail, rng, assets));
-  root.add(buildCover(rail, rng));
+  const cover = buildCover(rail, rng);
+  root.add(cover);
+  root.add(buildParkedVehicles(rail));
+  root.add(buildTerraces(rail, near));
 
   const sky = buildSky();
   sky.userData.dynamic = true;   // never batched; it tracks the camera

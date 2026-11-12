@@ -16,7 +16,8 @@
     "palette": "node tools/verify/palette-check.mjs",
     "mix": "node tools/verify/mix.mjs",
     "perf": "node tools/verify/perf.mjs",
-    "degrade": "node tools/verify/degrade.mjs"
+    "degrade": "node tools/verify/degrade.mjs",
+    "compare": "node tools/verify/compare.mjs"
   },
   "dependencies": {
     "three": "^0.169.0",

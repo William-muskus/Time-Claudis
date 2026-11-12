@@ -50,41 +50,70 @@ function census(obj) {
   return { meshes, tris, materials: materials.size };
 }
 
-test('the world still submits in a couple of hundred draw calls', () => {
+test('every view along the walk draws a bounded amount', () => {
+  // The budget is PER VIEW, not per map. The player only ever sees a few
+  // streets, so the static world is batched per material AND per 100 m tile
+  // (optimize.js) and three.js frustum-culls the tiles. What matters is what
+  // one frame draws, measured here from the camera's own position and heading
+  // every ten metres of the walk. (A total-triangle ceiling used to stand
+  // here; it limited detail on streets the player is nowhere near.)
   const rail = new Rail(railPoints());
   const { root } = buildWorld(rail, 0xC0FFEE);
   const c = census(root);
-
-  // Measured: 66. The ceiling is three times that, so ordinary authoring has
-  // room and a batcher that has quietly stopped working does not.
-  assert.ok(c.meshes < 200,
-    `${c.meshes} draw calls — the static batcher is not doing its job`);
-  // One material per batch, give or take. A number near the mesh count means
-  // materials have stopped being shared and batching cannot merge anything.
-  assert.ok(c.materials <= c.meshes,
-    `${c.materials} materials for ${c.meshes} meshes`);
-  // Measured: 320,510. A low-poly stage that crosses a million triangles is
-  // not low-poly any more, whatever it looks like.
-  assert.ok(c.tris < 700000,
-    `${c.tris.toLocaleString()} triangles is no longer a low-poly scene`);
+  assert.ok(c.materials <= c.meshes, `${c.materials} materials for ${c.meshes} meshes`);
+  root.updateMatrixWorld(true);
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh && o.parent?.name !== 'sky') meshes.push(o); });
+  const cam = new THREE.PerspectiveCamera(58, 16 / 9, 0.1, 900);
+  const fr = new THREE.Frustum(), m = new THREE.Matrix4(), sph = new THREE.Sphere();
+  let worst = { calls: 0, tris: 0, d: 0 };
+  for (let d = 0; d < rail.length; d += 10) {
+    const p = rail.positionAt(d), a = rail.positionAt(Math.min(rail.length, d + 15));
+    cam.position.set(p.x, p.y + 1.66, p.z);
+    cam.lookAt(a.x, a.y + 1.6, a.z);
+    cam.updateMatrixWorld(true);
+    fr.setFromProjectionMatrix(m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+    let calls = 0, tris = 0;
+    for (const o of meshes) {
+      const g = o.geometry;
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      sph.copy(g.boundingSphere).applyMatrix4(o.matrixWorld);
+      if (o.frustumCulled !== false && !fr.intersectsSphere(sph)) continue;
+      calls++;
+      tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+    }
+    if (tris > worst.tris) worst = { calls, tris, d };
+  }
+  // Measured: worst 550k triangles in about 600 draw calls (the opening
+  // frame, which looks down the whole hill). Ceilings with room for detail,
+  // well inside what a desktop GPU draws at 60 fps under WebGL2.
+  assert.ok(worst.tris < 2_000_000, `${Math.round(worst.tris).toLocaleString()} triangles in the view at ${worst.d} m`);
+  assert.ok(worst.calls < 1200, `${worst.calls} draw calls in the view at ${worst.d} m: tiling or batching has broken`);
 });
 
-test('nothing in the world needs a texture upload', () => {
-  // Every surface is vertex-coloured. That is what lets 23,000 meshes merge
-  // into 66 batches in the first place, and it is also why the game has no
-  // texture memory to speak of. A map slipping in would break both.
+test('the only textures in the world are the shared ground patterns', () => {
+  // Every surface is vertex-coloured, which is what lets thousands of meshes
+  // merge into a few dozen batches and keeps texture memory near zero. The
+  // one exception is the ground: granite setts cannot be said in flat colour,
+  // and in the survey photos they are the most recognisable thing on the
+  // lanes. So the street surfaces carry ONE of the few small procedural
+  // patterns from src/render/textures.js, shared by every mesh that uses it,
+  // and nothing else may carry a map at all.
   const rail = new Rail(railPoints());
   const { root } = buildWorld(rail, 0xBADA55);
-  const textured = [];
+  const textures = new Set();
+  const stray = [];
   root.traverse((o) => {
     if (!o.isMesh) return;
     for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
       if (!m) continue;
       for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
-        if (m[slot]) textured.push(`${o.name || '(unnamed)'}.${slot}`);
+        if (!m[slot]) continue;
+        if (slot === 'map' && m.map.isDataTexture && m.map.image.width <= 256) textures.add(m.map);
+        else stray.push(`${o.name || '(unnamed)'}.${slot}`);
       }
     }
   });
-  assert.deepEqual(textured, [],
-    `these carry textures in a vertex-coloured scene: ${textured.slice(0, 5).join(', ')}`);
+  assert.deepEqual(stray, [], `these carry textures they should not: ${stray.slice(0, 5).join(', ')}`);
+  assert.ok(textures.size <= 4, `${textures.size} distinct ground textures; they are meant to be shared`);
 });

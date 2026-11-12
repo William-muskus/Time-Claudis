@@ -64,8 +64,9 @@ generating synthetic hand poses and feeding them through the *real* gesture
 recogniser, so it exercises the whole input stack rather than bypassing it.
 
 ```bash
-npm test           # 145 tests: cover timing, gestures, route topology, playthrough
+npm test           # 147 tests: cover timing, gestures, route topology, playthrough
 npm run tour       # drive the built game in headless Chromium and screenshot it
+npm run compare    # render the game beside real street photos of the route, from the same spots
 npm run bench      # the first-person weapon, on its own, in seconds
 npm run palette    # measure a frame against the amber/violet contract
 npm run mix        # every sound's peak level, ranked against its importance

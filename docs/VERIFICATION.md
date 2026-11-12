@@ -12,7 +12,7 @@ half that. Every design decision below follows from that number.
 
 ## `npm test` — does the simulation obey the contract?
 
-145 tests, no browser, seconds. Three.js builds and updates a scene
+147 tests, no browser, seconds. Three.js builds and updates a scene
 perfectly well without WebGL; only *drawing* needs a GPU, so the entire
 simulation is testable headlessly.
 
@@ -67,7 +67,37 @@ are placed by the real anchor-selection rules: out of a real doorway, at a real
 engagement distance, on a real side of the street. A harness that placed
 enemies by hand would be photographing something the game never does.
 
+## `npm run compare` — does it look like the real street?
+
+The check every other tool here was missing. For each photograph in
+`tools/geo/references.json` — the Ville de Paris's own 2024–25 street survey
+on Panoramax, one frame per waypoint, picked by `tools/geo/references.py` — it
+stands the game camera exactly where the photo was taken (position, compass
+heading, horizontal field of view; `__tour.pose()`), renders without the HUD or
+the gun, and writes the photo and the render one above the other into
+`artifacts/compare/`.
+
+It exists because the first data-driven Montmartre passed every test in this
+repository — every footprint within a metre of IGN's, the walk on the real
+centrelines, the palette contract measured — and someone who lives on the route
+did not recognise a single street. The geometry was right. The colours (a
+saturated golden hour where the real street is cream and white), the ground
+(blue slabs where it is granite setts), the walls between the buildings (absent
+where every gap is closed by rubble stone, rendered walls, railings and gates),
+the gardens behind them, the bollards, the parked cars and scooters, the
+lanterns: all wrong, and nothing in the harness had ever looked at a real
+street to notice. The first comparison sheet made all of it obvious at once.
+
+Photos are CC-BY-SA, credited per frame; they are downloaded into `artifacts/`
+on first run and never committed.
+
 ## `npm run palette <png...>` — is the colour contract actually being met?
+
+> **Superseded as a target (November 2026).** The amber/violet contract this
+> tool measures was abandoned in the daylight re-grade, after `npm run compare`
+> showed it was most of why the streets were unrecognisable. The tool still
+> measures clipping and crushed blacks, which remain worth keeping under 4% and
+> 3%; the warm/cool split no longer has a target.
 
 `src/render/palette.js` promises one thing above all: everything is either
 warm or cool, nothing in between, because flat-shaded geometry has no surface

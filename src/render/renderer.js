@@ -66,7 +66,7 @@ export class Renderer {
     // and disappeared completely. Less haze is not more legibility when the
     // subject and the sky are the same value. The rooftop hole was filled with
     // geometry instead, and later replaced by the real terrain (world/terrain.js).
-    this.scene.fog = new THREE.Fog(PALETTE.fogColor, 110, 560);
+    this.scene.fog = new THREE.Fog(PALETTE.fogColor, 140, 720);
 
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 900);
 
@@ -98,7 +98,7 @@ export class Renderer {
     // FILL below has to be so strong: in a backlit frame every façade facing
     // the camera is a shadow face, and if the fill cannot carry them they go
     // to black and the scene reads as night.
-    this.sun = new THREE.DirectionalLight(PALETTE.sunColor, 4.6);
+    this.sun = new THREE.DirectionalLight(PALETTE.sunColor, 2.2);
     this.sun.position.copy(dir).multiplyScalar(220);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
@@ -126,7 +126,7 @@ export class Renderer {
      * same cheat stylised films use, and it is why their shadows read as
      * colour rather than as absence.
      */
-    this.sun.shadow.intensity = 0.66;
+    this.sun.shadow.intensity = 0.62;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
 
@@ -137,7 +137,9 @@ export class Renderer {
     // side of a building is lit violet by it, not black. Under-fill is the
     // single most common way a stylised scene ends up looking like night with
     // a streetlamp, which is exactly what the first screenshots showed.
-    this.sky = new THREE.HemisphereLight(PALETTE.skyZenith, PALETTE.skyGround, 4.6);
+    // Fill from the sky's average colour, not its zenith: a deep-blue fill is
+    // what turned every shaded wall slate-blue in the first daylight pass.
+    this.sky = new THREE.HemisphereLight(new THREE.Color('#D2D6D9'), PALETTE.skyGround, 2.9);
     this.scene.add(this.sky);
 
     // RIM — a dim cool light from the east, opposite the sun. Keeps a shadowed
@@ -151,7 +153,10 @@ export class Renderer {
     // amber/violet split the palette promises, it is a monochrome wash with a
     // few blue shutters in it. Raised hard, and it is cheap: a directional
     // light with no shadow map.
-    this.rim = new THREE.DirectionalLight(PALETTE.skyZenith, 2.9);
+    // Since the daylight re-grade (see palette.js) the rim is a faint sky bounce
+    // and no longer the source of a violet shadow side: the reference photos
+    // have neutral shade, and a strong cool rim made every shaded wall blue.
+    this.rim = new THREE.DirectionalLight(PALETTE.skyHorizon, 0.45);
     this.rim.position.set(dir.x * -140, 60, dir.z * -140);
     this.scene.add(this.rim);
   }
@@ -161,12 +166,33 @@ export class Renderer {
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(this.renderPass);
 
+    // NaN GUARD, ahead of bloom. A single non-finite pixel from the world
+    // pass (a flat-shaded triangle seen exactly edge-on gives a zero-length
+    // derivative normal) is spread by the bloom's blur chain into a black
+    // rectangle covering half the screen. Found by tools/verify/compare.mjs
+    // on rue Norvins, where it blacked out the right half of the frame. One
+    // bad pixel becomes one dark pixel instead.
+    this.composer.addPass(new ShaderPass({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D(tDiffuse, vUv);
+          if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+          gl_FragColor = vec4(clamp(c.rgb, 0.0, 64.0), c.a);
+        }`,
+    }));
+
     // Bloom, restrained. The telegraph flash, the tracers and the sun's halo
     // need to bloom; the limestone must not. The threshold sits just under
     // pure white for that reason — at 0.86 the street lanterns smeared into
     // white blobs that dominated the frame, which in a scene this warm reads
     // as a blown exposure rather than as a light.
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.46, 0.7, 0.95);
+    // Daylight re-grade: the threshold now sits ABOVE sunlit limestone. There
+    // is no tone-mapping pass ahead of bloom, so a cream wall in full sun
+    // arrives at about 2.5 and at 0.95 every sunlit facade near the camera
+    // glowed and blurred. Flashes and tracers arrive at 3-4 and still bloom.
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.38, 0.6, 2.4);
     this.composer.addPass(this.bloom);
 
     /**
@@ -348,7 +374,7 @@ const GRADE_SHADER = {
       // without tinting anything that is already lit. Haze behaves this way in
       // reality too: it is most of what you see in a shadow and almost
       // invisible against a sunlit wall.
-      const vec3 HAZE = vec3(0.085, 0.076, 0.125);
+      const vec3 HAZE = vec3(0.045, 0.045, 0.048);
       vec3 shadowWeight = pow(1.0 - clamp(col, 0.0, 1.0), vec3(2.0));
       col += HAZE * shadowWeight;
 
@@ -359,8 +385,12 @@ const GRADE_SHADER = {
       // toward violet in principle and nowhere near enough of it survived to
       // register as a second hue. This is the last chance to state the split,
       // because tone mapping has already compressed everything above it.
-      vec3 shadowTint = vec3(0.88, 0.93, 1.30);
-      vec3 highTint   = vec3(1.07, 1.02, 0.90);
+      // DAYLIGHT RE-GRADE: the split is now a whisper. Measured against the
+      // Ville de Paris survey photos, real shade on these streets is neutral
+      // grey and real sunlit stone is cream, and the strong violet/gold split
+      // that used to live here was most of why nobody recognised them.
+      vec3 shadowTint = vec3(0.98, 0.99, 1.04);
+      vec3 highTint   = vec3(1.02, 1.00, 0.97);
       // Widened the crossover so more of the midtones pick a side. A narrow
       // band leaves most of a flat-shaded scene sitting in the neutral middle,
       // which is exactly the "nothing in between" the palette forbids.
@@ -433,13 +463,13 @@ const GRADE_SHADER = {
       // lift was the last thing in the chain and it pushed exactly the values
       // that had no headroom left.
       float g = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      col = mix(vec3(g), col, mix(1.16, 1.0, bleach));
+      col = mix(vec3(g), col, mix(1.03, 1.0, bleach));
 
       // Vignette. Kept light — it stacks multiplicatively with the shadow
       // tint above, and at 0.85 the two together were taking another quarter
       // out of the corners on top of everything else.
       vec2 d = vUv - 0.5;
-      float vig = 1.0 - dot(d, d) * 0.46;
+      float vig = 1.0 - dot(d, d) * 0.30;
       col *= vig;
 
       // THE FLOOR HAS TO SURVIVE THE VIGNETTE.

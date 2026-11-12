@@ -162,6 +162,23 @@ Neither was used to place the other:
 
 `tests/route.test.js` asserts both, plus the presence of `src` on every entry.
 
+## Looking like the place, not only being in it
+
+Being in the right place is the footprints' job; looking like the place is a
+separate job with separate sources, and for a while only the first was done.
+What the world now takes from where:
+
+| What | Source | Where it is used |
+|---|---|---|
+| Street surface: granite setts or asphalt, per street and per pavement | OpenStreetMap `surface=*` on 645 street and footway segments | `street.js`, `terrain.js` side streets, via `geo.js surfaceAt()` |
+| Walls, railings, hedges and gates between the buildings | OSM `barrier=*` (80 ways, 18 gate nodes), plus a rule that closes every other gap in the facade line along the walk | `boundaries.js` |
+| Gardens, parks, woods and the vineyard | OSM `leisure/landuse/natural` (29 polygons) and BD TOPO vegetation (39), planted on a jittered grid | `realtrees.js buildGardenTrees()` |
+| Wall finishes and their mix | BD TOPO wall codes, read as masonry rather than finish; render colours weighted from the survey photographs | `build.py wall_style()` |
+| Light, sky, colour grade, shutters, glass, lanterns, bollards, parked vehicles | The Ville de Paris street survey (Panoramax, August 2025) | `palette.js`, `renderer.js`, `realbuildings.js`, `props.js`, `street.js`, `traffic.js` |
+
+Every one of these is checked the same way: `npm run compare` renders the game
+from the spot each survey photograph was taken and puts the two side by side.
+
 ## The coordinate frame
 
 Right-handed, metres, origin at the Dalida bust.

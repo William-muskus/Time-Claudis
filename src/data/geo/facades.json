@@ -1,0 +1,1974 @@
+{
+ "about": "Facades recorded from the Ville de Paris survey photographs (tools/geo/references.json), keyed '<building id>:<edge>' as tools/geo/facade_overlay.py labels them. Positions are fractions of the wall from its first corner; see drawRecordedGround in src/world/realbuildings.js.",
+ "facades": {
+  "245179356:2": {
+   "src": "rue_abbesses~right",
+   "note": "Le Saint-Jean, 23 rue des Abbesses",
+   "wall": "#EFE7D6",
+   "floors": 2,
+   "groundH": 4.2,
+   "bays": [
+    0.08,
+    0.2,
+    0.335,
+    0.466,
+    0.597,
+    0.727,
+    0.858
+   ],
+   "ww": 0.95,
+   "wh": 1.6,
+   "shutters": null,
+   "boxes": [
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "2:4",
+    "2:5",
+    "2:6"
+   ],
+   "dormers": [
+    0.33,
+    0.7
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.99,
+     "col": "#2E3A2E",
+     "awning": "#ECE6D6",
+     "glass": "#3E3A34"
+    }
+   ],
+   "whRows": {
+    "1": 1.1,
+    "2": 1.6
+   },
+   "terrace": true
+  },
+  "245179356:1": {
+   "src": "rue_abbesses~right",
+   "note": "Le Saint-Jean, side on rue des Abbesses",
+   "floors": 2,
+   "groundH": 4.2,
+   "bays": [
+    0.06,
+    0.19,
+    0.32,
+    0.45,
+    0.58,
+    0.71,
+    0.84,
+    0.95
+   ],
+   "ww": 0.95,
+   "wh": 1.6,
+   "shutters": null,
+   "boxes": [
+    "2:4",
+    "2:5",
+    "2:6",
+    "2:7"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.55,
+     "t1": 0.99,
+     "col": "#2E3A2E",
+     "awning": "#ECE6D6",
+     "glass": "#3E3A34"
+    },
+    {
+     "k": "door",
+     "t": 0.3,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#2E3A5C"
+    }
+   ],
+   "whRows": {
+    "1": 1.1,
+    "2": 1.6
+   },
+   "terrace": true
+  },
+  "245179513:3": {
+   "src": "emile_goudeau~left",
+   "note": "Corner on Place Emile-Goudeau",
+   "base": {
+    "h": 2.6,
+    "col": "#8E8578"
+   },
+   "floors": 4,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.7,
+   "shutters": "#D8D2C2",
+   "guards": true,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 1.2,
+     "bars": true,
+     "y": 1.8
+    }
+   ]
+  },
+  "245179512:5": {
+   "src": "emile_goudeau~left",
+   "base": {
+    "h": 2.6,
+    "col": "#8E8578"
+   },
+   "floors": 4,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.7,
+   "shutters": "#D8D2C2",
+   "guards": true,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.6,
+     "h": 0.9,
+     "bars": true,
+     "y": 2.2
+    }
+   ]
+  },
+  "245180031:3": {
+   "src": "maison_dalida~left, s_orchampt_1c~left",
+   "note": "No. 16 rue d'Orchampt",
+   "wall": "#E2D3B8",
+   "base": {
+    "h": 1.0,
+    "col": "#A8A49D"
+   },
+   "floors": 3,
+   "groundH": 3.8,
+   "bays": [
+    0.24,
+    0.53,
+    0.79
+   ],
+   "ww": 1.3,
+   "wh": 2.1,
+   "shutters": null,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "2:0",
+    "2:1",
+    "2:2",
+    "3:0",
+    "3:1",
+    "3:2"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.24,
+     "w": 2.1,
+     "h": 2.4,
+     "shut": "#ECEAE4",
+     "y": 1.9
+    },
+    {
+     "k": "door",
+     "t": 0.53,
+     "w": 1.45,
+     "h": 2.9,
+     "col": "#6B4A32"
+    },
+    {
+     "k": "win",
+     "t": 0.79,
+     "w": 1.7,
+     "h": 2.1,
+     "bars": true,
+     "y": 2.0
+    }
+   ]
+  },
+  "245180365:4": {
+   "src": "s_girardon_3",
+   "note": "Les Cinq Marches, rue Girardon",
+   "wall": "#E9E1CF",
+   "floors": 4,
+   "groundH": 3.6,
+   "bays": [
+    0.2,
+    0.47,
+    0.74
+   ],
+   "ww": 1.2,
+   "wh": 2.0,
+   "shutters": null,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "2:0",
+    "2:1",
+    "2:2",
+    "3:0",
+    "3:1",
+    "3:2",
+    "4:0",
+    "4:1",
+    "4:2"
+   ],
+   "boxes": [
+    "1:1",
+    "1:2"
+   ],
+   "ground": [
+    {
+     "k": "rolling",
+     "t0": 0.05,
+     "t1": 0.9,
+     "h": 2.9,
+     "col": "#3F4246"
+    }
+   ]
+  },
+  "245180387:0": {
+   "src": "s_girardon_3",
+   "note": "Small house, rue Girardon, louvred shutters",
+   "wall": "#E6DFD2",
+   "base": {
+    "h": 0.8,
+    "col": "#B9B2A6"
+   },
+   "floors": 2,
+   "groundH": 3.0,
+   "bays": [
+    0.5
+   ],
+   "ww": 1.0,
+   "wh": 1.6,
+   "shutters": "#BDB3A4",
+   "dormers": [
+    0.5
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.1,
+     "h": 1.4,
+     "bars": true
+    }
+   ]
+  },
+  "245180355:1": {
+   "src": "s_girardon_3",
+   "wall": "#E8E1D3",
+   "floors": 2,
+   "groundH": 3.0,
+   "bays": [
+    0.5
+   ],
+   "ww": 0.9,
+   "wh": 1.5,
+   "shutters": "#C9C0B2",
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 2.3,
+     "col": "#5B5E60"
+    }
+   ]
+  },
+  "245180055:7": {
+   "src": "orchampt_bend",
+   "note": "No. 7 rue d'Orchampt",
+   "wall": "#CDBFA8",
+   "base": {
+    "h": 2.4,
+    "col": "#B9AC97"
+   },
+   "floors": 2,
+   "groundH": 3.4,
+   "bays": [
+    0.575,
+    0.655
+   ],
+   "ww": 1.1,
+   "wh": 1.7,
+   "shutters": null,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.53,
+     "w": 0.8,
+     "h": 1.3,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.575,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E2DDD2"
+    },
+    {
+     "k": "door",
+     "t": 0.655,
+     "w": 1.5,
+     "h": 2.7,
+     "col": "#3F6B66"
+    }
+   ]
+  },
+  "245180023:1": {
+   "src": "orchampt_bend",
+   "note": "rue d'Orchampt, white block with lilac-grey louvres",
+   "wall": "#EEEAE2",
+   "base": {
+    "h": 0.6,
+    "col": "#CFCAC0"
+   },
+   "floors": 4,
+   "groundH": 3.2,
+   "bays": [
+    0.08,
+    0.245,
+    0.41,
+    0.575,
+    0.74,
+    0.905
+   ],
+   "ww": 1.05,
+   "wh": 1.8,
+   "shutters": "#CBBFC6",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.08,
+     "w": 1.1,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.245,
+     "w": 1.1,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "door",
+     "t": 0.41,
+     "w": 1.3,
+     "h": 2.6,
+     "col": "#3A3F44"
+    },
+    {
+     "k": "win",
+     "t": 0.575,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#CBBFC6"
+    },
+    {
+     "k": "win",
+     "t": 0.74,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#CBBFC6"
+    },
+    {
+     "k": "shop",
+     "t0": 0.84,
+     "t1": 0.99,
+     "col": "#2F3B33"
+    }
+   ]
+  },
+  "245179528:3": {
+   "src": "s_ravignan_1",
+   "note": "Gilles Marchal, foot of rue Ravignan",
+   "wall": "#F1ECE2",
+   "floors": 4,
+   "shutters": null,
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.45,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#3A3F44"
+    },
+    {
+     "k": "shop",
+     "t0": 0.62,
+     "t1": 0.99,
+     "col": "#EEEBE4",
+     "glass": "#5C5A55"
+    }
+   ]
+  },
+  "245179377:4": {
+   "src": "s_ravignan_1",
+   "note": "The wooden bistro on the corner of rue Ravignan",
+   "wall": "#F2EEE6",
+   "floors": 5,
+   "balcony": [
+    2,
+    5
+   ],
+   "shutters": null,
+   "guards": true,
+   "ground": [
+    {
+     "k": "door",
+     "t": 0.3,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#2E3A5C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.5,
+     "t1": 0.99,
+     "col": "#6B3F22",
+     "awning": "#C8622E",
+     "glass": "#4A3A2C"
+    }
+   ],
+   "terrace": true
+  },
+  "245179514:5": {
+   "src": "s_ravignan_1",
+   "note": "Rue Ravignan, blue-painted ground floor",
+   "wall": "#E6DCC4",
+   "base": {
+    "h": 2.6,
+    "col": "#2F4A6A"
+   },
+   "floors": 4,
+   "shutters": "#ECEAE4",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.35,
+     "w": 1.0,
+     "h": 1.5,
+     "bars": true,
+     "y": 1.6
+    },
+    {
+     "k": "door",
+     "t": 0.7,
+     "w": 1.2,
+     "h": 2.4,
+     "col": "#2F4A6A"
+    }
+   ]
+  },
+  "245180502:12": {
+   "src": "escalier_foot",
+   "note": "Haussmann corner at the foot of the Pierre-Dac steps: bakery on the corner",
+   "wall": "#E6DCC6",
+   "floors": 5,
+   "balcony": [
+    2,
+    5
+   ],
+   "shutters": null,
+   "guards": true,
+   "bays": [
+    0.1,
+    0.24,
+    0.38,
+    0.52,
+    0.66,
+    0.8,
+    0.93
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.1,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.24,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.38,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.52,
+     "w": 1.2,
+     "h": 1.8,
+     "bars": true
+    },
+    {
+     "k": "cochere",
+     "t": 0.66,
+     "w": 2.4,
+     "h": 3.6,
+     "col": "#2A2622"
+    },
+    {
+     "k": "shop",
+     "t0": 0.75,
+     "t1": 0.92,
+     "col": "#1F3A30",
+     "glass": "#4E5550"
+    },
+    {
+     "k": "shop",
+     "t0": 0.945,
+     "t1": 0.995,
+     "col": "#1F3A30"
+    }
+   ]
+  },
+  "245179943:1": {
+   "src": "s_goudeau_1~left",
+   "note": "Louvred house on rue Berthe off Place Emile-Goudeau",
+   "wall": "#E3D8C2",
+   "base": {
+    "h": 1.6,
+    "col": "#B5ADA2"
+   },
+   "floors": 2,
+   "groundH": 3.6,
+   "bays": [
+    0.1,
+    0.27,
+    0.42,
+    0.56,
+    0.7,
+    0.84
+   ],
+   "ww": 1.0,
+   "wh": 1.9,
+   "shutters": "#E6DFD0",
+   "dormers": [
+    0.1,
+    0.27,
+    0.42,
+    0.56,
+    0.7,
+    0.84
+   ],
+   "ground": [
+    {
+     "k": "cochere",
+     "t": 0.1,
+     "w": 1.8,
+     "h": 3.2,
+     "col": "#2B2826"
+    },
+    {
+     "k": "win",
+     "t": 0.27,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.42,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.56,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.7,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    },
+    {
+     "k": "win",
+     "t": 0.84,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#E6DFD0"
+    }
+   ]
+  },
+  "245180763:3": {
+   "src": "s_pierre_dac~back",
+   "note": "White corner block over the café at the Lamarck crossroads",
+   "wall": "#EEEAE2",
+   "guards": true,
+   "balcony": [
+    2,
+    5
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.03,
+     "t1": 0.97,
+     "col": "#2E3A2E",
+     "awning": "#E6DFCC"
+    }
+   ],
+   "terrace": true
+  },
+  "245180763:4": {
+   "src": "escalier_top",
+   "wall": "#EEEAE2",
+   "guards": true,
+   "balcony": [
+    2,
+    5
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.03,
+     "t1": 0.97,
+     "col": "#2E3A2E",
+     "awning": "#E6DFCC"
+    }
+   ],
+   "terrace": true
+  },
+  "245180759:2": {
+   "src": "s_caulaincourt~back",
+   "note": "Café pavilion",
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.03,
+     "t1": 0.97,
+     "col": "#3A2A22",
+     "awning": "#3A3A36"
+    }
+   ],
+   "terrace": true
+  },
+  "245180930:10": {
+   "src": "s_pierre_dac~right",
+   "note": "Rue Caulaincourt: shops and the bank",
+   "wall": "#E8DFCB",
+   "guards": true,
+   "balcony": [
+    2,
+    5
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.05,
+     "t1": 0.28,
+     "col": "#2A2A2C"
+    },
+    {
+     "k": "door",
+     "t": 0.4,
+     "w": 1.3,
+     "h": 2.8,
+     "col": "#3B2E26"
+    },
+    {
+     "k": "shop",
+     "t0": 0.55,
+     "t1": 0.72,
+     "col": "#1F5A45"
+    },
+    {
+     "k": "shop",
+     "t0": 0.76,
+     "t1": 0.95,
+     "col": "#2A2A2C",
+     "glass": "#3A3F45"
+    }
+   ]
+  },
+  "245180502:14": {
+   "src": "constantin_pecqueur",
+   "wall": "#E6DCC6",
+   "guards": true,
+   "balcony": [
+    2
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.05,
+     "t1": 0.38,
+     "col": "#1F3A30"
+    },
+    {
+     "k": "shop",
+     "t0": 0.5,
+     "t1": 0.97,
+     "col": "#D9D2C2",
+     "glass": "#C9CCCA"
+    }
+   ]
+  },
+  "245180372:0": {
+   "src": "s_pecqueur~back",
+   "note": "Librairie L'Attrape-Cœurs",
+   "wall": "#E3D8C2",
+   "guards": true,
+   "balcony": [
+    2
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.08,
+     "t1": 0.36,
+     "col": "#2A2A2C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.45,
+     "t1": 0.96,
+     "col": "#5A2A1E",
+     "awning": "#D9B13A",
+     "glass": "#4A3A2C"
+    }
+   ]
+  },
+  "245180392:0": {
+   "src": "s_pecqueur_2~left",
+   "note": "Place Constantin-Pecqueur: louvred stone front",
+   "wall": "#E3D9C6",
+   "floors": 4,
+   "bays": [
+    0.25,
+    0.45,
+    0.65,
+    0.93
+   ],
+   "ww": 1.15,
+   "wh": 2.0,
+   "shutters": "#D9D2C6",
+   "balconettes": [
+    "1:2",
+    "1:3",
+    "2:2",
+    "2:3"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.4,
+     "w": 1.1,
+     "h": 1.7,
+     "shut": "#D9D2C6"
+    },
+    {
+     "k": "door",
+     "t": 0.63,
+     "w": 1.4,
+     "h": 2.8,
+     "col": "#6B4A32"
+    },
+    {
+     "k": "win",
+     "t": 0.9,
+     "w": 1.1,
+     "h": 1.7,
+     "shut": "#D9D2C6"
+    }
+   ]
+  },
+  "245180381:5": {
+   "src": "s_girardon_3",
+   "wall": "#EDE8DD",
+   "floors": 2,
+   "bays": [
+    0.35,
+    0.62
+   ],
+   "ww": 0.9,
+   "wh": 1.5,
+   "shutters": "#C9BFAF",
+   "dormers": [
+    0.35,
+    0.62
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.35,
+     "w": 0.9,
+     "h": 1.4,
+     "shut": "#C9BFAF"
+    },
+    {
+     "k": "door",
+     "t": 0.7,
+     "w": 1.0,
+     "h": 2.3,
+     "col": "#5B5E60"
+    }
+   ]
+  },
+  "245179918:13": {
+   "src": "marcel_ayme~left",
+   "note": "Arched carriage gate in black iron",
+   "wall": "#E8DDC6",
+   "guards": true,
+   "balcony": [
+    1
+   ],
+   "ground": [
+    {
+     "k": "cochere",
+     "t": 0.5,
+     "w": 2.6,
+     "h": 3.4,
+     "col": "#1E1F21"
+    }
+   ]
+  },
+  "245179994:1": {
+   "src": "marcel_ayme",
+   "note": "White gable house",
+   "wall": "#ECEAE5",
+   "floors": 3,
+   "bays": [
+    0.5
+   ],
+   "ww": 0.9,
+   "wh": 1.5,
+   "shutters": "#B8B8B2",
+   "ground": []
+  },
+  "245179994:0": {
+   "src": "s_girardon_4",
+   "note": "Rue Girardon: white house, lilac-grey louvres, ivy",
+   "wall": "#ECE7DD",
+   "base": {
+    "h": 2.6,
+    "col": "#D3C4AA"
+   },
+   "floors": 3,
+   "bays": [
+    0.12,
+    0.28,
+    0.45,
+    0.62,
+    0.8
+   ],
+   "ww": 1.0,
+   "wh": 1.8,
+   "shutters": "#CDBFC8",
+   "balconettes": [
+    "2:1",
+    "2:2"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.12,
+     "w": 0.9,
+     "h": 1.5,
+     "shut": "#CDBFC8"
+    },
+    {
+     "k": "win",
+     "t": 0.28,
+     "w": 0.9,
+     "h": 1.5,
+     "shut": "#CDBFC8"
+    },
+    {
+     "k": "win",
+     "t": 0.45,
+     "w": 1.0,
+     "h": 1.6,
+     "shut": "#CDBFC8"
+    },
+    {
+     "k": "win",
+     "t": 0.62,
+     "w": 1.0,
+     "h": 1.6,
+     "shut": "#CDBFC8"
+    }
+   ]
+  },
+  "245180064:16": {
+   "src": "s_orchampt_0",
+   "note": "Le Coq & Fils",
+   "wall": "#EEEAE3",
+   "floors": 3,
+   "bays": [
+    0.25,
+    0.62
+   ],
+   "ww": 1.1,
+   "wh": 1.9,
+   "shutters": "#E6E1D8",
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "2:0",
+    "2:1"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.03,
+     "t1": 0.97,
+     "col": "#1F2A44",
+     "glass": "#4E5257"
+    }
+   ]
+  },
+  "245180064:17": {
+   "src": "lepic_orchampt",
+   "note": "Rue Lepic at the mouth of rue d'Orchampt",
+   "wall": "#EEEAE2",
+   "floors": 3,
+   "bays": [
+    0.07,
+    0.24,
+    0.43,
+    0.6,
+    0.82,
+    0.95
+   ],
+   "ww": 1.0,
+   "wh": 1.7,
+   "shutters": null,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:5"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.08,
+     "w": 1.4,
+     "h": 2.0,
+     "y": 1.9
+    },
+    {
+     "k": "win",
+     "t": 0.33,
+     "w": 1.3,
+     "h": 2.0,
+     "y": 1.9
+    },
+    {
+     "k": "door",
+     "t": 0.6,
+     "w": 1.3,
+     "h": 2.7,
+     "col": "#2A2A2C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.72,
+     "t1": 0.95,
+     "col": "#9A4A22",
+     "glass": "#5A3A26"
+    }
+   ]
+  },
+  "245180031:2": {
+   "src": "s_orchampt_1",
+   "note": "No. 16's long side: rubble base, render above",
+   "wall": "#E3D9C6",
+   "base": {
+    "h": 3.4,
+    "col": "#9C8A6C"
+   },
+   "floors": 2,
+   "bays": [
+    0.03,
+    0.6,
+    0.78
+   ],
+   "ww": 1.1,
+   "wh": 1.8,
+   "shutters": "#ECEAE4",
+   "ground": []
+  },
+  "245180062:7": {
+   "src": "s_orchampt_1b~back",
+   "note": "Rubble garden wall",
+   "wall": "#BCA987",
+   "floors": 0,
+   "bays": [],
+   "ground": []
+  },
+  "245180062:5": {
+   "src": "s_orchampt_2~back",
+   "note": "Polychrome brick with a green gate",
+   "wall": "#A28F72",
+   "ground": [
+    {
+     "k": "cochere",
+     "t": 0.25,
+     "w": 2.5,
+     "h": 3.2,
+     "col": "#2D3A33"
+    }
+   ]
+  },
+  "245180026:1": {
+   "src": "s_orchampt_1c~left",
+   "wall": "#ECE6DA",
+   "bays": [
+    0.12,
+    0.6,
+    0.75,
+    0.9
+   ],
+   "shutters": "#E4DCD6",
+   "guards": false,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.12,
+     "w": 1.6,
+     "h": 2.2,
+     "bars": true,
+     "y": 1.8
+    },
+    {
+     "k": "win",
+     "t": 0.6,
+     "w": 0.9,
+     "h": 1.6,
+     "shut": "#E4DCD6"
+    },
+    {
+     "k": "win",
+     "t": 0.74,
+     "w": 0.9,
+     "h": 1.6,
+     "shut": "#E4DCD6"
+    },
+    {
+     "k": "door",
+     "t": 0.92,
+     "w": 1.1,
+     "h": 2.5,
+     "col": "#2E4F5C"
+    }
+   ]
+  },
+  "245180024:0": {
+   "src": "s_orchampt_1c",
+   "wall": "#EEEAE3",
+   "bays": [
+    0.12,
+    0.45
+   ],
+   "shutters": "#ECEAE4",
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "2:0",
+    "2:1"
+   ],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.12,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#ECEAE4"
+    },
+    {
+     "k": "win",
+     "t": 0.45,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#ECEAE4"
+    },
+    {
+     "k": "door",
+     "t": 0.85,
+     "w": 1.3,
+     "h": 2.8,
+     "col": "#5F7F6C"
+    }
+   ]
+  },
+  "245180047:2": {
+   "src": "s_orchampt_2",
+   "note": "Boarded garage",
+   "wall": "#E8E4DC",
+   "floors": 1,
+   "bays": [],
+   "ground": [
+    {
+     "k": "cochere",
+     "t": 0.5,
+     "w": 3.4,
+     "h": 3.2,
+     "col": "#E2DED5"
+    }
+   ]
+  },
+  "245179899:5": {
+   "src": "s_orchampt_4",
+   "note": "No. 5 rue d'Orchampt",
+   "wall": "#E7DFD0",
+   "bays": [
+    0.45,
+    0.6,
+    0.75,
+    0.9
+   ],
+   "shutters": null,
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.45,
+     "w": 0.9,
+     "h": 1.5,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.6,
+     "w": 0.9,
+     "h": 1.5,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.74,
+     "w": 0.9,
+     "h": 1.5,
+     "bars": true
+    },
+    {
+     "k": "door",
+     "t": 0.9,
+     "w": 1.1,
+     "h": 2.6,
+     "col": "#5B6366"
+    }
+   ]
+  },
+  "245179919:3": {
+   "src": "s_orchampt_4",
+   "wall": "#F0EDE6",
+   "floors": 2,
+   "bays": [
+    0.5
+   ],
+   "shutters": "#3F5B44",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.3,
+     "w": 0.9,
+     "h": 1.5,
+     "shut": "#3F5B44"
+    }
+   ]
+  },
+  "245179916:3": {
+   "src": "orchampt_ravignan~back",
+   "wall": "#F0EDE6",
+   "floors": 2,
+   "bays": [
+    0.3,
+    0.55
+   ],
+   "ww": 0.9,
+   "wh": 1.5,
+   "shutters": "#3F5B44",
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.28,
+     "w": 0.9,
+     "h": 1.5,
+     "shut": "#3F5B44"
+    },
+    {
+     "k": "win",
+     "t": 0.6,
+     "w": 0.9,
+     "h": 1.5,
+     "shut": "#3F5B44"
+    }
+   ]
+  },
+  "245179989:26": {
+   "src": "s_goudeau_1~right",
+   "note": "The Bateau-Lavoir ateliers",
+   "wall": "#EFEBE3",
+   "floors": 0,
+   "bays": [],
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.07,
+     "w": 1.0,
+     "h": 1.8,
+     "shut": "#3F5B44"
+    },
+    {
+     "k": "shop",
+     "t0": 0.3,
+     "t1": 0.92,
+     "col": "#3A3D3E",
+     "glass": "#4E565C"
+    }
+   ]
+  },
+  "245179989:24": {
+   "src": "orchampt_ravignan~right",
+   "note": "Ivy-covered garden wall",
+   "wall": "#56703A",
+   "floors": 0,
+   "bays": [],
+   "ground": []
+  },
+  "245179942:2": {
+   "src": "orchampt_ravignan",
+   "note": "1930s buff-brick block, 18 rue Ravignan",
+   "wall": "#DDD3BE",
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "1:3",
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "3:0",
+    "3:1",
+    "3:2",
+    "3:3",
+    "4:0",
+    "4:1",
+    "4:2",
+    "4:3",
+    "5:0",
+    "5:1",
+    "5:2",
+    "5:3"
+   ],
+   "bays": [
+    0.12,
+    0.35,
+    0.6,
+    0.85
+   ],
+   "ww": 1.2,
+   "wh": 1.8,
+   "shutters": null,
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.08,
+     "t1": 0.26,
+     "col": "#2A2A2C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.3,
+     "t1": 0.48,
+     "col": "#3A3A3C"
+    },
+    {
+     "k": "cochere",
+     "t": 0.68,
+     "w": 2.2,
+     "h": 3.0,
+     "col": "#2A2522"
+    },
+    {
+     "k": "win",
+     "t": 0.9,
+     "w": 1.4,
+     "h": 2.0,
+     "bars": true
+    }
+   ]
+  },
+  "245179898:1": {
+   "src": "ravignan_stairs~right",
+   "wall": "#EEE7D8",
+   "guards": true,
+   "ground": [
+    {
+     "k": "rolling",
+     "t0": 0.08,
+     "t1": 0.6,
+     "h": 2.8,
+     "col": "#3A3A3C"
+    },
+    {
+     "k": "door",
+     "t": 0.93,
+     "w": 1.2,
+     "h": 2.6,
+     "col": "#4A3A2E"
+    }
+   ]
+  },
+  "245179528:4": {
+   "src": "trois_freres",
+   "note": "Gilles Marchal, Ravignan side",
+   "wall": "#E8E0D0",
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#6E7378",
+     "glass": "#3A3F45"
+    }
+   ]
+  },
+  "245179377:5": {
+   "src": "s_ravignan_1",
+   "note": "The wooden bistro, side",
+   "wall": "#F2EEE6",
+   "guards": true,
+   "balcony": [
+    2,
+    5
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.5,
+     "col": "#6B3F22",
+     "awning": "#C8622E",
+     "glass": "#4A3A2C"
+    }
+   ],
+   "terrace": true
+  },
+  "245179530:1": {
+   "src": "ravignan_bas~back",
+   "note": "Immopolis",
+   "wall": "#EFE9DE",
+   "shutters": "#E9E4DC",
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.45,
+     "col": "#4A4D52"
+    },
+    {
+     "k": "shop",
+     "t0": 0.5,
+     "t1": 0.85,
+     "col": "#4A4D52"
+    },
+    {
+     "k": "shop",
+     "t0": 0.88,
+     "t1": 0.99,
+     "col": "#2A2A2C"
+    }
+   ]
+  },
+  "245179508:0": {
+   "src": "ravignan_bas~back",
+   "wall": "#F0EBE2",
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.05,
+     "t1": 0.5,
+     "col": "#2A2A2C"
+    },
+    {
+     "k": "shop",
+     "t0": 0.6,
+     "t1": 0.88,
+     "col": "#D8A23A"
+    }
+   ]
+  },
+  "245179505:0": {
+   "src": "ravignan_bas",
+   "wall": "#F0EBE2",
+   "guards": true,
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.3,
+     "col": "#C99A2E"
+    },
+    {
+     "k": "shop",
+     "t0": 0.35,
+     "t1": 0.62,
+     "col": "#B5432A"
+    },
+    {
+     "k": "shop",
+     "t0": 0.68,
+     "t1": 0.97,
+     "col": "#2A2A2C"
+    }
+   ],
+   "terrace": true
+  },
+  "245179535:10": {
+   "src": "s_ravignan_2~back",
+   "note": "Café-tabac on the corner of rue des Abbesses",
+   "wall": "#EFE8DA",
+   "shutters": "#E6DFD2",
+   "balcony": [
+    2,
+    3
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#7A2A22",
+     "awning": "#C23B30",
+     "glass": "#4A3A30"
+    }
+   ],
+   "terrace": true
+  },
+  "245179535:8": {
+   "src": "s_ravignan_2~back",
+   "note": "Café-tabac on the corner of rue des Abbesses",
+   "wall": "#EFE8DA",
+   "shutters": "#E6DFD2",
+   "balcony": [
+    2,
+    3
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#7A2A22",
+     "awning": "#C23B30",
+     "glass": "#4A3A30"
+    }
+   ],
+   "terrace": true
+  },
+  "245179535:9": {
+   "src": "s_ravignan_2~back",
+   "note": "Café-tabac on the corner of rue des Abbesses",
+   "wall": "#EFE8DA",
+   "shutters": "#E6DFD2",
+   "balcony": [
+    2,
+    3
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#7A2A22",
+     "awning": "#C23B30",
+     "glass": "#4A3A30"
+    }
+   ],
+   "terrace": true
+  },
+  "245179584:1": {
+   "src": "abbesses_corner~back",
+   "note": "Rue des Abbesses: flower boxes on every window",
+   "wall": "#F1EDE5",
+   "shutters": null,
+   "boxes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "1:3",
+    "1:4",
+    "1:5",
+    "1:6",
+    "1:7",
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "2:4",
+    "2:5",
+    "2:6",
+    "2:7",
+    "3:0",
+    "3:1",
+    "3:2",
+    "3:3",
+    "3:4",
+    "3:5",
+    "3:6",
+    "3:7",
+    "4:0",
+    "4:1",
+    "4:2",
+    "4:3",
+    "4:4",
+    "4:5",
+    "4:6",
+    "4:7",
+    "5:0",
+    "5:1",
+    "5:2",
+    "5:3",
+    "5:4",
+    "5:5",
+    "5:6",
+    "5:7"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#1E1F21",
+     "awning": "#2A2A2C"
+    }
+   ]
+  },
+  "245179584:2": {
+   "src": "abbesses_corner~back",
+   "note": "Rue des Abbesses: flower boxes on every window",
+   "wall": "#F1EDE5",
+   "shutters": null,
+   "boxes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "1:3",
+    "1:4",
+    "1:5",
+    "1:6",
+    "1:7",
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "2:4",
+    "2:5",
+    "2:6",
+    "2:7",
+    "3:0",
+    "3:1",
+    "3:2",
+    "3:3",
+    "3:4",
+    "3:5",
+    "3:6",
+    "3:7",
+    "4:0",
+    "4:1",
+    "4:2",
+    "4:3",
+    "4:4",
+    "4:5",
+    "4:6",
+    "4:7",
+    "5:0",
+    "5:1",
+    "5:2",
+    "5:3",
+    "5:4",
+    "5:5",
+    "5:6",
+    "5:7"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#1E1F21",
+     "awning": "#2A2A2C"
+    }
+   ]
+  },
+  "245179584:3": {
+   "src": "abbesses_corner~back",
+   "note": "Rue des Abbesses: flower boxes on every window",
+   "wall": "#F1EDE5",
+   "shutters": null,
+   "boxes": [
+    "1:0",
+    "1:1",
+    "1:2",
+    "1:3",
+    "1:4",
+    "1:5",
+    "1:6",
+    "1:7",
+    "2:0",
+    "2:1",
+    "2:2",
+    "2:3",
+    "2:4",
+    "2:5",
+    "2:6",
+    "2:7",
+    "3:0",
+    "3:1",
+    "3:2",
+    "3:3",
+    "3:4",
+    "3:5",
+    "3:6",
+    "3:7",
+    "4:0",
+    "4:1",
+    "4:2",
+    "4:3",
+    "4:4",
+    "4:5",
+    "4:6",
+    "4:7",
+    "5:0",
+    "5:1",
+    "5:2",
+    "5:3",
+    "5:4",
+    "5:5",
+    "5:6",
+    "5:7"
+   ],
+   "ground": [
+    {
+     "k": "shop",
+     "t0": 0.02,
+     "t1": 0.98,
+     "col": "#1E1F21",
+     "awning": "#2A2A2C"
+    }
+   ]
+  },
+  "245180388:4": {
+   "src": "place_dalida",
+   "wall": "#D2CCC0",
+   "floors": 2,
+   "groundH": 3.2,
+   "bays": [
+    0.2,
+    0.5,
+    0.8
+   ],
+   "ww": 1.1,
+   "wh": 1.9,
+   "shutters": "#E8E4DA",
+   "guards": true,
+   "balconettes": [
+    "1:0",
+    "1:1",
+    "1:2"
+   ],
+   "dormers": [
+    0.2,
+    0.5,
+    0.8
+   ],
+   "base": {
+    "h": 0.9,
+    "col": "#B7AB96"
+   },
+   "ground": [
+    {
+     "k": "win",
+     "t": 0.2,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.5,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    },
+    {
+     "k": "win",
+     "t": 0.8,
+     "w": 1.0,
+     "h": 1.6,
+     "bars": true
+    }
+   ],
+   "shutterMode": "closed"
+  },
+  "245180388:3": {
+   "src": "place_dalida",
+   "wall": "#D2CCC0",
+   "floors": 2,
+   "groundH": 3.2,
+   "bays": [
+    0.3,
+    0.7
+   ],
+   "ww": 1.1,
+   "wh": 1.9,
+   "shutters": "#E8E4DA",
+   "guards": true,
+   "dormers": [
+    0.5
+   ],
+   "base": {
+    "h": 0.9,
+    "col": "#B7AB96"
+   },
+   "ground": [],
+   "shutterMode": "closed"
+  },
+  "245180366:5": {
+   "src": "s_girardon_steps",
+   "note": "North gable over the garden, seen from Place Dalida: pale stone with red-brick window surrounds and stone bands",
+   "wall": "#E3DACB",
+   "bands": "#ECE6DA",
+   "surround": "#B9643F",
+   "surroundW": 0.3,
+   "floors": 6,
+   "groundH": 3.4,
+   "bays": [
+    0.3,
+    0.7
+   ],
+   "guards": true,
+   "shutters": null
+  }
+ },
+ "walls": {
+  "245179479": "#ECE4D2",
+  "245180507": "#DFD3B9",
+  "245180366": "#E3DACB"
+ },
+ "buildings": {
+  "245180388": {
+   "src": "place_dalida",
+   "note": "Stone house at the top of the rue Girardon steps: two storeys and a mansard, not one",
+   "eaves": 6.8,
+   "roof": "mansard",
+   "inset": 1.3
+  }
+ },
+ "barriers": {
+  "154690030": {
+   "src": "place_dalida",
+   "note": "Château des Brouillards garden: rendered wall and a tall green bar fence",
+   "kind": "wallbars",
+   "h": 2.1,
+   "rail": 2.0,
+   "col": "#2F4A3B",
+   "gate": 0.3,
+   "sheet": true
+  }
+ },
+ "streets": [
+  {
+   "note": "rue Caulaincourt: cars along the kerb on the far side from the métro (survey photo s_caulaincourt~back).",
+   "from": [
+    "lamarck_station",
+    0
+   ],
+   "to": [
+    "constantin_pecqueur",
+    -10
+   ],
+   "park": {
+    "right": "cars"
+   }
+  },
+  {
+   "note": "rue Constantin-Pecqueur: no posts on either kerb; cars parked against the house side, the square's railing on the other (constantin_pecqueur).",
+   "from": [
+    "constantin_pecqueur",
+    -10
+   ],
+   "to": [
+    "constantin_pecqueur",
+    22
+   ],
+   "park": {
+    "left": "cars"
+   },
+   "bollards": {
+    "left": false,
+    "right": false
+   }
+  },
+  {
+   "note": "rue d'Orchampt, the wide stretch: the cobbled carriageway runs along the south-west houses behind a one-metre pavement lined with granite bornes; the north-east side is a four-metre paved strip where the scooters park (aerial photograph; survey photos s_orchampt_1c, orchampt_bend).",
+   "from": [
+    "s_orchampt_2",
+    4
+   ],
+   "to": [
+    "orchampt_bend",
+    18
+   ],
+   "pav": {
+    "right": 1.0
+   },
+   "w": 4.6,
+   "park": {
+    "left": "scooters@pavement"
+   },
+   "bollards": {
+    "left": false
+   }
+  },
+  {
+   "note": "rue d'Orchampt, lower stretch: narrow pavements both sides (aerial photograph), cars against the north-east kerb, bornes along the other (s_orchampt_4, s_orchampt_4~back).",
+   "from": [
+    "orchampt_bend",
+    18
+   ],
+   "to": [
+    "orchampt_ravignan",
+    -6
+   ],
+   "park": {
+    "left": "cars"
+   },
+   "bollards": {
+    "left": false
+   },
+   "pav": {
+    "left": 1.3,
+    "right": 1.2
+   }
+  },
+  {
+   "note": "lower rue Ravignan: cars and café decks along both kerbs, no posts (s_ravignan_1, ravignan_bas, s_ravignan_2).",
+   "from": [
+    "s_ravignan_1",
+    6
+   ],
+   "to": [
+    "abbesses_corner",
+    -4
+   ],
+   "park": {
+    "left": "cars",
+    "right": "cars"
+   },
+   "bollards": {
+    "left": false,
+    "right": false
+   }
+  },
+  {
+   "note": "rue des Abbesses: scooters and a car against the south kerb, potelets along the square side (s_abbesses_1, rue_abbesses, s_abbesses_2).",
+   "from": [
+    "s_abbesses_1",
+    -4
+   ],
+   "to": [
+    "rue_abbesses",
+    3
+   ],
+   "park": {
+    "right": "mixed"
+   },
+   "bollards": {
+    "right": false
+   }
+  }
+ ],
+ "edges": [
+  {
+   "note": "Place Dalida, rue Girardon east side: a low black railing on a stone curb along the back of the pavement, the stone house's light well behind it (survey photos place_dalida, s_girardon_steps, s_girardon_1).",
+   "side": "left",
+   "from": [
+    "place_dalida",
+    5
+   ],
+   "to": [
+    "place_dalida",
+    40
+   ],
+   "kind": "rail",
+   "h": 1.1,
+   "base": 0.3,
+   "rail": 1.0
+  },
+  {
+   "note": "…then the rubble-stone garden wall, trees above it, closed by a gate pier with a lantern standard (s_girardon_1).",
+   "side": "left",
+   "from": [
+    "place_dalida",
+    22
+   ],
+   "to": [
+    "place_dalida",
+    44
+   ],
+   "kind": "rubble",
+   "h": 3.3,
+   "pier": "end",
+   "back": 1.3
+  }
+ ],
+ "lamps": [
+  {
+   "note": "Paris lantern standard against the Château des Brouillards wall (place_dalida, s_girardon_1)",
+   "at": [
+    "place_dalida",
+    20
+   ],
+   "side": "right",
+   "wall": true
+  },
+  {
+   "note": "lantern standard at the gate pier above the stone house (s_girardon_steps, s_girardon_1)",
+   "at": [
+    "place_dalida",
+    43
+   ],
+   "side": "left",
+   "wall": true
+  }
+ ]
+}

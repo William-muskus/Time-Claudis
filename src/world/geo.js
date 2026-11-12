@@ -143,3 +143,142 @@ function distToRing(ring, x, z) {
   }
   return best;
 }
+
+/**
+ * What the street is paved with at (x, z): 'sett', 'asphalt', 'paving',
+ * 'gravel', or `fallback` where OpenStreetMap says nothing within `maxR`.
+ *
+ * `footway` asks about the pavement rather than the carriageway: OSM maps
+ * many of the route's pavements as their own footways, and on rue Girardon the
+ * road is granite setts while the pavement beside it is asphalt.
+ */
+let _sIndex = null;
+export function surfaceAt(x, z, { footway = false, maxR = 9, fallback = 'asphalt' } = {}) {
+  if (!_sIndex) {
+    _sIndex = new Map();
+    for (const s of GEO.surfaces ?? []) {
+      const p = pairs(s.p);
+      for (let i = 0; i < p.length - 1; i++) {
+        const seg = { a: p[i], b: p[i + 1], s: s.s, fw: !!s.fw };
+        const x0 = Math.min(seg.a[0], seg.b[0]), x1 = Math.max(seg.a[0], seg.b[0]);
+        const z0 = Math.min(seg.a[1], seg.b[1]), z1 = Math.max(seg.a[1], seg.b[1]);
+        for (let ci = Math.floor((x0 - 10) / 20); ci <= Math.floor((x1 + 10) / 20); ci++) {
+          for (let cj = Math.floor((z0 - 10) / 20); cj <= Math.floor((z1 + 10) / 20); cj++) {
+            const k = `${ci},${cj}`;
+            if (!_sIndex.has(k)) _sIndex.set(k, []);
+            _sIndex.get(k).push(seg);
+          }
+        }
+      }
+    }
+  }
+  let best = null, bd = maxR;
+  for (const seg of _sIndex.get(`${Math.floor(x / 20)},${Math.floor(z / 20)}`) ?? []) {
+    if (seg.fw !== footway) continue;
+    const d = distToSeg(seg.a, seg.b, x, z);
+    if (d < bd) { bd = d; best = seg; }
+  }
+  return best ? best.s : fallback;
+}
+
+function distToSeg([ax, az], [bx, bz], x, z) {
+  const dx = bx - ax, dz = bz - az;
+  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(x - ax - dx * t, z - az - dz * t);
+}
+
+/**
+ * Is (x, z) on the carriageway of a street OTHER than the walk (and other
+ * than `self`, a GEO.roads entry, when given)? `pad` widens the street.
+ *
+ * Junctions were built as if streets did not meet: the walk's pavement ran
+ * straight across the mouth of every side street, side streets were drawn
+ * across the walk and across each other with their raised pavements, and the
+ * kerb bollards of all of them marched through the middle of the crossing
+ * (rue Lepic at rue d'Orchampt, rue Ravignan at rue d'Orchampt). Everything
+ * that belongs to one street now asks this before it is put down.
+ */
+let _rIndex = null;
+export function onOtherStreet(x, z, { near = null, rail = null, self = null, pad = 0 } = {}) {
+  if (!_rIndex) {
+    _rIndex = new Map();
+    for (const r of GEO.roads ?? []) {
+      if (r.k === 'stairs' || r.k === 'path') continue;
+      const p = triples(r.p);
+      for (let i = 0; i < p.length - 1; i++) {
+        const seg = { r, a: [p[i][0], p[i][2]], b: [p[i + 1][0], p[i + 1][2]], h: r.w / 2 };
+        const x0 = Math.min(seg.a[0], seg.b[0]) - 10, x1 = Math.max(seg.a[0], seg.b[0]) + 10;
+        const z0 = Math.min(seg.a[1], seg.b[1]) - 10, z1 = Math.max(seg.a[1], seg.b[1]) + 10;
+        for (let ci = Math.floor(x0 / 20); ci <= Math.floor(x1 / 20); ci++) {
+          for (let cj = Math.floor(z0 / 20); cj <= Math.floor(z1 / 20); cj++) {
+            const k = `${ci},${cj}`;
+            if (!_rIndex.has(k)) _rIndex.set(k, []);
+            _rIndex.get(k).push(seg);
+          }
+        }
+      }
+    }
+  }
+  for (const seg of _rIndex.get(`${Math.floor(x / 20)},${Math.floor(z / 20)}`) ?? []) {
+    if (seg.r === self) continue;
+    if (distToSeg(seg.a, seg.b, x, z) > seg.h + pad) continue;
+    // A segment that runs along the walk IS the walk: not another street.
+    if (near && rail) {
+      const mx = (seg.a[0] + seg.b[0]) / 2, mz = (seg.a[1] + seg.b[1]) / 2;
+      const nr = near.nearest(mx, mz, 12);
+      if (nr) {
+        const L = Math.hypot(seg.b[0] - seg.a[0], seg.b[1] - seg.a[1]) || 1;
+        const t = rail.tangentAt(nr.d);
+        const along = Math.abs(((seg.b[0] - seg.a[0]) * t.x + (seg.b[1] - seg.a[1]) * t.z) / L);
+        if (nr.dist < rail.widthAt(nr.d) * 0.5 + 1.5 && along > 0.6) continue;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * The nearest building wall to (x, z) within maxR: the closest point on it
+ * and the distance. For laying pavements along facades.
+ */
+let _wIndex = null;
+export function nearestWall(x, z, maxR = 4) {
+  // Wall segments in 4 m cells: the pavement builder asks this for every
+  // vertex near the walk, and walking whole footprints per query was most of
+  // the world build.
+  if (!_wIndex) {
+    _wIndex = new Map();
+    for (const b of GEO.buildings) {
+      const r = pairs(b.o);
+      for (let k = 0; k < r.length; k++) {
+        const [ax, az] = r[k], [bx, bz] = r[(k + 1) % r.length];
+        const seg = [ax, az, bx, bz];
+        for (let i = Math.floor(Math.min(ax, bx) / 4); i <= Math.floor(Math.max(ax, bx) / 4); i++) {
+          for (let j = Math.floor(Math.min(az, bz) / 4); j <= Math.floor(Math.max(az, bz) / 4); j++) {
+            const key = i * 100003 + j;
+            if (!_wIndex.has(key)) _wIndex.set(key, []);
+            _wIndex.get(key).push(seg);
+          }
+        }
+      }
+    }
+  }
+  let best = null, bd = maxR;
+  const r = Math.ceil(maxR / 4);
+  const ci = Math.floor(x / 4), cj = Math.floor(z / 4);
+  for (let i = ci - r; i <= ci + r; i++) {
+    for (let j = cj - r; j <= cj + r; j++) {
+      const list = _wIndex.get(i * 100003 + j);
+      if (!list) continue;
+      for (const [ax, az, bx, bz] of list) {
+        const dx = bx - ax, dz = bz - az;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+        const px = ax + dx * t, pz = az + dz * t;
+        const d = Math.hypot(x - px, z - pz);
+        if (d < bd) { bd = d; best = { x: px, z: pz, dist: d }; }
+      }
+    }
+  }
+  return best;
+}

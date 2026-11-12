@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
 import { ENCOUNTERS } from '../gameplay/encounters.js';
+import { parkedCar, scooters } from './vehicles.js';
 
 /**
  * Player cover, in the foreground of every combat area.
@@ -22,13 +23,20 @@ import { ENCOUNTERS } from '../gameplay/encounters.js';
  */
 
 /** What the player hides behind in each area, in encounter order. */
+//
+// Checked against the Ville de Paris survey photographs (tools/verify/
+// compare.mjs). The first list put a cafe terrace on Place Dalida, which has
+// no cafe, and stone planters across rue d'Orchampt, which is lined with
+// parked scooters. What you duck behind is now what is parked there.
 const COVER_BY_AREA = {
   A1: 'metro_balustrade',  // the ironwork around the Lamarck stairwell
-  A2: 'stone_wall',        // a garden wall on the climb up Girardon
-  A3: 'terrace',           // cafe terrace on Place Dalida
-  A4: 'planters',          // the walled lane: stone troughs and bins
+  A2: 'parked_car',        // Place Constantin-Pecqueur: cars along the kerb
+  A3: 'velib',             // Place Dalida: the bike dock at the top of rue Girardon
+  A4: 'scooters',          // rue d'Orchampt: scooters parked nose to the kerb
   A5: 'fountain_bench',    // Place Emile-Goudeau: Wallace fountain and benches
 };
+/** Pieces that belong against a kerb rather than across the walk. */
+const AT_KERB = new Set(['parked_car', 'scooters', 'velib']);
 
 export function buildCover(rail, rng = null) {
   // Seeded, for the same reason landmarks.js is: a fixed seed must produce a
@@ -48,13 +56,20 @@ export function buildCover(rail, rng = null) {
     // Sit it just in front of where the camera parks, offset the same way the
     // node is, so it lands in the lower third of the frame rather than
     // wandering off to one side.
+    const kind = COVER_BY_AREA[enc.areaId] ?? 'stone_wall';
     const lateral = enc.node?.lateral ?? 0;
-    const AHEAD = 3.4;
+    // Closer for the fountain and benches on Place Émile-Goudeau: the
+    // square falls away toward the Ravignan steps, and at 3.4 m the bench
+    // back cut the standing player's line to everything below the square.
+    const AHEAD = kind === 'fountain_bench' ? 2.3 : 3.4;
+    // A parked car or a row of scooters stands against the kerb on the side
+    // the player is standing, so it fills that half of the foreground.
+    const kerb = Math.sign(lateral || 1) * Math.max(Math.abs(lateral) + 0.9, rail.widthAt(d) / 2 - 1.6);
     const base = p.clone()
       .addScaledVector(tan, AHEAD)
-      .addScaledVector(right, lateral);
+      .addScaledVector(right, AT_KERB.has(kind) ? kerb : lateral);
 
-    const piece = buildPiece(COVER_BY_AREA[enc.areaId] ?? 'stone_wall', rnd);
+    const piece = buildPiece(kind, rnd, Math.sign(lateral || 1));
     piece.position.copy(base);
     piece.position.y = p.y + 0.16;
     // atan2 on the horizontal components only; the tangent climbs and a
@@ -66,11 +81,14 @@ export function buildCover(rail, rng = null) {
   return group;
 }
 
-function buildPiece(kind, rnd) {
+function buildPiece(kind, rnd, side = 1) {
   switch (kind) {
     case 'metro_balustrade': return metroBalustrade();
     case 'terrace': return cafeTerrace();
     case 'planters': return planters(rnd);
+    case 'parked_car': return parkedCar(rnd);
+    case 'scooters': return scooters(rnd);
+    case 'velib': return velibDock(rnd, side);
     case 'fountain_bench': return fountainBench();
     default: return stoneWall(rnd);
   }
@@ -161,6 +179,44 @@ function cafeTerrace() {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 0.08), iron);
     post.position.set(s * W / 2, H / 2, 0);
     g.add(post);
+  }
+  return g;
+}
+
+export { parkedCar, scooters } from './vehicles.js';
+
+/**
+ * A Vélib dock with five bikes, the commonest street furniture in Paris,
+ * against the kerb as the real ones are: posts on the pavement side, bikes
+ * nosed into them across the parking lane. `side` is +1 for the right-hand
+ * kerb, -1 for the left; local +Z runs along the street.
+ */
+function velibDock(rnd = Math.random, side = 1) {
+  const g = new THREE.Group();
+  const grey = flat(new THREE.Color('#8C9297'), { roughness: 0.5, metalness: 0.3 });
+  const frameCols = ['#7FB5D8', '#8FBF5A', '#7FB5D8'];   // blue mechanical, green electric
+  const tyre = flat(new THREE.Color('#1A1A1A'), { roughness: 0.9 });
+  // Local -X is the player's right (see buildCover's rotation), so the
+  // pavement side of a right-hand dock is -X.
+  const out = -side;
+  for (let i = 0; i < 5; i++) {
+    const z = -2.2 + i * 1.1;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.0, 0.16), grey);
+    post.position.set(out * 0.95, 0.5, z);
+    post.castShadow = true;
+    g.add(post);
+    const frame = flat(new THREE.Color(frameCols[Math.floor(rnd() * frameCols.length)]), { roughness: 0.45, metalness: 0.2 });
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.08), frame);
+    bar.position.set(out * 0.1, 0.72, z);
+    g.add(bar);
+    const basket = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.28, 0.4), grey);
+    basket.position.set(out * 0.72, 0.95, z);
+    g.add(basket);
+    for (const x of [out * 0.55, -out * 0.55]) {
+      const w = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.035, 4, 12), tyre);
+      w.position.set(x, 0.36, z);
+      g.add(w);
+    }
   }
   return g;
 }

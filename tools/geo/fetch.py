@@ -128,6 +128,13 @@ def altimetry_fine():
             print(f"  altimetry fine: {len(heights)} / {len(pts)}")
     return dict(south=S, west=Wb, dlat=dlat, dlon=dlon, rows=len(lats), cols=len(lons), z=heights)
 
+def osm_map():
+    """Raw OpenStreetMap for the corridor: shops, entrances, garden walls and
+    fences, gardens, lamps, bollards. The API's map call returns XML; it is
+    written as-is to raw/osm.xml (see below)."""
+    url = f"https://api.openstreetmap.org/api/0.6/map?bbox={WEST},{SOUTH},{EAST},{NORTH}"
+    return fetch(url)
+
 if __name__ == "__main__":
     os.makedirs(RAW, exist_ok=True)
     jobs = {
@@ -141,7 +148,16 @@ if __name__ == "__main__":
         "altimetrie": altimetry,
         "altimetrie_fine": altimetry_fine,
     }
-    only = sys.argv[1:] or list(jobs)
+    only = [a for a in sys.argv[1:] if not a.startswith("--")] or list(jobs) + ["osm"]
+    if "osm" in only:
+        only.remove("osm")
+        path = os.path.join(RAW, "osm.xml")
+        if os.path.exists(path) and "--force" not in sys.argv:
+            print("osm: cached")
+        else:
+            print("osm")
+            with open(path, "wb") as f:
+                f.write(osm_map())
     for name in only:
         path = os.path.join(RAW, name + ".json")
         if os.path.exists(path) and "--force" not in sys.argv:

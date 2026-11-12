@@ -3,20 +3,20 @@ import * as THREE from 'three';
 /**
  * THE PALETTE
  * ===========
- * Late afternoon, roughly 18:40 in early October. The sun is low in the west
- * and raking straight up the rue Lamarck slope.
+ * A bright late-summer afternoon, sampled from the Ville de Paris street survey
+ * of August 2025 (tools/geo/references.json, compared frame by frame by
+ * tools/verify/compare.mjs).
  *
- * The whole look rests on one decision: the key light is warm amber and the
- * fill is violet-blue, and there is nothing neutral anywhere. Paris limestone
- * is genuinely a warm cream, so in this light the lit faces go to honey and the
- * shadowed faces fall into lilac. That amber/violet split is what makes a
- * flat-shaded box read as a building rather than as a box — the shading has to
- * carry hue information, not just brightness, because low-poly geometry has no
- * detail to carry it instead.
+ * The first look was a saturated golden hour: amber key, violet fill, "nothing
+ * neutral anywhere". Someone who lives on the route did not recognise a single
+ * street in it. Montmartre in daylight is the opposite of that rule — it is
+ * almost entirely neutral: cream limestone, off-white render, white and grey
+ * louvred shutters, grey granite setts, zinc roofs, black ironwork, and dark
+ * green trees spilling over garden walls. Colour comes in small doses: the
+ * green and navy shopfronts, a red awning, the Maison Rose.
  *
- * Rule for anyone adding a colour: it is either warm (hue 20-50) or it is cool
- * (hue 230-280). Nothing in between. Greens are pushed to olive so they sit on
- * the warm side; the zinc roofs are pushed to violet so they sit on the cool.
+ * Rule for anyone adding a colour: check it against a reference photograph
+ * with tools/verify/compare.mjs, not against the other colours here.
  */
 
 /**
@@ -35,83 +35,83 @@ const c = (hex) => new THREE.Color(hex);
 
 export const PALETTE = {
   // --- sky and atmosphere -------------------------------------------------
-  skyZenith:    c('#4277B0'),   // cerulean overhead. Lifted from #2E5A8C: that
+  skyZenith:    c('#9DB6CF'),   // cerulean overhead. Lifted from #2E5A8C: that
                                 //  was a dusk blue and it dragged the whole sky,
                                 //  and the hemisphere fill that samples it, toward night.
-  skyHorizon:   c('#F2B86B'),   // molten gold at the rooftops
+  skyHorizon:   c('#EEF0F0'),   // molten gold at the rooftops
   // The hemisphere's lower half. Desaturated from #A57F5E: a vertical wall
   // receives roughly a 50/50 mix of sky and ground from a hemisphere light, so
   // a strongly warm ground colour cancels the blue and leaves shadowed façades
   // neutral — which is precisely where the violet was going.
-  skyGround:    c('#8F7867'),
-  sunColor:     c('#FFD9A0'),
-  sunDiscColor: c('#FFF0CC'),
+  skyGround:    c('#A3998B'),
+  sunColor:     c('#FFF1DE'),
+  sunDiscColor: c('#FFFBF0'),
   // Desaturated from #E0A868. Fog tints EVERYTHING beyond its near plane, so
   // a strongly gold haze quietly repaints every distant facade the same colour
   // and the frame collapses toward a single hue — the exact failure the
   // amber/violet split exists to prevent. Warm, but much closer to neutral, so
   // distance reads as distance rather than as more orange.
-  fogColor:     c('#C9A98C'),
+  fogColor:     c('#D6DADB'),
 
   // --- stone --------------------------------------------------------------
-  limestoneLit:    c('#EBC89B'),
-  limestoneMid:    c('#D9AE7E'),
-  limestoneDeep:   c('#B98A63'),
-  plasterCream:    c('#F0D9B5'),
-  plasterOchre:    c('#D9A05B'),
+  limestoneLit:    c('#E8DFCF'),
+  limestoneMid:    c('#D8CDB9'),
+  limestoneDeep:   c('#BDB09A'),
+  plasterCream:    c('#EDE6D8'),
+  plasterOchre:    c('#DCC7A2'),
   // La Maison Rose and its imitators. Pulled back from #E8A99A, which under
   // the grade's warm highlight tint came out of a full-height sunlit façade as
   // a saturated magenta — two of those framing the Blute-fin shot read as
   // confectionery rather than as painted plaster. The real colour is a dusty
   // rose that has been on a wall for a century.
-  plasterPink:     c('#DCAAA1'),
-  plasterGrey:     c('#C4B5A8'),
+  plasterPink:     c('#E3B6AE'),
+  plasterGrey:     c('#CEC8BD'),
 
   // --- roofs --------------------------------------------------------------
-  zincLit:      c('#9AA0B8'),
-  zincShadow:   c('#5A5F7D'),
-  slateDark:    c('#43455E'),
-  chimneyTerra: c('#B05F45'),
+  zincLit:      c('#9AA0A6'),
+  zincShadow:   c('#6E747B'),
+  slateDark:    c('#4F555E'),
+  chimneyTerra: c('#A9644C'),
 
   // --- joinery and metal --------------------------------------------------
-  shutterBlue:  c('#5E7A94'),
-  shutterGreen: c('#5A6B4A'),
-  shutterGrey:  c('#7D8595'),
+  shutterBlue:  c('#7E8E9C'),
+  shutterGreen: c('#56705C'),
+  shutterGrey:  c('#A9AAA6'),
   // Lifted from #32334A for the same reason, and one more: ironwork is used
   // for lamp standards, downpipes and railings, which are one or two pixels
   // wide at street distance. Anything that thin at that value stops being an
   // object and becomes a hard black line ruled across the frame.
-  ironwork:     c('#3F4160'),
+  ironwork:     c('#2E3134'),
   guimardGreen: c('#2F5A48'),   // the Abbesses édicule
   guimardAmber: c('#E8B25C'),   // its glass
   bronzeDalida: c('#8C6A3F'),
   bronzePolish: c('#D9A850'),   // the rubbed-gold chest
 
   // --- street -------------------------------------------------------------
-  cobbleWarm:   c('#B09883'),
-  cobbleCool:   c('#8A7D7A'),
-  pavement:     c('#C7B49C'),
-  kerbStone:    c('#A89684'),
-  stairStone:   c('#BFA890'),
+  cobbleWarm:   c('#8E877E'),
+  cobbleCool:   c('#7D7872'),
+  pavement:     c('#A7A198'),
+  kerbStone:    c('#9E9B95'),
+  stairStone:   c('#B3ACA0'),
 
   // --- planting -----------------------------------------------------------
-  foliageSun:   c('#8F9B4A'),
-  foliageMid:   c('#5F7038'),
+  foliageSun:   c('#7B9550'),
+  foliageMid:   c('#5B773F'),
   // Lifted from #3D4A2A. At that value a shaded crown came through the grade
   // at around 25/255 against a 200/255 sky and read as a hole punched in the
   // frame rather than as a tree. Foliage is the only large organic mass in a
   // world of flat stone, so when it goes to silhouette the picture loses the
   // one thing that was not architecture.
-  foliageDeep:  c('#4E5F35'),
-  trunkBark:    c('#5C4632'),
-  ivyGreen:     c('#4A5C33'),
+  foliageDeep:  c('#4A6533'),
+  trunkBark:    c('#4E4438'),
+  ivyGreen:     c('#3F5A2F'),
 
   // --- signage and cloth --------------------------------------------------
-  awningRed:    c('#B3413C'),
-  awningGreen:  c('#3E5F47'),
-  awningCream:  c('#E5D2AE'),
+  awningRed:    c('#9E2F2C'),
+  awningGreen:  c('#2F4A3B'),
+  awningCream:  c('#E3DCCB'),
   metroGreen:   c('#1F4A3A'),
-  signWhite:    c('#F2E9D8'),
+  signWhite:    c('#F1EEE6'),
 
   // --- enemies. Colour is information: see docs/GAMEPLAY.md §3 -------------
   enemyGrunt:   c('#D9932F'),   // ochre
@@ -131,9 +131,9 @@ export const PALETTE = {
   hudBlue:      '#5EC8E5',
 };
 
-/** Sun direction: low, west-north-west, raking up the hill. */
-export const SUN_ELEVATION_DEG = 11.5;
-export const SUN_AZIMUTH_DEG = 287;   // compass bearing the light comes FROM
+/** Sun direction: mid-afternoon, west-south-west, high enough to light the streets. */
+export const SUN_ELEVATION_DEG = 34;
+export const SUN_AZIMUTH_DEG = 245;   // compass bearing the light comes FROM: mid-afternoon, west-south-west
 
 /** Unit vector pointing from the scene toward the sun, in our frame. */
 export function sunDirection() {

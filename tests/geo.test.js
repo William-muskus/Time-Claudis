@@ -88,8 +88,11 @@ test('the ground faces up', async () => {
   const { railIndex } = await import('../src/world/geo.js');
   const rail = new Rail(railPoints());
   const group = buildTerrain(rail, railIndex(rail));
-  for (const name of ['terrain', 'side_streets']) {
-    const p = group.children.find((c) => c.name === name).geometry.attributes.position.array;
+  const meshes = [group.children.find((c) => c.name === 'terrain'),
+    ...group.children.find((c) => c.name === 'side_streets').children.filter((c) => c.name.startsWith('side_streets_'))];
+  for (const mesh of meshes) {
+    const name = mesh.name;
+    const p = mesh.geometry.attributes.position.array;
     let down = 0, faces = 0;
     for (let i = 0; i < p.length; i += 9) {
       const ux = p[i + 3] - p[i], uz = p[i + 5] - p[i + 2];

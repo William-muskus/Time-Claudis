@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { PALETTE, flat } from '../render/palette.js';
-import { GEO, groundAt } from './geo.js';
+import { GEO, groundAt, pairs, pointInRing } from './geo.js';
 import { buildBench } from './props.js';
 import { buildWallaceFountain } from './landmarks.js';
+import { polyOccluder } from './occluders.js';
 
 /**
  * Every tree on the route, from the Ville de Paris inventory.
@@ -28,7 +29,7 @@ const SPECIES = {
   robinia:   { crown: new THREE.Color('#99A050'), lobes: 3, r: 0.28, sy: 0.9, bark: PALETTE.trunkBark },
   cypress:   { crown: new THREE.Color('#3E4E30'), lobes: 0, r: 0.12, sy: 1, bark: PALETTE.trunkBark },
   mulberry:  { crown: PALETTE.foliageMid, lobes: 2, r: 0.32, sy: 0.85, bark: PALETTE.trunkBark },
-  cherry:    { crown: new THREE.Color('#8A6B4E'), lobes: 2, r: 0.3, sy: 0.85, bark: new THREE.Color('#5A3A2E') },
+  cherry:    { crown: new THREE.Color('#6A8846'), lobes: 2, r: 0.3, sy: 0.85, bark: new THREE.Color('#5A3A2E') },   // green in summer, as in every survey frame
   olive:     { crown: new THREE.Color('#8C9478'), lobes: 2, r: 0.3, sy: 0.8, bark: new THREE.Color('#6E6658') },
   hornbeam:  { crown: PALETTE.foliageMid, lobes: 2, r: 0.3, sy: 1.0, bark: PALETTE.trunkBark },
   celtis:    { crown: PALETTE.foliageSun, lobes: 2, r: 0.3, sy: 0.9, bark: PALETTE.trunkBark },
@@ -52,9 +53,25 @@ function hash(i, k) {
   return ((x ^ (x >>> 13)) >>> 0) / 4294967296;
 }
 
+/**
+ * The crown as a line-of-sight blocker for the spawn director: a square a
+ * little inside the canopy, from where the foliage starts to the top. A
+ * summer crown hides a balcony; under it, a person on the pavement is still
+ * in plain view, which is exactly how it is on Place Dalida.
+ */
+function crownOccluder(spec, h, x, y, z) {
+  const trunkH = spec.lobes === 0 ? h * 0.12 : Math.max(h * 0.45, Math.min(4.5, h * 0.6));
+  const r = spec.lobes === 0 ? h * spec.r * 0.6 : Math.max(0.9, h * spec.r) * 0.7;
+  return polyOccluder([[x - r, z - r], [x - r, z + r], [x + r, z + r], [x + r, z - r]], y + trunkH + 0.3, y + h);
+}
+
 function buildTree(spec, h, i) {
   const g = new THREE.Group();
-  const trunkH = spec.lobes === 0 ? h * 0.12 : h * 0.42;
+  // Street and square trees in Paris are crown-lifted: a clear trunk to 4 m
+  // or more, so that buses pass and the crowns meet over the street. The
+  // first version started the crown at 42% of the height, which on a 9 m tree
+  // put a dark mass at eye level in every frame of every square.
+  const trunkH = spec.lobes === 0 ? h * 0.12 : Math.max(h * 0.45, Math.min(4.5, h * 0.6));
   const trunkR = Math.max(0.12, h * 0.022);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.8, trunkR, trunkH, 5), mat(spec.bark));
   trunk.position.y = trunkH / 2;
@@ -77,7 +94,8 @@ function buildTree(spec, h, i) {
     const lobe = new THREE.Mesh(new THREE.IcosahedronGeometry(R * (k === 0 ? 1 : 0.72), 0),
       mat(k === 0 ? col : col.clone().multiplyScalar(1.07)));
     lobe.position.set(Math.cos(a) * off, cy + (k === 0 ? 0 : R * 0.3), Math.sin(a) * off);
-    lobe.scale.y = spec.sy;
+    // Wider than tall, like a pollarded crown seen from the street.
+    lobe.scale.set(1.18, spec.sy * 0.82, 1.18);
     lobe.rotation.set(hash(i, 20 + k) * 3, hash(i, 30 + k) * 3, 0);
     lobe.castShadow = true;
     g.add(lobe);
@@ -93,6 +111,7 @@ export function buildRealTrees(rail, near, isReserved = () => false) {
   const group = new THREE.Group();
   group.name = 'trees';
   let placed = 0, skipped = 0;
+  const occluders = [];
   GEO.trees.forEach(([x, y, z, h, species], i) => {
     // Keep the trunk out of the camera's path, and nothing more.
     //
@@ -104,13 +123,16 @@ export function buildRealTrees(rail, near, isReserved = () => false) {
     const nr = near.nearest(x, z, 8);
     if (nr && nr.dist < 1.5) { skipped++; return; }
     if (isReserved(x, z)) { skipped++; return; }
-    const t = buildTree(SPECIES[species] ?? SPECIES.other, h, i);
+    const spec = SPECIES[species] ?? SPECIES.other;
+    const t = buildTree(spec, h, i);
     t.position.set(x, (groundAt(x, z) ?? y) - 0.05, z);
+    if (nr && nr.dist < 70) occluders.push(crownOccluder(spec, h, x, t.position.y, z));
     t.rotation.y = hash(i, 3) * Math.PI * 2;
     group.add(t);
     placed++;
   });
   group.userData.stats = { placed, skipped };
+  group.userData.occluders = occluders;
   return group;
 }
 
@@ -158,5 +180,67 @@ export function buildRealFurniture(rail, near, assets) {
     p.castShadow = true;
     group.add(p);
   }
+  return group;
+}
+
+/**
+ * The gardens' trees, which no inventory lists.
+ *
+ * The city's tree inventory is STREET trees. In the IGN aerial photograph the
+ * route is half canopy — the wooded slope below rue de l'Abreuvoir, the
+ * gardens behind every wall on rue Girardon, the square Suzanne-Buisson, the
+ * vineyard — and almost none of it is in the inventory, because it is private
+ * or it is a park. So: every garden, park, wood and scrub polygon from
+ * OpenStreetMap and BD TOPO is planted on a jittered grid, and every gap wall
+ * along the walk gets the trees boundaries.js found behind it.
+ */
+const GARDEN_SPECIES = ['chestnut', 'lime', 'maple', 'robinia', 'ash', 'chestnut', 'plane', 'hornbeam'];
+
+export function buildGardenTrees(rail, near, spots, isReserved = () => false) {
+  const group = new THREE.Group();
+  group.name = 'garden_trees';
+  const occluders = [];
+  const existing = GEO.trees.map(([x, , z]) => [x, z]);
+  const tooClose = (x, z, r) => existing.some(([a, b]) => (a - x) ** 2 + (b - z) ** 2 < r * r);
+  const plant = (x, z, h, i) => {
+    const nr = near.nearest(x, z, 240);
+    if (!nr) return;                              // nowhere the player can see
+    if (nr.dist < rail.widthAt(nr.d) / 2 + 1.0) return;
+    if (isReserved(x, z) || tooClose(x, z, 3.5)) return;
+    const g = groundAt(x, z);
+    if (g === null) return;
+    const species = GARDEN_SPECIES[Math.floor(hash(i, 41) * GARDEN_SPECIES.length)];
+    const t = buildTree(SPECIES[species], h, 5000 + i);
+    t.position.set(x, g - 0.05, z);
+    if (nr.dist < 70) occluders.push(crownOccluder(SPECIES[species], h, x, g, z));
+    t.rotation.y = hash(i, 42) * Math.PI * 2;
+    group.add(t);
+    existing.push([x, z]);
+  };
+
+  let i = 0;
+  for (const [x, z, h] of spots) plant(x, z, h, i++);
+
+  const polys = [
+    ...(GEO.gardens ?? []).map((g) => ({ k: g.k, ring: pairs(g.o) })),
+    ...GEO.greens.map((o) => ({ k: 'green', ring: pairs(o) })),
+  ];
+  const SPACING = { wood: 6, scrub: 6, garden: 7.5, park: 8, green: 7.5, cemetery: 14, grass: 16, vineyard: 0 };
+  for (const p of polys) {
+    const sp = SPACING[p.k] ?? 8;
+    if (!sp) continue;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (const [x, z] of p.ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    for (let gx = x0 + sp / 2; gx < x1; gx += sp) {
+      for (let gz = z0 + sp / 2; gz < z1; gz += sp) {
+        const jx = gx + (hash(Math.round(gx * 10), Math.round(gz * 10)) - 0.5) * sp * 0.7;
+        const jz = gz + (hash(Math.round(gz * 10), Math.round(gx * 10) + 7) - 0.5) * sp * 0.7;
+        if (!pointInRing(p.ring, jx, jz)) continue;
+        plant(jx, jz, 8 + hash(i, 43) * 9, i++);
+      }
+    }
+  }
+  group.userData.stats = { planted: group.children.length };
+  group.userData.occluders = occluders;
   return group;
 }
