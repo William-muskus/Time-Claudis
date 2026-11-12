@@ -546,6 +546,11 @@ def main():
     SURF = {"sett": "sett", "unhewn_cobblestone": "sett", "cobblestone": "sett",
             "asphalt": "asphalt", "paving_stones": "paving", "concrete": "paving",
             "compacted": "gravel", "fine_gravel": "gravel", "gravel": "gravel"}
+    # Where the Ville de Paris survey photographs contradict OSM's surface tag
+    # for a carriageway, by street name.
+    # (Empty: rue des Abbesses looked like asphalt in a dark frame and is
+    # setts at the Ravignan end in a clear one. OSM was right.)
+    SURFACE_FROM_PHOTOS = {}
     surfaces, barriers, gardens = [], [], []
     GARDEN = {("leisure", "garden"): "garden", ("leisure", "park"): "park", ("landuse", "grass"): "grass",
               ("natural", "scrub"): "scrub", ("natural", "wood"): "wood", ("landuse", "vineyard"): "vineyard",
@@ -557,7 +562,10 @@ def main():
             continue
         pts = [L(*nodes[r]) for r in refs]
         if "highway" in tg and tg.get("surface") in SURF:
-            surfaces.append(dict(s=SURF[tg["surface"]], fw=1 if tg["highway"] in ("footway", "steps") else 0,
+            surf = SURF[tg["surface"]]
+            if tg["highway"] not in ("footway", "steps") and tg.get("name") in SURFACE_FROM_PHOTOS:
+                surf = SURFACE_FROM_PHOTOS[tg["name"]]
+            surfaces.append(dict(s=surf, n=tg.get("name", ""), fw=1 if tg["highway"] in ("footway", "steps") else 0,
                                  p=[v for x, z in pts for v in (r1(x), r1(z))]))
         if tg.get("barrier") in ("wall", "fence", "retaining_wall", "gate", "hedge"):
             ys = [terrain.at(x, z) for x, z in pts]

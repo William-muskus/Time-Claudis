@@ -78,7 +78,8 @@ export function buildTerrain(rail, near) {
   const group = new THREE.Group();
   group.name = 'terrain';
 
-  const greens = GEO.greens.map((g) => {
+  // Canopy zones are not lawns (see ground.js); only OSM gardens and parks.
+  const greens = (GEO.gardens ?? []).filter((g) => g.k !== 'cemetery').map((gd) => gd.o).map((g) => {
     const ring = pairs(g);
     let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
     for (const [x, z] of ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }

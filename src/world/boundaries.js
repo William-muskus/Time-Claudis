@@ -322,7 +322,7 @@ export function buildBoundaries(rail, near) {
       const park = behindPark(x + nx * 3, z + nz * 3);
       if (run.length && !!run[0].park !== park) flush();
       const open =
-        (width >= 12.5 && !park) ||                               // a square, not a street
+        width >= 12.5 ||                                          // a square, not a street
         insideBuilding(x + nx * 0.8, z + nz * 0.8, 0.7) ||          // a facade is here
         insideBuilding(x - nx * 0.3, z - nz * 0.3) ||
         nearSegments(mapped, x, z, 2.5) !== null;                  // OSM already drew it

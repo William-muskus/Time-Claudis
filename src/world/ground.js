@@ -154,14 +154,27 @@ export function buildGround(rail, near, { debug = null } = {}) {
   };
 
   const streetAt = segIndex(near, rail);
-  const greens = [...GEO.greens.map(pairs), ...(GEO.gardens ?? [])
+  // Ground colour from OSM's gardens, parks and lawns only. BD TOPO's
+  // vegetation zones ("Bois", "Haie") are tree CANOPY read off aerial photos,
+  // not what is on the ground: the street trees over the café terraces of rue
+  // des Abbesses came out as a lawn under the tables. They still plant trees
+  // (realtrees.js), which is what they are.
+  const greens = [...(GEO.gardens ?? [])
     .filter((g) => g.k !== 'cemetery').map((g) => pairs(g.o))]
     .map((ring) => {
-      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-      for (const [x, z] of ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
-      return { ring, x0, z0, x1, z1 };
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity, area = 0, per = 0;
+      ring.forEach(([x, z], i) => {
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+        const [nx, nz] = ring[(i + 1) % ring.length];
+        area += x * nz - nx * z; per += Math.hypot(nx - x, nz - z);
+      });
+      // Mean width of the polygon. The planted strips down rue Caulaincourt
+      // and along the squares are packed sand under trees in every survey
+      // photo, not lawn; only the gardens proper are grass.
+      const width = Math.abs(area) / (per / 2 || 1);
+      return { ring, x0, z0, x1, z1, sand: width < 7 };
     });
-  const isGreen = (x, z) => greens.some((g) => x >= g.x0 && x <= g.x1 && z >= g.z0 && z <= g.z1 && pointInRing(g.ring, x, z));
+  const greenAt = (x, z) => greens.find((g) => x >= g.x0 && x <= g.x1 && z >= g.z0 && z <= g.z1 && pointInRing(g.ring, x, z));
 
   // The walk's own corridor, as street.js lays it out.
   const walk = (x, z) => {
@@ -191,7 +204,7 @@ export function buildGround(rail, near, { debug = null } = {}) {
     return c;
   };
   const classifyOpen = (x, z, st) => {
-    if (st?.kind === 'road') return { surf: roadSurf(x, z), lift: 0 };
+    if (st?.kind === 'road') return { surf: roadSurf(x, z, st.seg), lift: 0 };
     if (st?.kind === 'steps') return { surf: 'steps', lift: 0 };
     // A pavement is the strip along a building front, off the roadway:
     // that is where Paris lays them, and its kerb then follows the facade
@@ -204,7 +217,8 @@ export function buildGround(rail, near, { debug = null } = {}) {
       const surf = own ?? (near === 'sett' ? 'asphalt' : 'asphalt');
       return { surf: surf === 'sett' ? 'sett' : surf === 'paving' ? 'paving' : 'asphalt', lift: KERB, pavement: true };
     }
-    if (isGreen(x, z)) return { surf: 'green', lift: 0.02 };
+    const gr = greenAt(x, z);
+    if (gr) return { surf: gr.sand ? 'gravel' : 'green', lift: 0.02 };
     const own = surfaceAt(x, z, { footway: true, maxR: 5, fallback: null });
     const surf = own ?? surfaceAt(x, z, { maxR: 14, fallback: 'asphalt' });
     // Open ground (forecourts, the corners of junctions, squares) lies flush
@@ -213,8 +227,26 @@ export function buildGround(rail, near, { debug = null } = {}) {
     // ragged edge between the two into a flight of little steps.
     return { surf: surf === 'gravel' ? 'gravel' : surf === 'sett' ? 'sett' : surf === 'paving' ? 'paving' : 'asphalt', lift: 0.02 };
   };
-  const roadSurf = (x, z) => {
-    const s = surfaceAt(x, z, { fallback: 'asphalt' });
+  // A street's carriageway wears its OWN surface: the majority of OSM's
+  // surface tags on ways of the same name. Asking for the nearest tagged way
+  // put cobbles on rue Caulaincourt wherever a cobbled lane joined it.
+  const norm = (n) => (n || '').toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+  const byName = new Map();
+  for (const sf of GEO.surfaces ?? []) {
+    if (sf.fw || !sf.n) continue;
+    const k = norm(sf.n);
+    if (!byName.has(k)) byName.set(k, {});
+    const c = byName.get(k);
+    c[sf.s] = (c[sf.s] ?? 0) + pairs(sf.p).length;
+  }
+  const own = new Map([...byName].map(([k, c]) => [k, Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]]));
+  // A street tagged with more than one surface (rue des Abbesses: setts at
+  // the Ravignan end, paving toward the square) keeps the nearest way's tag.
+  const mixed = new Set([...byName].filter(([, c]) => Object.keys(c).length > 1).map(([k]) => k));
+  const roadSurf = (x, z, seg) => {
+    const k = seg && norm(seg.r.n);
+    const named = k && !mixed.has(k) ? own.get(k) : null;
+    const s = named ?? surfaceAt(x, z, { fallback: 'asphalt' });
     return s === 'paving' ? 'sett' : s === 'gravel' ? 'gravel' : s;
   };
 
