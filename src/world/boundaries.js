@@ -252,6 +252,33 @@ export function buildBoundaries(rail, near) {
     if (b.k === 'hedge') { wallAlong(pts, 'hedge', b.h ?? 1.6, M, i); continue; }
     if (b.k === 'gate') continue;
     if (b.k === 'retaining_wall') { wallAlong(pts, 'rubble', b.h ?? 1.1, M, i); continue; }
+    const fenceKind = /chain|wire|mesh/.test(b.m) ? 'rail' : hash(i, 1) < 0.55 ? 'rail' : 'fence';
+    // A long mapped garden wall beside the walk has its gate, at the middle:
+    // the gardens of rue Girardon are entered through them, and they are the
+    // only openings on that stretch anyone can come out of.
+    let L = 0;
+    for (let k = 0; k < pts.length - 1; k++) L += Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]);
+    const mid = pts[Math.floor(pts.length / 2)];
+    const nm = near.nearest(mid[0], mid[1], 30);
+    if ((b.k === 'wall' || b.k === 'fence') && L > 14 && nm && nm.dist < 14) {
+      let acc = 0, k = 0;
+      while (k < pts.length - 2 && acc + Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]) < L / 2) {
+        acc += Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]); k++;
+      }
+      const [ax, az] = pts[k], [bx, bz] = pts[k + 1];
+      const sl = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / sl, uz = (bz - az) / sl;
+      const t = Math.min(sl - 1.6, Math.max(1.6, L / 2 - acc));
+      const gx = ax + ux * t, gz = az + uz * t;
+      const cut = (q) => Math.hypot(q[0] - gx, q[1] - gz) > 1.7;
+      const left = [...pts.slice(0, k + 1), [gx - ux * 1.7, gz - uz * 1.7]];
+      const right = [[gx + ux * 1.7, gz + uz * 1.7], ...pts.slice(k + 1)].filter((q, j) => j === 0 || cut(q));
+      const kind = b.k === 'fence' ? fenceKind : hash(i, 2) < 0.75 ? 'rubble' : 'render';
+      const h = b.h ?? (b.k === 'fence' ? 2.1 : 2.3 + hash(i, 4) * 0.5);
+      wallAlong(left.filter((q, j) => j === left.length - 1 || cut(q)), kind, h, M, i);
+      wallAlong(right, kind, h, M, i + 1000);
+      gateAt(gx, gz, ux, uz, 2.6, M, i);
+      continue;
+    }
     if (b.k === 'fence') {
       const kind = /chain|wire|mesh/.test(b.m) ? 'rail' : hash(i, 1) < 0.55 ? 'rail' : 'fence';
       wallAlong(pts, kind, b.h ?? 2.1, M, i);
@@ -276,7 +303,18 @@ export function buildBoundaries(rail, near) {
   // is an open square UNLESS one of these is behind it, in which case it is
   // a park's edge: square Suzanne-Buisson above rue Girardon, the square in
   // Place des Abbesses. Those get a low wall and a railing.
-  const parks = [...(GEO.gardens ?? []).map((g) => pairs(g.o)), ...GEO.greens.map(pairs)];
+  // OSM gardens and parks only: BD TOPO's vegetation zones are tree canopy,
+  // and treating canopy as a park put a railing between the café terraces of
+  // rue des Abbesses.
+  // Plus the large canopy zones: a wood of several hundred square metres
+  // behind a wall is a garden (the Château des Brouillards above Place
+  // Dalida); a strip of street trees is not.
+  const area = (r) => Math.abs(r.reduce((a, [x, z], i) => { const [nx, nz] = r[(i + 1) % r.length]; return a + x * nz - nx * z; }, 0)) / 2;
+  const parks = [
+    ...(GEO.gardens ?? []).filter((g) => g.k === 'garden' || g.k === 'park').map((g) => pairs(g.o)),
+    ...GEO.greens.map(pairs).filter((r) => area(r) > 600 &&
+      area(r) / (r.reduce((a, [x, z], i) => { const [nx, nz] = r[(i + 1) % r.length]; return a + Math.hypot(nx - x, nz - z); }, 0) / 2 || 1) > 9),
+  ];
   const behindPark = (x, z) => parks.some((r) => pointInRing(r, x, z));
   const STEP = 1.0;
   for (const side of [-1, 1]) {
@@ -290,7 +328,10 @@ export function buildBoundaries(rail, near) {
         const pts = run.map((q) => [q.x, q.z]);
         const len = run.length * STEP;
         // A gate in the longer runs, where gardens have their carriage door.
-        if (len > 9 && hash(seed, 8) < 0.6) {
+        // Every garden wall longer than nine metres has its gate: it is how the
+        // garden is entered, and on rue Girardon above Place Dalida the gates
+        // are the only openings anyone can come out of.
+        if (len > 9) {
           const m = Math.floor(run.length / 2);
           const gw = 2.6;
           const cut = Math.ceil(gw / 2 / STEP) + 1;
@@ -322,7 +363,7 @@ export function buildBoundaries(rail, near) {
       const park = behindPark(x + nx * 3, z + nz * 3);
       if (run.length && !!run[0].park !== park) flush();
       const open =
-        width >= 12.5 ||                                          // a square, not a street
+        (width >= 12.5 && !park) ||                               // a square, not a street
         insideBuilding(x + nx * 0.8, z + nz * 0.8, 0.7) ||          // a facade is here
         insideBuilding(x - nx * 0.3, z - nz * 0.3) ||
         nearSegments(mapped, x, z, 2.5) !== null;                  // OSM already drew it

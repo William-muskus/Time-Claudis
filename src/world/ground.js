@@ -159,8 +159,15 @@ export function buildGround(rail, near, { debug = null } = {}) {
   // not what is on the ground: the street trees over the café terraces of rue
   // des Abbesses came out as a lawn under the tables. They still plant trees
   // (realtrees.js), which is what they are.
+  // Large canopy zones (over 600 m²) are gardens all the same: the
+  // Château des Brouillards garden behind the fence above Place Dalida.
+  // Mean width = area / half the perimeter: the tree alignments down rue
+  // Caulaincourt are large but a few metres wide.
+  const meanWidth = (r) => ringArea(r) / (r.reduce((a, [x, z], i) => { const [nx, nz] = r[(i + 1) % r.length]; return a + Math.hypot(nx - x, nz - z); }, 0) / 2 || 1);
+  const ringArea = (r) => Math.abs(r.reduce((a, [x, z], i) => { const [nx, nz] = r[(i + 1) % r.length]; return a + x * nz - nx * z; }, 0)) / 2;
   const greens = [...(GEO.gardens ?? [])
-    .filter((g) => g.k !== 'cemetery').map((g) => pairs(g.o))]
+    .filter((g) => g.k !== 'cemetery').map((g) => pairs(g.o)),
+    ...GEO.greens.map(pairs).filter((r) => ringArea(r) > 600 && meanWidth(r) > 9)]
     .map((ring) => {
       let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity, area = 0, per = 0;
       ring.forEach(([x, z], i) => {
